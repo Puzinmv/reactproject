@@ -1,11 +1,7 @@
-import React, {useEffect} from 'react';
+import React from 'react';
 import { directus } from "../services/directus";
 
-const LoginForm = ({onClose}) => {
-
-    useEffect(() => {
-
-    }, []);
+const LoginForm = ({onLogin}) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -15,15 +11,18 @@ const LoginForm = ({onClose}) => {
         directus.login(email.value, password.value).catch(err => {
           console.error(err);
         });
+        onLogin(directus);
       };
+    //const handleLoginCloseModal = () => {
+    //    setisLoginModalOpen(false);
+    //    };
 
     return (
         <div className="modal">
             <div className="modal-content">
                 <form onSubmit={handleSubmit}>
-                    <span className="close" onClick={onClose}>
-                        &times;
-                    </span>
+                    {/*<span className="close" onClick ={handleLoginCloseModal}>*/}
+                    {/*</span>*/}
                     <input
                         name='email'
                         type='email'

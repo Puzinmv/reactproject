@@ -22,9 +22,16 @@ function App() {
     setIsModalOpen(false);
     setSelectedRow(null);
   };
-  const handleLoginCloseModal = () => {
-    setisLoginModalOpen(false);
-  };
+
+    const handleLogin = async (username, password) => {
+        try {
+            const { token } = await login(username, password);
+            setToken(token);
+        } catch (error) {
+            console.error('Login failed:', error);
+            alert('Login failed');
+        }
+    };
 
   const handleToggleColumnModal = () => {
     setIsColumnModalOpen(!isColumnModalOpen);
@@ -32,7 +39,7 @@ function App() {
 
   return (
     <div className="App">
-      {isLoginModalOpen && (<LoginForm onClose={handleLoginCloseModal} />)}
+      {isLoginModalOpen && (<LoginForm onLogin={handleLoginCloseModal} />)}
       <TableComponent
         onRowSelect={handleRowSelect}
         onToggleColumnModal={handleToggleColumnModal}

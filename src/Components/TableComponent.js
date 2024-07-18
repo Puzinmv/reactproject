@@ -9,7 +9,7 @@ import {
 } from '@tanstack/react-table';
 import './TableComponent.css'; // Импортируем стили
 
-const TableComponent = ({ onRowSelect, onToggleColumnModal, setTableInstance }) => {
+const TableComponent = ({ onRowSelect, onToggleColumnModal, setTableInstance, directus}) => {
     const [data, setData] = useState([]);
     const [filterInput, setFilterInput] = useState('');
     const [columnOrder, setColumnOrder] = useState([]);
@@ -28,15 +28,23 @@ const TableComponent = ({ onRowSelect, onToggleColumnModal, setTableInstance }) 
             },
             {
                 header: 'Name',
-                accessorKey: 'userId',
-            },
-            {
-                header: 'Email',
                 accessorKey: 'title',
             },
             {
-                header: 'Body',
-                accessorKey: 'body',
+                header: 'Description',
+                accessorKey: 'Description',
+            },
+            {
+                header: 'Files',
+                accessorKey: 'Files',
+            },
+            {
+                header: 'user_created',
+                accessorKey: 'user_created',
+            },
+            {
+                header: 'date_created',
+                accessorKey: 'date_created',
             },
         ],
         []
@@ -44,8 +52,13 @@ const TableComponent = ({ onRowSelect, onToggleColumnModal, setTableInstance }) 
 
     useEffect(() => {
         const fetchData = async () => {
-            const result = await fetch('https://jsonplaceholder.typicode.com/posts');
-            const data = await result.json();
+            //const result = await fetch('https://jsonplaceholder.typicode.com/posts');
+            //const data = await result.json();
+            const data = directus.request(
+	            readItems('Project_Card', {
+		            fields: ['id', 'title', 'Description', 'Files', 'user_created', 'date_created']
+	            })
+);
             setData(data);
         };
 

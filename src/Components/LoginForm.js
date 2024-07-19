@@ -1,21 +1,16 @@
-import React from 'react';
-import { directus } from "../services/directus";
+import React, { useState } from 'react';
 
-const LoginForm = ({onLogin}) => {
+
+const LoginForm = ({ onLogin }) => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
-        const { email, password } = e.currentTarget.elements;
-        console.log(email.value, password.value);
-        directus.login(email.value, password.value).catch(err => {
-          console.error(err);
-        });
-        onLogin(directus);
+        onLogin(email, password);
       };
-    //const handleLoginCloseModal = () => {
-    //    setisLoginModalOpen(false);
-    //    };
+
 
     return (
         <div className="modal">
@@ -26,16 +21,18 @@ const LoginForm = ({onLogin}) => {
                     <input
                         name='email'
                         type='email'
-                        value="puzinmv@gmail.com"
+                        value={email}
                         placeholder="admin@example.com"
                         className="login-input"
+                        onChange={(e) => setEmail(e.target.value)}
                     />
                     <input
                         name='password'
-                        value="123"
+                        value={password}
                         placeholder="password"
                         type='password'
                         className="login-input"
+                        onChange={(e) => setPassword(e.target.value)}
                     />
                     <button type='submit'>Login</button>
                 </form>

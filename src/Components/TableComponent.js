@@ -8,8 +8,9 @@ import {
     flexRender,
 } from '@tanstack/react-table';
 import './TableComponent.css'; // Импортируем стили
+import { fetchData } from '../services/directus';
 
-const TableComponent = ({ onRowSelect, onToggleColumnModal, setTableInstance, directus}) => {
+const TableComponent = ({ onRowSelect, onToggleColumnModal, setTableInstance, token, collection }) => {
     const [data, setData] = useState([]);
     const [filterInput, setFilterInput] = useState('');
     const [columnOrder, setColumnOrder] = useState([]);
@@ -51,19 +52,14 @@ const TableComponent = ({ onRowSelect, onToggleColumnModal, setTableInstance, di
     );
 
     useEffect(() => {
-        const fetchData = async () => {
-            //const result = await fetch('https://jsonplaceholder.typicode.com/posts');
-            //const data = await result.json();
-            const data = directus.request(
-	            readItems('Project_Card', {
-		            fields: ['id', 'title', 'Description', 'Files', 'user_created', 'date_created']
-	            })
-);
-            setData(data);
+        const getData = async () => {
+            const result = await fetchData(token, collection);
+            setData(result);
+            console.log(result);
         };
-
-        fetchData();
-    }, []);
+        getData();
+        
+    }, [token, collection]);
 
     const table = useReactTable({
         data,

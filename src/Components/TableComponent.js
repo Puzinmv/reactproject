@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     useReactTable,
     getCoreRowModel,
@@ -6,12 +6,11 @@ import {
     getSortedRowModel,
     getPaginationRowModel,
     flexRender,
+    createColumnHelper,
 } from '@tanstack/react-table';
-import './TableComponent.css'; // Èìïîðòèðóåì ñòèëè
-import { fetchData } from '../services/directus';
+import './TableComponent.css';
 
-const TableComponent = ({ onRowSelect, onToggleColumnModal, setTableInstance, token, collection }) => {
-    const [data, setData] = useState([]);
+const TableComponent = ({ data, onRowSelect, onToggleColumnModal }) => {
     const [filterInput, setFilterInput] = useState('');
     const [columnOrder, setColumnOrder] = useState([]);
     const [hiddenColumns, setHiddenColumns] = useState({});
@@ -21,6 +20,7 @@ const TableComponent = ({ onRowSelect, onToggleColumnModal, setTableInstance, to
         pageSize: 10,
     });
 
+    const columnHelper = createColumnHelper();
     const columns = useMemo(
         () => [
             {
@@ -31,35 +31,37 @@ const TableComponent = ({ onRowSelect, onToggleColumnModal, setTableInstance, to
                 header: 'Name',
                 accessorKey: 'title',
             },
-            {
-                header: 'Description',
-                accessorKey: 'Description',
-            },
+            columnHelper.accessor('Description', {
+                header: 'ÐžÐ¿Ð¸ÑÐ°Ð½Ð¸Ðµ',
+                cell: info => (
+                    <div dangerouslySetInnerHTML={{ __html: info.getValue() }} />
+                ),
+            }),
             {
                 header: 'Files',
                 accessorKey: 'Files',
             },
-            {
-                header: 'user_created',
-                accessorKey: 'user_created',
-            },
-            {
-                header: 'date_created',
-                accessorKey: 'date_created',
-            },
+            columnHelper.accessor('initiator', {
+                header: 'Ð˜Ð½Ð¸Ñ†Ð¸Ð°Ñ‚Ð¾Ñ€',
+                cell: info => {
+                    const user = info.getValue();
+                    return `${user?.first_name} ${user?.last_name}`;
+                },
+            }),
+            columnHelper.accessor('date_created', {
+                header: 'Date Created',
+                cell: info => {
+                    const date = new Date(info.getValue());
+                    return date.toLocaleDateString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                    });
+                },
+            }),
         ],
         []
     );
-
-    useEffect(() => {
-        const getData = async () => {
-            const result = await fetchData(token, collection);
-            setData(result);
-            console.log(result);
-        };
-        getData();
-        
-    }, [token, collection]);
 
     const table = useReactTable({
         data,
@@ -80,10 +82,6 @@ const TableComponent = ({ onRowSelect, onToggleColumnModal, setTableInstance, to
         onColumnSizingChange: setColumnWidths,
         onPaginationChange: setPagination,
     });
-
-    useEffect(() => {
-        setTableInstance(table);
-    }, [table]);
 
     const handleFilterChange = (e) => {
         const value = e.target.value || undefined;

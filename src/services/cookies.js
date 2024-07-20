@@ -11,3 +11,5 @@ export const setSessionToken = (token) => {
 export const clearSessionToken = () => {
   Cookies.remove('directus_session_token');
 };
+
+export default getSessionToken;

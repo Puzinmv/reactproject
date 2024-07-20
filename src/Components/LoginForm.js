@@ -16,8 +16,6 @@ const LoginForm = ({ onLogin }) => {
         <div className="modal">
             <div className="modal-content">
                 <form onSubmit={handleSubmit}>
-                    {/*<span className="close" onClick ={handleLoginCloseModal}>*/}
-                    {/*</span>*/}
                     <input
                         name='email'
                         type='email'

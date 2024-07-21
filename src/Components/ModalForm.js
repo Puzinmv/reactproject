@@ -49,12 +49,16 @@ const ModalForm = ({ row, onClose, token, collection, onDataSaved }) => {
     }, [token]);
 
     useEffect(() => {
-        settotoalCostPerHour(`${totoalCost / (formData.resourceSumm * 8)} ₽/час`);
+        settotoalCostPerHour(`${Math.round(totoalCost*100 / (formData.resourceSumm * 8))/100} ₽/час`);
     }, [totoalCost, formData.resourceSumm]);
 
     useEffect(() => {
-        setCostPerHour(`${formData.Cost / (formData.resourceSumm * 8)} ₽/час`);
+        setCostPerHour(`${Math.round(formData.Cost * 100/ (formData.resourceSumm * 8))/100} ₽/час`);
     }, [formData.Cost, formData.resourceSumm]);
+
+    useEffect(() => {
+        setSummPerHour(`${Math.round(formData.Price*100 / (formData.frameSumm * 8))/100} ₽/час по длительности`);
+    }, [formData.Price, formData.frameSumm]);
 
 
     const validateFields = () => {
@@ -441,10 +445,14 @@ const ModalForm = ({ row, onClose, token, collection, onDataSaved }) => {
                                 onChange={handleChange}
                                 fullWidth
                                 margin="dense"
+                                aria-describedby="Sum-helper-text"
                                 InputProps={{
                                     endAdornment: <InputAdornment position="end">₽</InputAdornment>,
                                 }}
                             />
+                            <FormHelperText id="Sum-helper-text">
+                                {SummPerHour}
+                            </FormHelperText>
                         </Grid>
                         <Grid item xs={12} md={4}>
                             <TextField

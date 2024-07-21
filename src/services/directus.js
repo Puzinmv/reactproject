@@ -41,6 +41,9 @@ export const fetchData = async (token, collection) => {
                 {
                     initiator: ['id', 'first_name', 'last_name']
                 },
+                {
+                    Files: ['*']
+                },
             ],
         })));
     return data;

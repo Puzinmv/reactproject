@@ -7,6 +7,7 @@ import { fetchUser, UpdateData } from '../services/directus';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
+import CustomTable from './CustomTable';
 
 const TabPanel = ({ children, value, index }) => {
     return (
@@ -22,7 +23,18 @@ const ModalForm = ({ row, onClose, token, collection, onDataSaved }) => {
     const [customerOptions, setCustomerOptions] = useState([]);
     const [InitiatorOptions, setInitiatorOptions] = useState([]);
     const [errors, setErrors] = useState({});
-    const [totoalCost, settotoalCost] = useState(0);
+
+    const calculateTotalCost = (data) => {
+        return [
+            data.Cost || 0,
+            data.tiketsCost || 0,
+            data.HotelCost || 0,
+            data.dailyCost || 0,
+            data.otherPayments || 0
+        ].reduce((sum, value) => sum + value, 0);
+    };
+
+    const [totoalCost, settotoalCost] = useState(calculateTotalCost(formData));
     const [totoalCostPerHour, settotoalCostPerHour] = useState(0);
     const [CostPerHour, setCostPerHour] = useState(0);
     const [SummPerHour, setSummPerHour] = useState(0);
@@ -94,15 +106,6 @@ const ModalForm = ({ row, onClose, token, collection, onDataSaved }) => {
         setFormData(row);
         onClose();
     };
-    const calculateTotalCost = (data) => {
-        return [
-            data.Cost || 0,
-            data.tiketsCost || 0,
-            data.HotelCost || 0,
-            data.dailyCost || 0,
-            data.otherPayments || 0
-        ].reduce((sum, value) => sum + value, 0);
-    };
 
     const handleChange = (e) => {
 
@@ -163,8 +166,6 @@ const ModalForm = ({ row, onClose, token, collection, onDataSaved }) => {
         // Обработка удаления файла
         console.log('file load', file)
     };
-
-
 
     return (
         <Modal open={true} onClose={onClose}>
@@ -374,14 +375,7 @@ const ModalForm = ({ row, onClose, token, collection, onDataSaved }) => {
                 <TabPanel value={tabIndex} index={1}>
                     <Grid container spacing={2}>
                         <Grid item xs={12}>
-                            <TextField
-                                label="Описание работ"
-                                name="JobDescription"
-                                value={(formData.JobDescription || []).map(job => `${job.JobName}, Дней: ${job.ResourceDay}, Кадров: ${job.FrameDay}`).join('; ')}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                            />
+                            <CustomTable jobDescriptions={formData.JobDescription} />
                         </Grid>
                         <Grid item xs={12} md={6}>
                             <TextField

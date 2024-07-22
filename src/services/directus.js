@@ -1,6 +1,6 @@
 import { createDirectus, authentication, graphql, rest, withToken, readItems, refresh, readUsers, updateItem } from "@directus/sdk";
 
-export const directus = createDirectus('http://10.0.0.226:8055')
+export const directus = createDirectus(process.env.REACT_APP_API_URL)
     .with(authentication('cookie', { credentials: 'include', autoRefresh: true }))
 //    .with(graphql({ credentials: 'include' }))
     .with(rest({ credentials: 'include' }))
@@ -13,6 +13,7 @@ export const login = async (email, password) => {
     return token;
 };
 
+
 export const refreshlogin = async () => {
     //const getCookie = (name) => {
     //    const value = `; ${document.cookie}`;
@@ -24,9 +25,9 @@ export const refreshlogin = async () => {
     let token = null;
     try {
         const req = await directus.request(refresh('cookie'));
-        token = req?.access_token || null; // Èñïîëüçóåì îïöèîíàëüíóş öåïî÷êó äëÿ áåçîïàñíîãî äîñòóïà ê ñâîéñòâó
+        token = req?.access_token || null; // Ğ˜ÑĞ¿Ğ¾Ğ»ÑŒĞ·ÑƒĞµĞ¼ Ğ¾Ğ¿Ñ†Ğ¸Ğ¾Ğ½Ğ°Ğ»ÑŒĞ½ÑƒÑ Ñ†ĞµĞ¿Ğ¾Ñ‡ĞºÑƒ Ğ´Ğ»Ñ Ğ±ĞµĞ·Ğ¾Ğ¿Ğ°ÑĞ½Ğ¾Ğ³Ğ¾ Ğ´Ğ¾ÑÑ‚ÑƒĞ¿Ğ° Ğº ÑĞ²Ğ¾Ğ¹ÑÑ‚Ğ²Ñƒ
     } catch (error) {
-        token = null; // Åñëè âîçíèêàåò îøèáêà, âîçâğàùàåì null
+        token = null; // Ğ•ÑĞ»Ğ¸ Ğ²Ğ¾Ğ·Ğ½Ğ¸ĞºĞ°ĞµÑ‚ Ğ¾ÑˆĞ¸Ğ±ĞºĞ°, Ğ²Ğ¾Ğ·Ğ²Ñ€Ğ°Ñ‰Ğ°ĞµĞ¼ null
     }
     return token;
 };
@@ -49,6 +50,19 @@ export const fetchData = async (token, collection) => {
         })));
     return data;
 };
+
+export const fetchTemplate = () => {
+    const data = [
+        { JobName: 'Ğ²Ñ‹ÑƒĞ²Ğ°Ñ‹Ğ²Ğ°Ğ²Ñ‹', ResourceDay: 3, FrameDay: 3 },
+        { JobName: 'Ğ¨Ğ°Ğ±Ğ»Ğ¾Ğ½ 2', ResourceDay: 2, FrameDay: 3 },
+        { JobName: 'Ğ¨Ğ°Ğ±Ğ»Ğ¾Ğ½ 3', ResourceDay: 5, FrameDay: 3 },
+        { JobName: 'Ğ¨Ğ°Ğ±Ğ»Ğ¾Ğ½ 4', ResourceDay: 4, FrameDay: 3 },
+        { JobName: 'Ğ¨Ğ°Ğ±Ğ»Ğ¾Ğ½ 5', ResourceDay: 6, FrameDay: 3 },
+
+    ];
+    return data;
+};
+
 
 export const fetchUser = async (token) => {
     const data = await directus.request(

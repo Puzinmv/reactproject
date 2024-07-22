@@ -1,41 +1,73 @@
 import React, { useState } from 'react';
-
+import { TextField, Button, Box, Container, Typography } from '@mui/material';
 
 const LoginForm = ({ onLogin }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-
     const handleSubmit = (e) => {
         e.preventDefault();
-        onLogin(email, password);
-      };
+        onLogin(`${email}@asterit.ru`, password);
+    };
 
+    const handleEmailChange = (e) => {
+        const value = e.target.value.replace('@asterit.ru', '');
+        setEmail(value);
+    };
 
     return (
-        <div className="modal">
-            <div className="modal-content">
-                <form onSubmit={handleSubmit}>
-                    <input
-                        name='email'
-                        type='email'
+        <Container maxWidth="xs" sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100vh' }}>
+            <Box
+                sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+            >
+                <Typography component="h1" variant="h5" sx={{ mb: 2 }}>
+                    Авторизация
+                </Typography>
+                <Box
+                    component="form"
+                    onSubmit={handleSubmit}
+                    sx={{ mt: 1, width: '100%' }}
+                >
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        id="email"
+                        label="Email Address"
+                        name="email"
+                        autoComplete="email"
+                        autoFocus
                         value={email}
-                        placeholder="admin@example.com"
-                        className="login-input"
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={handleEmailChange}
+                        InputProps={{
+                            endAdornment: (
+                                <Typography variant="body2">@asterit.ru</Typography>
+                            )
+                        }}
                     />
-                    <input
-                        name='password'
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        name="password"
+                        label="Password"
+                        type="password"
+                        id="password"
+                        autoComplete="current-password"
                         value={password}
-                        placeholder="password"
-                        type='password'
-                        className="login-input"
                         onChange={(e) => setPassword(e.target.value)}
                     />
-                    <button type='submit'>Login</button>
-                </form>
-            </div>
-        </div>
+                    <Button
+                        type="submit"
+                        fullWidth
+                        variant="contained"
+                        sx={{ mt: 3, mb: 2 }}
+                    >
+                        Login
+                    </Button>
+                </Box>
+            </Box>
+        </Container>
     );
 };
 

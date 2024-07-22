@@ -24,6 +24,7 @@ function App() {
 
     useEffect(() => {
         refreshlogin().then((token) => {
+            console.log(token)
             setToken(token);
             fetchTableData(token);
         });

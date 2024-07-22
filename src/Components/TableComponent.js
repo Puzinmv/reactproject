@@ -28,18 +28,18 @@ const TableComponent = ({ data, onRowSelect, onToggleColumnModal }) => {
                 accessorKey: 'id',
             },
             {
-                header: 'Name',
+                header: 'Название',
                 accessorKey: 'title',
             },
-            columnHelper.accessor('Description', {
-                header: 'Описание',
-                cell: info => (
-                    <div dangerouslySetInnerHTML={{ __html: info.getValue() }} />
-                ),
-            }),
+            //columnHelper.accessor('Description', {
+            //    header: 'Описание',
+            //    cell: info => (
+            //        <div dangerouslySetInnerHTML={{ __html: info.getValue() }} />
+            //    ),
+            //}),
             {
-                header: 'Files',
-                accessorKey: 'Files',
+                header: 'Заказчик',
+                accessorKey: 'Customer',
             },
             columnHelper.accessor('initiator', {
                 header: 'Инициатор',
@@ -48,17 +48,36 @@ const TableComponent = ({ data, onRowSelect, onToggleColumnModal }) => {
                     return `${user?.first_name} ${user?.last_name}`;
                 },
             }),
-            columnHelper.accessor('date_created', {
-                header: 'Date Created',
+            columnHelper.accessor('Price', {
+                header: 'Стоимость',
                 cell: info => {
-                    const date = new Date(info.getValue());
-                    return date.toLocaleDateString('ru-RU', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                    });
+                    const number = info.getValue() || 0
+                    const parts = number.toString().split('.');
+                    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+                    return parts.join(',') +' ₽';
                 },
             }),
+            columnHelper.accessor('Cost', {
+                header: 'Себестоимоть',
+                cell: info => {
+                    const number = info.getValue() || 0
+                    const parts = number.toString().split('.');
+                    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+                    return parts.join(',') + ' ₽';
+                },
+            }),
+
+            //columnHelper.accessor('date_created', {
+            //    header: 'Date Created',
+            //    cell: info => {
+            //        const date = new Date(info.getValue());
+            //        return date.toLocaleDateString('ru-RU', {
+            //            day: '2-digit',
+            //            month: '2-digit',
+            //            year: 'numeric',
+            //        });
+            //    },
+            //}),
         ],
         []
     );

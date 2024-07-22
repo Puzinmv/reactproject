@@ -1,16 +1,9 @@
 [
 	{
 		"Customer": "Заказчик 1",
-		"initiator": "d7c59a91-b6a8-4f1f-bcd6-95fc9d34c160",
 		"status": "draft",
 		"title": "Описание 12222",
 		"Department": 2,
-		"id": 4,
-		"sort": null,
-		"user_created": "d7c59a91-b6a8-4f1f-bcd6-95fc9d34c160",
-		"date_created": "2024-07-19T15:49:29.707Z",
-		"user_updated": "99504681-371e-4bb1-a8ce-ed0c27da418d",
-		"date_updated": "2024-07-21T13:33:49.253Z",
 		"CustomerCRMID": "Заказчик 1 crmid",
 		"CustomerContact": "Иванов Иван",
 		"CustomerContactCRMID": "Иванов Иван crmid",
@@ -55,22 +48,13 @@
 		"dateStart": "2024-07-20",
 		"deadline": "2024-07-31",
 		"Files": [
-			1,
-			2
 		]
 	},
 	{
 		"Customer": "Chelsey Dietrich",
-		"initiator": "b5071502-4c41-45bd-b193-f86988dbcdcc",
 		"status": "draft",
 		"title": "Описание 2dd",
 		"Department": 1,
-		"id": 1,
-		"sort": 1,
-		"user_created": "d7c59a91-b6a8-4f1f-bcd6-95fc9d34c160",
-		"date_created": "2024-07-19T13:49:13.825Z",
-		"user_updated": "99504681-371e-4bb1-a8ce-ed0c27da418d",
-		"date_updated": "2024-07-21T15:47:32.884Z",
 		"CustomerCRMID": "Заказчик 2 crmid",
 		"CustomerContact": "Петров Иван",
 		"CustomerContactCRMID": "Петров Иван crmid",
@@ -110,21 +94,13 @@
 		"dateStart": "2024-07-21",
 		"deadline": "2024-07-31",
 		"Files": [
-			3
 		]
 	},
 	{
 		"Customer": "Leanne Graham",
-		"initiator": "b5071502-4c41-45bd-b193-f86988dbcdcc",
 		"status": "draft",
 		"title": "проект 2",
 		"Department": 1,
-		"id": 2,
-		"sort": 2,
-		"user_created": "d7c59a91-b6a8-4f1f-bcd6-95fc9d34c160",
-		"date_created": "2024-07-19T13:49:25.261Z",
-		"user_updated": "99504681-371e-4bb1-a8ce-ed0c27da418d",
-		"date_updated": "2024-07-21T10:25:02.860Z",
 		"CustomerCRMID": null,
 		"CustomerContact": null,
 		"CustomerContactCRMID": null,
@@ -156,16 +132,11 @@
 	},
 	{
 		"Customer": null,
-		"initiator": "b5071502-4c41-45bd-b193-f86988dbcdcc",
 		"status": "draft",
 		"title": "проект 3",
 		"Department": null,
 		"id": 3,
 		"sort": 3,
-		"user_created": "d7c59a91-b6a8-4f1f-bcd6-95fc9d34c160",
-		"date_created": "2024-07-19T13:49:44.153Z",
-		"user_updated": "99504681-371e-4bb1-a8ce-ed0c27da418d",
-		"date_updated": "2024-07-20T18:19:56.567Z",
 		"CustomerCRMID": null,
 		"CustomerContact": null,
 		"CustomerContactCRMID": null,

@@ -167,6 +167,18 @@ const ModalForm = ({ row, onClose, token, collection, onDataSaved }) => {
         console.log('file load', file)
     };
 
+    const handleJobChange = (jobDescriptions) => {
+        const frame = jobDescriptions.reduce((sum, key) => {
+            const resourceDay = parseFloat(key.frameDay);
+            return sum + (isNaN(resourceDay) ? 0 : resourceDay);
+        }, 0);
+        const resource = jobDescriptions.reduce((sum, key) => {
+            const resourceDay = parseFloat(key.resourceDay);
+            return sum + (isNaN(resourceDay) ? 0 : resourceDay);
+        }, 0);
+        setFormData({ ...formData, JobDescription: jobDescriptions, frameSumm: frame, resourceSumm: resource });
+    };
+ 
     return (
         <Modal open={true} onClose={onClose}>
             <Box sx={{
@@ -375,7 +387,7 @@ const ModalForm = ({ row, onClose, token, collection, onDataSaved }) => {
                 <TabPanel value={tabIndex} index={1}>
                     <Grid container spacing={2}>
                         <Grid item xs={12}>
-                            <CustomTable jobDescriptions={formData.JobDescription} />
+                            <CustomTable jobDescriptions={formData.JobDescription} handleJobChange={handleJobChange} />
                         </Grid>
                         <Grid item xs={12} md={6}>
                             <TextField

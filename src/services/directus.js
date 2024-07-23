@@ -59,11 +59,11 @@ export const fetchData = async (token, collection) => {
 
 export const fetchTemplate = () => {
     const data = [
-        { JobName: 'выуваывавы', ResourceDay: 3, FrameDay: 3 },
-        { JobName: 'Шаблон 2', ResourceDay: 2, FrameDay: 3 },
-        { JobName: 'Шаблон 3', ResourceDay: 5, FrameDay: 3 },
-        { JobName: 'Шаблон 4', ResourceDay: 4, FrameDay: 3 },
-        { JobName: 'Шаблон 5', ResourceDay: 6, FrameDay: 3 },
+        { id: 1, jobName: 'выуваывавы', resourceDay: 3, frameDay: 3 },
+        { id: 2, jobName: 'Шаблон 2', resourceDay: 2, frameDay: 3 },
+        { id: 3, jobName: 'Шаблон 3', resourceDay: 5, frameDay: 3 },
+        { id: 4, jobName: 'Шаблон 4', resourceDay: 4, frameDay: 3 },
+        { id: 5, jobName: 'Шаблон 5', resourceDay: 6, frameDay: 3 },
 
     ];
     return data;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -6,7 +6,6 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import Checkbox from '@mui/material/Checkbox';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -17,34 +16,10 @@ import Typography from '@mui/material/Typography';
 import Toolbar from '@mui/material/Toolbar';
 import TemplatePanel from './TemplatePanel';
 
-// Utility to generate unique IDs
-let nextId = 1; // Initialize unique ID generator
-
-function createData(jobName, resourceDay, frameDay) {
-    return {
-        id: nextId++, // Auto-increment ID
-        jobName,
-        resourceDay,
-        frameDay,
-    };
-}
-
-export default function CustomTable({ jobDescriptions }) {
-    const [rows, setRows] = useState(() =>
-        (jobDescriptions||[]).map((desc) => createData(desc.JobName, desc.ResourceDay, desc.FrameDay))
-    );
+export default function CustomTable({ jobDescriptions, handleJobChange }) {
+    const [rows, setRows] = useState(jobDescriptions || []);
     const [selected, setSelected] = useState([]);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
-
-
-    const handleSelectAllClick = (event) => {
-        if (event.target.checked) {
-            const newSelected = rows.map((row) => row.id);
-            setSelected(newSelected);
-            return;
-        }
-        setSelected([]);
-    };
 
     const handleClick = (event, id) => {
         const selectedIndex = selected.indexOf(id);
@@ -64,9 +39,10 @@ export default function CustomTable({ jobDescriptions }) {
         }
         setSelected(newSelected);
     };
+    useEffect(() => { handleJobChange(rows) }, [rows]);
 
     const handleAddRow = () => {
-        const newRow = createData('', 0, 0);
+        const newRow = { id: rows.length + 1, jobName: '', resourceDay: 0, frameDay: 0 };
         setRows([...rows, newRow]);
     };
 
@@ -76,13 +52,31 @@ export default function CustomTable({ jobDescriptions }) {
     };
 
     const handleAddFromTemplate = (templateRows) => {
-        setRows([...rows, ...templateRows.map((row) => ({
-            ...row,
-            id: rows.length + row.id // Можно использовать другой метод для генерации ID
-        }))]);
+        const allowedKeys = rows.length > 0
+            ? Object.keys(rows[0]).filter(key => key !== 'id')
+            : [];
+
+        let maxId = rows.length ? Math.max(...rows.map(r => r.id)) : 0;
+
+        const newRows = templateRows.map((row) => {
+            const filteredRow = Object.keys(row)
+                .reduce((obj, key) => {
+                    if (allowedKeys.includes(key)) obj[key] = row[key];
+                    return obj;
+                }, {});
+            maxId += 1;
+            return {
+                ...filteredRow,
+                id: maxId
+            };
+        });
+
+        setRows([...rows, ...newRows]);
     };
-
-
+    const handleCellEdit = (id, key, value) => {
+        setRows(rows.map(row => (row.id === id ? { ...row, [key]: value } : row)));
+        
+    };
 
     const isSelected = (id) => selected.indexOf(id) !== -1;
 
@@ -126,21 +120,10 @@ export default function CustomTable({ jobDescriptions }) {
                     >
                         <TableHead>
                             <TableRow>
-                                <TableCell sx={{ width: 20, fontWeight: 'bold', textAlign: 'center' }} padding="checkbox">
-                                    <Checkbox
-                                        color="primary"
-                                        indeterminate={selected.length > 0 && selected.length < rows.length}
-                                        checked={rows.length > 0 && selected.length === rows.length}
-                                        onChange={handleSelectAllClick}
-                                        inputProps={{
-                                            'aria-label': 'select all jobs',
-                                        }}
-                                    />
-                                </TableCell>
                                 <TableCell sx={{ width: 20, fontWeight: 'bold', textAlign: 'center' }}>№</TableCell>
                                 <TableCell sx={{ width: '90%', fontWeight: 'bold', textAlign: 'center' }}>Наименование работ</TableCell>
-                                <TableCell sx={{ width: 80, fontWeight: 'bold', textAlign: 'center' }}>Рамочная</TableCell>
                                 <TableCell sx={{ width: 80, fontWeight: 'bold', textAlign: 'center' }}>Ресурсная</TableCell>
+                                <TableCell sx={{ width: 80, fontWeight: 'bold', textAlign: 'center' }}>Рамочная</TableCell>
                                 <TableCell sx={{ width: 20, textAlign: 'center' }}></TableCell>
                             </TableRow>
                         </TableHead>
@@ -160,38 +143,42 @@ export default function CustomTable({ jobDescriptions }) {
                                         selected={isItemSelected}
                                         sx={{ cursor: 'pointer' }}
                                     >
-                                        <TableCell sx={{ width: 20, textAlign: 'center' }}  padding="checkbox">
-                                            <Checkbox
-                                                color="primary"
-                                                checked={isItemSelected}
-                                                inputProps={{
-                                                    'aria-labelledby': labelId,
-                                                }}
-                                            />
-                                        </TableCell>
                                         <TableCell
                                             sx={{ width: 20, textAlign: 'center' }}
                                             contentEditable
-                                            suppressContentEditableWarning>{row.id}</TableCell>
+                                            suppressContentEditableWarning
+                                            onBlur={(e) => handleCellEdit(row.id, 'id', e.target.textContent)}
+                                        >
+                                            {row.id}
+                                        </TableCell>
                                         <TableCell
-                                            sx={{ width: '90%'}}
+                                            sx={{ width: '90%' }}
                                             component="th"
                                             id={labelId}
                                             scope="row"
                                             padding="none"
                                             contentEditable
                                             suppressContentEditableWarning
+                                            onBlur={(e) => handleCellEdit(row.id, 'jobName', e.target.textContent)}
                                         >
                                             {row.jobName}
                                         </TableCell>
                                         <TableCell
                                             sx={{ width: 80 }}
-                                            align="right" contentEditable suppressContentEditableWarning>
+                                            align="right"
+                                            contentEditable
+                                            suppressContentEditableWarning
+                                            onBlur={(e) => handleCellEdit(row.id, 'resourceDay', e.target.textContent)}
+                                        >
                                             {row.resourceDay}
                                         </TableCell>
                                         <TableCell
                                             sx={{ width: 80 }}
-                                            align="right" contentEditable suppressContentEditableWarning>
+                                            align="right"
+                                            contentEditable
+                                            suppressContentEditableWarning
+                                            onBlur={(e) => handleCellEdit(row.id, 'frameDay', e.target.textContent)}
+                                        >
                                             {row.frameDay}
                                         </TableCell>
                                         <TableCell align="right">
@@ -217,13 +204,3 @@ export default function CustomTable({ jobDescriptions }) {
         </Box>
     );
 }
-
-//CustomTable.propTypes = {
-//    jobDescriptions: PropTypes.arrayOf(
-//        PropTypes.shape({
-//            JobName: PropTypes.string.isRequired,
-//            ResourceDay: PropTypes.number.isRequired,
-//            FrameDay: PropTypes.number.isRequired,
-//        })
-//    ).isRequired,
-//};

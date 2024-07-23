@@ -36,9 +36,9 @@ export default function TemplatePanel({ onClose, onAdd }) {
     useEffect(() => {
         setRows(fetchTemplate().map((desc, index) => ({
             id: index + 1, // или другой способ генерации уникального ID
-            jobName: desc.JobName,
-            resourceDay: desc.ResourceDay,
-            frameDay: desc.FrameDay,
+            jobName: desc.jobName,
+            resourceDay: desc.resourceDay,
+            frameDay: desc.frameDay,
         })));
 
         // Обработчик кликов для закрытия панели при клике вне её

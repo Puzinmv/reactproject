@@ -1,4 +1,4 @@
-import { createDirectus, authentication, graphql, rest, withToken, readItems, refresh, readUsers, updateItem } from "@directus/sdk";
+import { createDirectus, authentication, graphql, rest, withToken, readItems, refresh, readUsers, updateItem, readMe } from "@directus/sdk";
 
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
     .with(authentication('cookie', { credentials: 'include', autoRefresh: true }))
@@ -13,6 +13,12 @@ export const login = async (email, password) => {
     return token;
 };
 
+export const GetCurrentUser = async () => {
+    const CurrentUser = await directus.request(readMe({
+		        fields: ['*'],
+	        })  )
+    return CurrentUser;
+};
 
 export const refreshlogin = async () => {
     //const getCookie = (name) => {

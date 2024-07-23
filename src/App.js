@@ -6,7 +6,7 @@ import { createTheme, ThemeProvider } from '@mui/material/styles';
 import './App.css';
 import LoginForm from './Components/LoginForm.js';
 import { login, logout, refreshlogin } from './services/directus';
-import { fetchData } from './services/directus'; // Импорт функции fetchData
+import { fetchData, GetCurrentUser } from './services/directus'; // Импорт функции fetchData
 
 const theme = createTheme({
     typography: {
@@ -21,19 +21,30 @@ function App() {
     const [tableData, setTableData] = useState([]);
     const [token, setToken] = useState(null);
     const [collection] = useState('Project_Card');
+    const [CurrentUser, setCurrentUser] = useState(null);
 
     useEffect(() => {
-        refreshlogin().then((token) => {
+        refreshtoken();
+    }, []);
+
+    const refreshtoken = async () => {
+        const token = await refreshlogin();
+        if (token) {
             console.log('refreshlogin', token)
             setToken(token);
             fetchTableData(token);
-        });
-    }, []);
+        }
+    };
+
 
     const fetchTableData = async (token) => {
         const data = await fetchData(token, collection);
         console.log('fetchTableData',data)
         setTableData(data);
+
+        const user = await GetCurrentUser();
+        console.log(user)
+        setCurrentUser(user)
     };
 
     const handleLogout = async () => {

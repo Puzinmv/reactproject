@@ -63,7 +63,7 @@ const LoginForm = ({ onLogin }) => {
                         variant="contained"
                         sx={{ mt: 3, mb: 2 }}
                     >
-                        Login
+                        Вход
                     </Button>
                 </Box>
             </Box>

@@ -1,177 +1,156 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    useReactTable,
-    getCoreRowModel,
-    getFilteredRowModel,
-    getSortedRowModel,
-    getPaginationRowModel,
-    flexRender,
-    createColumnHelper,
-} from '@tanstack/react-table';
-import './TableComponent.css';
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  TableSortLabel, TablePagination, Paper, Checkbox, IconButton, Box
+} from '@mui/material';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
-const TableComponent = ({ data, onRowSelect, onToggleColumnModal }) => {
-    const [filterInput, setFilterInput] = useState('');
-    const [columnOrder, setColumnOrder] = useState([]);
-    const [hiddenColumns, setHiddenColumns] = useState({});
-    const [columnWidths, setColumnWidths] = useState({});
-    const [pagination, setPagination] = useState({
-        pageIndex: 0,
-        pageSize: 10,
-    });
+const TableComponent = ({ data, onRowSelect }) => {
+  const [order, setOrder] = useState('asc');
+  const [orderBy, setOrderBy] = useState('id');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
 
-    const columnHelper = createColumnHelper();
-    const columns = useMemo(
-        () => [
-            {
-                header: 'ID',
-                accessorKey: 'id',
-            },
-            {
-                header: 'Название',
-                accessorKey: 'title',
-            },
-            //columnHelper.accessor('Description', {
-            //    header: 'Описание',
-            //    cell: info => (
-            //        <div dangerouslySetInnerHTML={{ __html: info.getValue() }} />
-            //    ),
-            //}),
-            {
-                header: 'Заказчик',
-                accessorKey: 'Customer',
-            },
-            columnHelper.accessor('initiator', {
-                header: 'Инициатор',
-                cell: info => {
-                    const user = info.getValue();
-                    return `${user?.first_name} ${user?.last_name}`;
-                },
-            }),
-            columnHelper.accessor('Price', {
-                header: 'Стоимость',
-                cell: info => {
-                    const number = info.getValue() || 0
-                    const parts = number.toString().split('.');
-                    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-                    return parts.join(',') +' ₽';
-                },
-            }),
-            columnHelper.accessor('Cost', {
-                header: 'Себестоимоть',
-                cell: info => {
-                    const number = info.getValue() || 0
-                    const parts = number.toString().split('.');
-                    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-                    return parts.join(',') + ' ₽';
-                },
-            }),
 
-            //columnHelper.accessor('date_created', {
-            //    header: 'Date Created',
-            //    cell: info => {
-            //        const date = new Date(info.getValue());
-            //        return date.toLocaleDateString('ru-RU', {
-            //            day: '2-digit',
-            //            month: '2-digit',
-            //            year: 'numeric',
-            //        });
-            //    },
-            //}),
-        ],
-        []
-    );
+  const [columns, setColumns] = useState({'',});
 
-    const table = useReactTable({
-        data,
-        columns,
-        state: {
-            pagination,
-            columnOrder: columnOrder,
-            columnVisibility: hiddenColumns,
-            columnSizing: columnWidths,
-            globalFilter: filterInput,
-        },
-        getCoreRowModel: getCoreRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
-        getSortedRowModel: getSortedRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        onColumnOrderChange: setColumnOrder,
-        onColumnVisibilityChange: setHiddenColumns,
-        onColumnSizingChange: setColumnWidths,
-        onPaginationChange: setPagination,
-    });
+  const handleColumnVisibilityChange = (id) => {
+    setColumns(columns.map(column => column.id === id ? { ...column, visible: !column.visible } : column));
 
-    const handleFilterChange = (e) => {
-        const value = e.target.value || undefined;
-        setFilterInput(value);
-        table.setGlobalFilter(value);
+    };
+    useEffect(() => {
+        console.log(data);
+        if (data.length > 0) {
+            console.log('useEffect',data);
+            const initialColumns = Object.keys(data[0] || {}).map((key) => ({ id: key, visible: true }));
+            setColumns(initialColumns);
+        }
+
+    },[data]);
+
+    const handleDragEnd = (result) => {
+        console.log(result);
+        if (!result.destination) return;
+        const reorderedColumns = Array.from(columns);
+        const [removed] = reorderedColumns.splice(result.source.index, 1);
+        reorderedColumns.splice(result.destination.index, 0, removed);
+        setColumns(reorderedColumns);
     };
 
-    return (
-        <div className="table-container">
-            <div className="filter-container">
-                <input
-                    value={filterInput}
-                    onChange={handleFilterChange}
-                    placeholder="Search all columns"
-                    className="filter-input"
-                />
-                <button onClick={onToggleColumnModal} className="toggle-columns-btn">
-                    <i className="fas fa-columns"></i>
-                </button>
-            </div>
-            <table className="data-table">
-                <thead>
-                    {table.getHeaderGroups().map(headerGroup => (
-                        <tr key={headerGroup.id}>
-                            {headerGroup.headers.map(header => (
-                                <th key={header.id} colSpan={header.colSpan} style={{ position: 'relative', width: header.getSize() }}>
-                                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                                    {header.column.getCanResize() && (
-                                        <div
-                                            onMouseDown={header.getResizeHandler()}
-                                            onTouchStart={header.getResizeHandler()}
-                                            className={`resizer ${header.column.getIsResizing() ? 'isResizing' : ''}`}
-                                        ></div>
-                                    )}
-                                </th>
-                            ))}
-                        </tr>
+  const handleRequestSort = (property) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleRowClick = (row) => {
+    if (onRowSelect) {
+      onRowSelect(row);
+    }
+  };
+
+  const sortedData = data.sort((a, b) => {
+    if (orderBy) {
+      if (order === 'asc') {
+        return a[orderBy] > b[orderBy] ? 1 : -1;
+      }
+      return a[orderBy] < b[orderBy] ? 1 : -1;
+    }
+    return 0;
+  });
+
+  const paginatedData = sortedData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  //console.log(columns, paginatedData)
+  return (
+    <Paper>
+      <TableContainer>
+ <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable droppableId="columns" direction="horizontal">
+            {(provided) => (
+              <Table {...provided.droppableProps} ref={provided.innerRef}>
+                <TableHead>
+                  <TableRow>
+                    {columns.map((column, index) => (
+                      column.visible && (
+                        <Draggable key={column.id} draggableId={column.id} index={index}>
+                          {(provided) => (
+                            <TableCell
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                            >
+                              <Box display="flex" alignItems="center">
+                                <Box
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  mr={1}
+                                  {...provided.dragHandleProps}
+                                >
+                                  <DragIndicatorIcon />
+                                </Box>
+                                <TableSortLabel
+                                  active={orderBy === column.id}
+                                  direction={orderBy === column.id ? order : 'asc'}
+                                  onClick={() => handleRequestSort(column.id)}
+                                >
+                                  {column.id}
+                                </TableSortLabel>
+                                <IconButton
+                                  onClick={() => handleColumnVisibilityChange(column.id)}
+                                  size="small"
+                                  style={{ marginLeft: '10px' }}
+                                >
+                                  <Checkbox checked={column.visible} />
+                                </IconButton>
+                              </Box>
+                            </TableCell>
+                          )}
+                        </Draggable>
+                      )
                     ))}
-                </thead>
-                <tbody>
-                    {table.getRowModel().rows.map(row => (
-                        <tr key={row.id} onClick={() => onRowSelect(row.original)}>
-                            {row.getVisibleCells().map(cell => (
-                                <td key={cell.id}>
-                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </td>
-                            ))}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-            <div className="pagination-controls">
-                <button onClick={() => table.firstPage()} disabled={!table.getCanPreviousPage()}>{'<<'}</button>
-                <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>{'<'}</button>
-                <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>{'>'}</button>
-                <button onClick={() => table.lastPage()} disabled={!table.getCanNextPage()}>{'>>'}</button>
-                <select
-                    value={table.getState().pagination.pageSize}
-                    onChange={e => {
-                        table.setPageSize(Number(e.target.value));
-                    }}
-                >
-                    {[10, 20, 30, 40, 50].map(pageSize => (
-                        <option key={pageSize} value={pageSize}>
-                            {pageSize}
-                        </option>
-                    ))}
-                </select>
-            </div>
-        </div>
-    );
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedData.map((row) => (
+                    <TableRow key={row.id} hover onClick={() => handleRowClick(row)}>
+                      {columns.map((column) => (
+                        column.visible && (
+                          <TableCell key={column.id}>
+                            {typeof row[column.id] === 'object' ? JSON.stringify(row[column.id]) : row[column.id]}
+                          </TableCell>
+                        )
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+                {provided.placeholder}
+              </Table>
+            )}
+          </Droppable>
+        </DragDropContext>
+      </TableContainer>
+      <TablePagination
+        rowsPerPageOptions={[5, 10, 25]}
+        component="div"
+        count={data.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      />
+    </Paper>
+  );
 };
 
 export default TableComponent;

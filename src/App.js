@@ -20,31 +20,30 @@ function App() {
     const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
     const [tableData, setTableData] = useState([]);
     const [token, setToken] = useState(null);
-    const [collection] = useState('Project_Card');
     const [CurrentUser, setCurrentUser] = useState(null);
+    const [departament, setdepartament] = useState(null);
 
     useEffect(() => {
+        const refreshtoken = async () => {
+            const token = await refreshlogin();
+            if (token) {
+                console.log('refreshlogin', token);
+                setToken(token);
+                fetchTableData(token);
+            }
+        };
         refreshtoken();
     }, []);
 
-    const refreshtoken = async () => {
-        const token = await refreshlogin();
-        if (token) {
-            console.log('refreshlogin', token)
-            setToken(token);
-            fetchTableData(token);
-        }
-    };
-
-
     const fetchTableData = async (token) => {
-        const data = await fetchData(token, collection);
-        console.log('fetchTableData',data)
+        const [data, departament, user]= await fetchData(token);
+        console.log('Data', data);
+        console.log('departament', departament);
+        console.log('user', user);
         setTableData(data);
 
-        const user = await GetCurrentUser();
-        console.log(user)
-        setCurrentUser(user)
+        setCurrentUser(user);
+        setdepartament(departament)
     };
 
     const handleLogout = async () => {
@@ -90,9 +89,6 @@ function App() {
                         <TableComponent
                             data={tableData}
                             onRowSelect={handleRowSelect}
-                            onToggleColumnModal={handleToggleColumnModal}
-                            token={token}
-                            collection={collection}
                         />
                     </div>
                 ) : (
@@ -103,7 +99,6 @@ function App() {
                         row={selectedRow}
                         onClose={handleCloseModal}
                         token={token}
-                        collection={collection}
                         onDataSaved={handleDataSaved}
                     />
                 )}

@@ -17,7 +17,7 @@ const TabPanel = ({ children, value, index }) => {
     );
 };
 
-const ModalForm = ({ row, onClose, token, collection, onDataSaved }) => {
+const ModalForm = ({ row, onClose, token, onDataSaved }) => {
     const [tabIndex, setTabIndex] = useState(0);
     const [formData, setFormData] = useState(row);
     const [customerOptions, setCustomerOptions] = useState([]);
@@ -91,7 +91,7 @@ const ModalForm = ({ row, onClose, token, collection, onDataSaved }) => {
         }
         const UpdateDataPromise = async () => {
             try {
-                await UpdateData(formData, token, collection);
+                await UpdateData(formData, token);
             } catch (error) {
                 console.error('Error saving data:', error);
             }
@@ -329,7 +329,7 @@ const ModalForm = ({ row, onClose, token, collection, onDataSaved }) => {
                                     labelId="Department-label"
                                     id="Department"
                                     name="Department"
-                                    value={formData.Department}
+                                    value={formData.Department.id}
                                     label="Отдел исполнителей"
                                     onChange={handleChange}
                                 >

@@ -8,17 +8,9 @@ export const directus = createDirectus(process.env.REACT_APP_API_URL)
 
 export const login = async (email, password) => {
     const user = await directus.login(email, password);
-    const token = await directus.getToken()
-    console.log(user);
-    return token;
+    return user.access_token;
 };
 
-export const GetCurrentUser = async () => {
-    const CurrentUser = await directus.request(readMe({
-		        fields: ['*'],
-	        })  )
-    return CurrentUser;
-};
 
 export const refreshlogin = async () => {
     //const getCookie = (name) => {
@@ -38,23 +30,35 @@ export const refreshlogin = async () => {
     return token;
 };
 
-export const fetchData = async (token, collection) => {
+export const fetchData = async (token) => {
     const data = await directus.request(
-        withToken(token, readItems(collection, {
+        withToken(token, readItems('Project_Card', {
             fields: [
                 '*',
                 {
                     user_created: ['id','first_name','last_name']
                 },
                 {
+                    user_updated: ['id','first_name','last_name']
+                },
+                {
                     initiator: ['id', 'first_name', 'last_name']
+                },
+                {
+                    Department: ['*']
                 },
                 {
                     Files: ['*']
                 },
             ],
         })));
-    return data;
+    const departament = await directus.request(
+        withToken(token, readItems('Department', { fields: ['*']})));
+    
+    const CurrentUser = await directus.request(readMe({fields: ['*']})  )
+
+
+    return [data, departament, CurrentUser];
 };
 
 export const fetchTemplate = () => {
@@ -79,14 +83,15 @@ export const fetchUser = async (token) => {
         })));
 
     return data;
-};
+}; 
 
-export const UpdateData = async (data, token, collection) => {
+export const UpdateData = async (data, token) => {
     const id = data.id;
     data.initiator = data.initiator.id;
+    data.Department = data.Department.id;
     ['id', 'user_created', 'date_created', 'date_updated', 'user_updated', 'sort'].forEach(key => delete data[key]);
 
-    const req = await directus.request(withToken(token, updateItem(collection, id, data)));
+    const req = await directus.request(withToken(token, updateItem('Project_Card', id, data)));
     console.log("update", data)
     return req;
 };

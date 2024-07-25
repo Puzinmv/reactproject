@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+//import './App.css';
 import TableComponent from './Components/TableComponent.js';
 import ModalForm from './Components/ModalForm.js';
 import ColumnVisibilityModal from './Components/ColumnVisibilityModal.js';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
-import './App.css';
 import LoginForm from './Components/LoginForm.js';
-import { login, logout, refreshlogin } from './services/directus';
-import { fetchData, GetCurrentUser } from './services/directus'; // Импорт функции fetchData
+import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
+import { login, logout, refreshlogin, fetchData } from './services/directus';
+
 
 const theme = createTheme({
     typography: {
@@ -82,21 +83,20 @@ function App() {
 
     return (
         <ThemeProvider theme={theme}>
+            <ResponsiveAppBar onLogout={handleLogout} />
             <div className="App">
                 {token ? (
-                    <div>
-                        <button onClick={handleLogout}>Logout</button>
-                        <TableComponent
-                            data={tableData}
-                            onRowSelect={handleRowSelect}
-                        />
-                    </div>
+                    <TableComponent
+                        data={tableData}
+                        onRowSelect={handleRowSelect}
+                    />
                 ) : (
                     <LoginForm onLogin={handleLogin} />
                 )}
                 {isModalOpen && (
                     <ModalForm
                         row={selectedRow}
+                        departament={departament}
                         onClose={handleCloseModal}
                         token={token}
                         onDataSaved={handleDataSaved}

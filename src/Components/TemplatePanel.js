@@ -96,11 +96,11 @@ export default function TemplatePanel({ onClose, onAdd }) {
             position: 'fixed',
             top: 0,
             right: 0,
-            width: '50vw', // Установите ширину в 50% от ширины экрана
-            height: '100vh', // Высота панели 100% от высоты экрана
+            width: '50vw', 
+            height: '100vh', 
             bgcolor: 'background.paper',
             boxShadow: 3,
-            zIndex: 1200, // Убедитесь, что панель выше формы
+            zIndex: 1200, 
             p: 2,
             display: 'flex',
             flexDirection: 'column',

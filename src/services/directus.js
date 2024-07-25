@@ -57,7 +57,6 @@ export const fetchData = async (token) => {
     
     const CurrentUser = await directus.request(readMe({fields: ['*']})  )
 
-
     return [data, departament, CurrentUser];
 };
 
@@ -87,8 +86,8 @@ export const fetchUser = async (token) => {
 
 export const UpdateData = async (data, token) => {
     const id = data.id;
-    data.initiator = data.initiator.id;
-    data.Department = data.Department.id;
+    data.initiator = data.initiator.id || '';
+    data.Department = data.Department.id || 0;
     ['id', 'user_created', 'date_created', 'date_updated', 'user_updated', 'sort'].forEach(key => delete data[key]);
 
     const req = await directus.request(withToken(token, updateItem('Project_Card', id, data)));

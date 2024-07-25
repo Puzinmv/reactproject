@@ -17,7 +17,7 @@ const TabPanel = ({ children, value, index }) => {
     );
 };
 
-const ModalForm = ({ row, onClose, token, onDataSaved }) => {
+const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
     const [tabIndex, setTabIndex] = useState(0);
     const [formData, setFormData] = useState(row);
     const [customerOptions, setCustomerOptions] = useState([]);
@@ -136,6 +136,10 @@ const ModalForm = ({ row, onClose, token, onDataSaved }) => {
                 last_name: newValue.last_name,
             }
         });
+    };
+
+    const handleDepartmentChange = (event, value) => {
+        if (value.props.value) setFormData({ ...formData, Department: departament[value.props.value-1] });
     };
 
     const handleDescriptionChange = (editor, fieldName) => {
@@ -329,13 +333,15 @@ const ModalForm = ({ row, onClose, token, onDataSaved }) => {
                                     labelId="Department-label"
                                     id="Department"
                                     name="Department"
-                                    value={formData.Department.id}
+                                    value={formData.Department ? formData.Department.id : ''}
                                     label="Отдел исполнителей"
-                                    onChange={handleChange}
+                                    onChange={handleDepartmentChange}
                                 >
-                                    <MenuItem value={1}>Отдел ЗИ</MenuItem>
-                                    <MenuItem value={2}>Отдел ИТ</MenuItem>
-                                    <MenuItem value={3}>ОАЗИС</MenuItem>
+                                    {departament.map(item => (
+                                        <MenuItem value={item.id}>
+                                            {item.Name}
+                                        </MenuItem>
+                                    ))}
                                 </Select>
                                 {errors.Department && <FormHelperText>{errors.Department}</FormHelperText>}
                             </FormControl>

@@ -383,6 +383,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                             </Typography>
                             <FileUpload
                                 files={formData.Files}
+                                token={token}
                                 onUpload={handleFileUpload}
                                 onDelete={handleFileDelete}
                             />

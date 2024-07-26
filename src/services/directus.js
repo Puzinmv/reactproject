@@ -1,4 +1,4 @@
-import { createDirectus, authentication, graphql, rest, withToken, readItems, refresh, readUsers, updateItem, readMe } from "@directus/sdk";
+import { createDirectus, authentication, graphql, rest, withToken, readItems, refresh, readUsers, updateItem, readMe, readFile } from "@directus/sdk";
 
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
     .with(authentication('cookie', { credentials: 'include', autoRefresh: true }))
@@ -72,6 +72,18 @@ export const fetchTemplate = () => {
     return data;
 };
 
+export const GetfilesInfo = async (files, token) => {
+    let fileInfo = []
+    files.forEach(async (file) => {
+        console.log(file);
+        const result = await directus.request(
+            withToken(token, readFile(file.directus_files_id, {
+            fields: ['*'],
+        })));
+        fileInfo.map(result);
+    })
+    return fileInfo;
+};
 
 export const fetchUser = async (token) => {
     const data = await directus.request(
@@ -97,6 +109,7 @@ export const UpdateData = async (data, token) => {
 
 export const logout = async () => {
     const result = await directus.logout();
+    return result;
 };
 
 export default directus;

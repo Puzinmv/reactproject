@@ -25,13 +25,13 @@ const fieldNames = [
   { columnId: 'CustomerContactEmail', label: 'Email контактного лица', visible: false },
   { columnId: 'CustomerContactJobTitle', label: 'Должность контактного лица', visible: false },
   { columnId: 'ProjectScope', label: 'Ограничения от клиента', visible: false },
-  { columnId: 'JobDescription', label: 'Описание работы', visible: false },
-  { columnId: 'jobOnTrip', label: 'Работа в поездке', visible: false },
+  { columnId: 'JobDescription', label: 'Описание работ', visible: false },
+  { columnId: 'jobOnTrip', label: 'Работа на выезде', visible: false },
   { columnId: 'Limitations', label: 'Ограничения от исполнителей', visible: false },
   { columnId: 'tiketsCost', label: 'Стоимость билетов', visible: false },
   { columnId: 'tiketsCostDescription', label: 'Описание стоимости билетов', visible: false },
-  { columnId: 'HotelCost', label: 'Стоимость отеля', visible: false },
-  { columnId: 'HotelCostDescription', label: 'Описание стоимости отеля', visible: false },
+  { columnId: 'HotelCost', label: 'Стоимость проживания', visible: false },
+    { columnId: 'HotelCostDescription', label: 'Описание стоимости проживания', visible: false },
   { columnId: 'dailyCost', label: 'Суточные расходы', visible: false },
   { columnId: 'dailyCostDescription', label: 'Описание суточных расходов', visible: false },
   { columnId: 'otherPayments', label: 'Другие платежи', visible: false },
@@ -48,6 +48,7 @@ const fieldNames = [
 ];
 
 const formatDate = (dateString) => {
+  if (!dateString) return ''
   const options = { year: '2-digit', month: '2-digit', day: '2-digit' };
   return new Date(dateString).toLocaleDateString('ru-RU', options);
 };
@@ -56,13 +57,20 @@ const formatField = (field, value) => {
   if (field === 'date_created' || field === 'date_updated' || field === 'dateStart' || field === 'deadline') {
     return formatDate(value);
   }
-    if (field === 'Department') {
+  if (field === 'Department') {
       if (value === null) return '';
-      return value.hasOwnProperty('Name') ? value.Name : '';
+      return value.hasOwnProperty('Name') ? value.Department : '';
   }
   if (field === 'Description' || field === 'jobOnTrip') {
     return <div dangerouslySetInnerHTML={{ __html: value }} />;
-  }
+    }
+    if (field === 'Price' || field === 'Cost' || field === 'tiketsCost'
+        || field === 'HotelCost' || field === 'dailyCost' || field === 'otherPayments') {
+        const number = value || 0
+        const parts = number.toString().split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        return parts.join(',') + ' ₽';
+    }
   if (typeof value === 'object' && value !== null) {
     if (value.first_name && value.last_name) {
       return `${value.first_name} ${value.last_name}`;
@@ -74,8 +82,8 @@ const formatField = (field, value) => {
 
 const TableComponent = ({ data, onRowSelect }) => {
     const [columns, setColumns] = useState([]);
-    const [order, setOrder] = useState('');
-    const [orderBy, setOrderBy] = useState('');
+    const [order, setOrder] = useState('desc');
+    const [orderBy, setOrderBy] = useState('id');
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(5);
     const [anchorEl, setAnchorEl] = useState(null);
@@ -84,9 +92,13 @@ const TableComponent = ({ data, onRowSelect }) => {
 
     useEffect(() => {
         let savedColumns = fieldNames;
-        if (JSON.parse(localStorage.getItem('columns')).length > 0) {
-            savedColumns = JSON.parse(localStorage.getItem('columns'));
+        const LocalStorageColumns = JSON.parse(localStorage.getItem('columns'));
+        if (Array.isArray(LocalStorageColumns)) {
+            if (LocalStorageColumns.length > 0) {
+                savedColumns = JSON.parse(localStorage.getItem('columns'));
+            }
         }
+
         setColumns(savedColumns);
     }, [data]);
 
@@ -188,10 +200,10 @@ const TableComponent = ({ data, onRowSelect }) => {
                     style={{ marginRight: '16px' }}
                     onClick={() => console.log('Создать новую карту проекта')}
                 >
-                    Создать новую карту проекта
+                    Новая карта проекта
                 </Button>
                 <TextField
-                    label="Global Search"
+                    label="Поиск..."
                     value={globalSearch}
                     onChange={handleGlobalSearchChange}
                     variant="outlined"

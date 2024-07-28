@@ -34,7 +34,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
             data.otherPayments || 0
         ].reduce((sum, value) => sum + value, 0);
     };
-
+    const [Cost, setCost] = useState(formData.Cost);
     const [totoalCost, settotoalCost] = useState(calculateTotalCost(formData));
     const [totoalCostPerHour, settotoalCostPerHour] = useState(0);
     const [CostPerHour, setCostPerHour] = useState(0);
@@ -76,9 +76,16 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
     }, [formData.Cost, formData.resourceSumm]);
 
     useEffect(() => {
-        setSummPerHour(`${Math.round(formData.Price*100 / (formData.frameSumm * 8))/100} ₽/час по длительности`);
+        setSummPerHour(`${Math.round(formData.Price * 100 / (formData.frameSumm * 8)) / 100} ₽/час по длительности`);
     }, [formData.Price, formData.frameSumm]);
 
+    useEffect(() => {
+        const value = formData.resourceSumm * 8 * formData.Department.CostHour;
+        setCost(value);
+        setFormData({
+            ...formData, Cost: value
+        })
+    }, [formData.resourceSumm]);
 
     const validateFields = () => {
         const newErrors = {};
@@ -97,6 +104,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
             return;
         }
         try {
+            console.log('formData',formData)
             await UpdateData(formData, token);
             onDataSaved();
             onClose();
@@ -160,8 +168,8 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
     };
 
     const selectedInitiator = formData.initiator
-        ? InitiatorOptions.find((option) => option.id === formData.initiator.id) || null
-        : null;
+        ? InitiatorOptions.find((option) => option.id === formData.initiator.id) || ''
+        : '';
 
     const handleFileUpload = async (files, token) => {
             const updateFilesArray = (currentFiles, uploadedFiles, projectCardId) => {
@@ -250,15 +258,15 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                 value={selectedInitiator}
                                 onChange={handleInitiatorChange}
                                 renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Инициатор"
-                                        margin="dense"
-                                        InputProps={params.InputProps}
-                                        error={!!errors.initiator}
-                                        helperText={errors.initiator}
-                                    />
-                                )}
+                                        <TextField
+                                            {...params}
+                                            label="Инициатор"
+                                            margin="dense"
+                                            InputProps={params.InputProps}
+                                            error={!!errors.initiator}
+                                            helperText={errors.initiator}
+                                        />
+                                    )}
                                 fullWidth
                                 disableClearable
                             />

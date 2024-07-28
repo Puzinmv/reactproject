@@ -5,6 +5,7 @@ import TableComponent from './Components/TableComponent.js';
 import ModalForm from './Components/ModalForm.js';
 import ColumnVisibilityModal from './Components/ColumnVisibilityModal.js';
 import LoginForm from './Components/LoginForm.js';
+import CreateForm from './Components/CreateForm.js';
 import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
 import { login, logout, refreshlogin, fetchData } from './services/directus';
 
@@ -18,11 +19,13 @@ const theme = createTheme({
 function App() {
     const [selectedRow, setSelectedRow] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
     const [tableData, setTableData] = useState([]);
     const [token, setToken] = useState(null);
     const [CurrentUser, setCurrentUser] = useState(null);
     const [departament, setdepartament] = useState(null);
+
 
     useEffect(() => {
         const refreshtoken = async () => {
@@ -42,7 +45,6 @@ function App() {
         console.log('departament', departament);
         console.log('user', user);
         setTableData(data);
-
         setCurrentUser(user);
         setdepartament(departament)
     };
@@ -57,8 +59,53 @@ function App() {
         setIsModalOpen(true);
     };
 
+    const handleCreate = () => {
+        console.log('cоздать новую карту проекта')
+        setSelectedRow(
+            {"status": "draft",
+            "title": "",
+            "Description": "",
+            "Customer": "",
+            "CustomerCRMID": "",
+            "CustomerContact": "",
+            "CustomerContactCRMID": "",
+            "CustomerContactTel": "",
+            "CustomerContactEmail": "",
+            "CustomerContactJobTitle": "",
+            "ProjectScope": "",
+            "JobDescription": [],
+            "resourceSumm": 0,
+            "frameSumm": 0,
+            "jobOnTrip": "<p>на выезде 1</p>",
+            "Limitations": "",
+            "Price": 0,
+            "Cost": 0,
+            "tiketsCost": 0,
+            "tiketsCostDescription": "",
+            "HotelCost": 0,
+            "HotelCostDescription": "",
+            "dailyCost": 0,
+            "dailyCostDescription": "",
+            "otherPayments": 0,
+            "otherPaymentsDescription": "",
+            "company": "",
+            "contract": "",
+            "dateStart": "",
+            "deadline": "",
+            "Files": [],
+            "initiator": {
+                "id": CurrentUser.id,
+                "first_name": CurrentUser.first_name,
+                "last_name": CurrentUser.first_name,
+            },
+            "Department": {}
+            });
+        setIsCreateOpen(true);
+    };
+
     const handleCloseModal = () => {
         setIsModalOpen(false);
+        setIsCreateOpen(false);
         setSelectedRow(null);
     };
 
@@ -83,18 +130,28 @@ function App() {
 
     return (
         <ThemeProvider theme={theme}>
-            <ResponsiveAppBar onLogout={handleLogout} />
+            <ResponsiveAppBar onLogout={handleLogout} current={CurrentUser} />
             <div className="App">
                 {token ? (
                     <TableComponent
                         data={tableData}
                         onRowSelect={handleRowSelect}
+                        onCreate={handleCreate}
                     />
                 ) : (
                     <LoginForm onLogin={handleLogin} />
                 )}
                 {isModalOpen && (
                     <ModalForm
+                        row={selectedRow}
+                        departament={departament}
+                        onClose={handleCloseModal}
+                        token={token}
+                        onDataSaved={handleDataSaved}
+                    />
+                )}
+                {isCreateOpen && (
+                    <CreateForm
                         row={selectedRow}
                         departament={departament}
                         onClose={handleCloseModal}

@@ -80,7 +80,7 @@ const formatField = (field, value) => {
   return value;
 };
 
-const TableComponent = ({ data, onRowSelect }) => {
+const TableComponent = ({ data, onRowSelect, onCreate }) => {
     const [columns, setColumns] = useState([]);
     const [order, setOrder] = useState('desc');
     const [orderBy, setOrderBy] = useState('id');
@@ -198,7 +198,7 @@ const TableComponent = ({ data, onRowSelect }) => {
                     color="primary"
                     startIcon={<AddIcon />}
                     style={{ marginRight: '16px' }}
-                    onClick={() => console.log('Создать новую карту проекта')}
+                    onClick={onCreate}
                 >
                     Новая карта проекта
                 </Button>

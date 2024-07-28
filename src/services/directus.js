@@ -1,6 +1,7 @@
 import {
     createDirectus, authentication, graphql, rest, withToken,
-    readItems, refresh, readUsers, updateItem, readMe, readFile, uploadFiles, deleteFile
+    readItems, refresh, readUsers, updateItem, readMe, readFile,
+    uploadFiles, deleteFile, createItem
 } from "@directus/sdk";
 
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
@@ -108,15 +109,44 @@ export const fetchUser = async (token) => {
 }; 
 
 export const UpdateData = async (data, token) => {
-    const id = data.id;
-    data.initiator = data.initiator.id || '';
-    data.Department = data.Department.id || 0;
-    ['id', 'user_created', 'date_created', 'date_updated', 'user_updated', 'sort'].forEach(key => delete data[key]);
+    try {
+        // Извлекаем id из data
+        const id = data.id;
 
-    const req = await directus.request(withToken(token, updateItem('Project_Card', id, data)));
-    console.log("update", data)
-    return req;
+        // Подготавливаем данные для сохранения
+        const savedata = {
+            ...data,
+            initiator: data.initiator.id || '',
+            Department: data.Department.id || 0
+        };
+        ['id', 'user_created', 'date_created', 'date_updated', 'user_updated', 'sort'].forEach(key => delete savedata[key]);
+        const req = await directus.request(withToken(token, updateItem('Project_Card', id, savedata)));
+        console.log("update", savedata);
+        return req;
+    } catch (error) {
+        console.error("Error updating data:", error);
+        throw error;
+    }
 };
+
+export const CreateItemDirectus = async (data, token) => {
+    try {
+        // Подготавливаем данные для сохранения
+        const savedata = {
+            ...data,
+            initiator: data.initiator.id || '',
+            Department: data.Department.id || 0
+        };
+        ['id', 'user_created', 'date_created', 'date_updated', 'user_updated', 'sort'].forEach(key => delete savedata[key]);
+        const req = await directus.request(withToken(token, createItem('Project_Card', savedata)));
+        console.log("create", savedata);
+        return req;
+    } catch (error) {
+        console.error("Error create data:", error);
+        throw error;
+    }
+};
+
 
 export const logout = async () => {
     const result = await directus.logout();

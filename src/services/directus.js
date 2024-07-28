@@ -1,4 +1,7 @@
-import { createDirectus, authentication, graphql, rest, withToken, readItems, refresh, readUsers, updateItem, readMe, readFile } from "@directus/sdk";
+import {
+    createDirectus, authentication, graphql, rest, withToken,
+    readItems, refresh, readUsers, updateItem, readMe, readFile, uploadFiles, deleteFile
+} from "@directus/sdk";
 
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
     .with(authentication('cookie', { credentials: 'include', autoRefresh: true }))
@@ -73,17 +76,25 @@ export const fetchTemplate = () => {
 };
 
 export const GetfilesInfo = async (files, token) => {
-    let fileInfo = []
-    files.forEach(async (file) => {
-        console.log(file);
+    if (!files.length) {
+        return [];
+    }
+
+    const fileInfoPromises = files.map(async (file) => {
         const result = await directus.request(
             withToken(token, readFile(file.directus_files_id, {
-            fields: ['*'],
-        })));
-        fileInfo.map(result);
-    })
+                fields: ['id', 'filename_download'],
+            }))
+        );
+        return result;
+    });
+
+    const fileInfo = await Promise.all(fileInfoPromises);
     return fileInfo;
 };
+
+
+
 
 export const fetchUser = async (token) => {
     const data = await directus.request(
@@ -110,6 +121,32 @@ export const UpdateData = async (data, token) => {
 export const logout = async () => {
     const result = await directus.logout();
     return result;
+};
+
+export const uploadFilesDirectus = async (files, token) => {
+    try {
+        const uploadPromises = files.map(async (file) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await directus.request(withToken(token, uploadFiles(formData)));
+            return response
+        });
+        const responses = await Promise.all(uploadPromises);
+        return responses;
+    } catch (error) {
+        console.error('Ошибка при загрузке файлов:', error);
+        throw error;
+    }
+};
+
+export const deleteFileDirectus = async (fileId) => {
+    try {
+        console.log(fileId)
+        await directus.request(deleteFile(fileId));;
+    } catch (error) {
+        console.error('Ошибка при удалении файла:', error);
+        throw error;
+    }
 };
 
 export default directus;

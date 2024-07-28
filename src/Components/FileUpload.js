@@ -1,43 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Button, List, ListItem, ListItemText } from '@mui/material';
+import React from 'react';
+import { Box, Button, List, ListItem, ListItemText, Grid } from '@mui/material';
+import IconButton from '@mui/material/IconButton';
+import DeleteIcon from '@mui/icons-material/Delete';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { CloudUpload } from '@mui/icons-material';
-import { GetfilesInfo } from '../services/directus';
 
-const FileUpload = ({ files, token, onUpload, onDelete }) => {
-    const [anchorEl, setAnchorEl] = useState(null);
-    const [fileInfo, setfileInfo] = useState([]);
-    const handleClick = (event) => {
-        setAnchorEl(event.currentTarget);
-    };
 
-    const handleClose = () => {
-        setAnchorEl(null);
-    };
-    useEffect(() => {
-        GetfilesInfo(files).then((file) => {
-            console.log(file)
-            setfileInfo(file)
-        });
-
-    }, [files]);
-    
+const FileUpload = ({ files, onUpload, onDelete }) => {
 
     const handleDownload = (file) => {
         const link = document.createElement('a');
-        link.href = file.url;
-        link.download = file.name;
+
+        link.href = `${process.env.REACT_APP_API_URL}/assets/${file.id}?download`;
+        link.download = file.filename_download;
         link.click();
     };
     return (
         <Box>
-            <List>
-                {fileInfo.map((file, index) => (
-                    <ListItem key={index} secondaryAction={
-                        <>
-                            <Button onClick={(event) => handleDownload(file)}>Скачать</Button>
-                        </>
-                    }>
-                        <ListItemText primary={file.filename_download} />
+            <List> 
+                {files.map((file, index) => (
+                    <ListItem key={index}>
+                        <Grid container alignItems="center">
+                            <Grid item xs={8}>
+                                <ListItemText primary={file.filename_download} />
+                            </Grid>
+                            <Grid item xs={2}>
+                                <IconButton edge="end" aria-label="delete" onClick={() => onDelete(file.id)}>
+                                    <DeleteIcon />
+                                </IconButton>
+                            </Grid>
+                            <Grid item xs={2}>
+                                <IconButton edge="end" aria-label="download" onClick={() => handleDownload(file)}>
+                                    <FileDownloadIcon />
+                                </IconButton>
+                            </Grid>
+                        </Grid>
                     </ListItem>
                 ))}
             </List>
@@ -46,11 +43,12 @@ const FileUpload = ({ files, token, onUpload, onDelete }) => {
                 component="label"
                 startIcon={<CloudUpload />}
             >
-                Загрузить файл
+                Загрузить файлы
                 <input
                     type="file"
                     hidden
-                    onChange={(e) => onUpload(e.target.files[0])}
+                    multiple
+                    onChange={(e) => onUpload(e.target.files)}
                 />
             </Button>
         </Box>

@@ -3,11 +3,11 @@ import { Modal, Box, Tabs, Tab, TextField, Button, Typography, Autocomplete, Inp
 import Grid from '@mui/material/Grid';
 import InputAdornment from '@mui/material/InputAdornment';
 import axios from 'axios';
-import { fetchUser, UpdateData } from '../services/directus';
+import { fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus, deleteFileDirectus } from '../services/directus';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
-import CustomTable from './CustomTable';
+import CustomTable from './CustomTable'; 
 
 const TabPanel = ({ children, value, index }) => {
     return (
@@ -23,6 +23,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
     const [customerOptions, setCustomerOptions] = useState([]);
     const [InitiatorOptions, setInitiatorOptions] = useState([]);
     const [errors, setErrors] = useState({});
+    const [fileInfo, setfileInfo] = useState([]);
 
     const calculateTotalCost = (data) => {
         return [
@@ -58,6 +59,12 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
         };
         fetchUserOptions();
         fetchCustomerOptions();
+
+        GetfilesInfo(formData.Files).then((fileInfo) => {
+            setfileInfo(fileInfo)
+        }).catch((error) => {
+                console.error('Error fetching file info:', error);
+            });
     }, [token]);
 
     useEffect(() => {
@@ -85,21 +92,17 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
         setTabIndex(newValue);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!validateFields()) {
             return;
         }
-        const UpdateDataPromise = async () => {
-            try {
-                await UpdateData(formData, token);
-            } catch (error) {
-                console.error('Error saving data:', error);
-            }
-        };
-        UpdateDataPromise().then(() => {
+        try {
+            await UpdateData(formData, token);
             onDataSaved();
             onClose();
-        });
+        } catch (error) {
+            console.error('Error saving data:', error);
+        }
     };
 
     const handleCancel = () => {
@@ -115,7 +118,6 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
         // для чисел
         if (['Cost', 'tiketsCost', 'HotelCost', 'dailyCost', 'otherPayments', 'Price', 'resourceSumm', 'frameSumm'].indexOf(name) > -1) {
             newValue = parseCurrency(value);
-            console.log(newValue)
         }
 
         setFormData({ ...formData, [name]: newValue });
@@ -161,14 +163,51 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
         ? InitiatorOptions.find((option) => option.id === formData.initiator.id) || null
         : null;
 
-    const handleFileUpload = (file) => {
-        // Обработка загрузки файла
-        console.log('file load', file)
+    const handleFileUpload = async (files, token) => {
+            const updateFilesArray = (currentFiles, uploadedFiles, projectCardId) => {
+                const maxId = currentFiles.reduce((max, file) => Math.max(max, file.id), 0);
+                const newFiles = uploadedFiles.map((file, index) => ({
+                    id: maxId + index + 1,
+                    Project_Card_id: projectCardId,
+                    directus_files_id: file.id
+                }));
+                return [...currentFiles, ...newFiles];
+            };
+        try {
+            const filesArray = Array.from(files);
+            const uploadedFiles = await uploadFilesDirectus(filesArray, token);
+            const newformData = { ...formData, Files: updateFilesArray(formData.Files, uploadedFiles, formData.id) };
+            await UpdateData(newformData, token);
+            setFormData(newformData);
+            GetfilesInfo(newformData.Files).then((fileInfo) => {
+                setfileInfo(fileInfo)
+            }).catch((error) => {
+                console.error('Ошибка при загрузке информаци о файлах:', error);
+            });
+        } catch (error) {
+            console.error('Ошибка при загрузке файлов:', error);
+        }
     };
 
-    const handleFileDelete = (file) => {
-        // Обработка удаления файла
-        console.log('file load', file)
+    const handleFileDelete = async (fileId, token) => {
+        const updateFilesArray = (currentFiles, deletedFileId) => {
+            return currentFiles.filter(file => file.directus_files_id !== deletedFileId);
+        };
+
+        try {
+            console.log(fileId)
+            await deleteFileDirectus(fileId);
+            const newformData = { ...formData, Files: updateFilesArray(formData.Files, fileId) };
+            await UpdateData(newformData, token);
+            setFormData(newformData);
+            GetfilesInfo(newformData.Files).then((fileInfo) => {
+                setfileInfo(fileInfo)
+            }).catch((error) => {
+                console.error('Ошибка при загрузке информаци о файлах', error);
+            });
+        } catch (error) {
+            console.error('Ошибка при удалении файла:', error);
+        }
     };
 
     const handleJobChange = (jobDescriptions) => {
@@ -338,7 +377,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                     onChange={handleDepartmentChange}
                                 >
                                     {departament.map(item => (
-                                        <MenuItem value={item.id}>
+                                        <MenuItem key={item.id } value={item.id}>
                                             {item.Name}
                                         </MenuItem>
                                     ))}
@@ -382,8 +421,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                 Файлы
                             </Typography>
                             <FileUpload
-                                files={formData.Files}
-                                token={token}
+                                files={fileInfo}
                                 onUpload={handleFileUpload}
                                 onDelete={handleFileDelete}
                             />
@@ -498,7 +536,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                     readOnly: true,
                                 }}
                             />
-                            <FormHelperText id="TotalCost-helper-textt">
+                            <FormHelperText id="TotalCost-helper-text">
                                 {totoalCostPerHour}
                             </FormHelperText>
                         </Grid>

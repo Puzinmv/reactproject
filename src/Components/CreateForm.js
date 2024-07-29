@@ -45,10 +45,13 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
             });
     }, [token]);
 
+
     const validateFields = () => {
         const newErrors = {};
-        if (!formData.initiator) newErrors.initiator = 'Поле не должно быть пустым';
-        if (!formData.Department) newErrors.Department = 'Выберите отдел';
+        if (!formData.title) newErrors.title = 'Название проекта не должно быть пустым';
+        if (!formData.initiator) newErrors.initiator = 'Инициатор не должен быть пустым';
+        if (!formData.Customer) newErrors.Customer = 'Заполните поле Заказчик';
+        if (!formData.Department?.id) newErrors.Department = 'выберите отдел исполнителей';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -92,8 +95,10 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
         });
     };
 
-    const handleDepartmentChange = (event, value) => {
-        if (value.props.value) setFormData({ ...formData, Department: departament[value.props.value-1] });
+    const handleDepartmentChange = (event) => {
+        const value = event.target.value
+        const department = departament.find(dep => dep.id === value) || {};
+        if (value.value) setFormData({ ...formData, Department: department });
     };
 
     const handleDescriptionChange = (editor, fieldName) => {
@@ -198,6 +203,8 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
                             onChange={handleChange}
                             fullWidth
                             margin="dense"
+                            error={!!errors.title}
+                            helperText={errors.title}
                         />
                     </Grid>
 
@@ -219,6 +226,8 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                     label="Заказчик"
                                     margin="dense"
                                     InputProps={params.InputProps}
+                                    error={!!errors.Customer}
+                                    helperText={errors.Customer}
                                 />
                             )}
                             fullWidth
@@ -305,7 +314,7 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
                             >
                                 {departament.map(item => (
                                     <MenuItem key={item.id} value={item.id}>
-                                        {item.Name}
+                                        {item.Department}
                                     </MenuItem>
                                 ))}
                             </Select>

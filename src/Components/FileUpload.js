@@ -5,12 +5,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { CloudUpload } from '@mui/icons-material';
 
-
 const FileUpload = ({ files, onUpload, onDelete }) => {
-
     const handleDownload = (file) => {
         const link = document.createElement('a');
-
         link.href = `${process.env.REACT_APP_API_URL}/assets/${file.id}?download`;
         link.download = file.filename_download;
         link.click();

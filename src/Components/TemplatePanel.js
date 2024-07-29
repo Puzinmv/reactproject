@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
@@ -13,46 +12,44 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Button from '@mui/material/Button';
 import CloseIcon from '@mui/icons-material/Close';
-import { fetchTemplate } from '../services/directus'; // Импортируйте вашу функцию fetchTemplate
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import { fetchTemplate } from '../services/directus';
 
-export default function TemplatePanel({ onClose, onAdd }) {
+export default function TemplatePanel({ depatmentid, token, onClose, onAdd }) {
     const [rows, setRows] = useState([]);
     const [selected, setSelected] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [selectedCategory, setSelectedCategory] = useState('');
     const panelRef = useRef(null); // Создание рефа для панели
 
-    //useEffect(() => {
-    //     //Загрузка данных из базы данных
-    //    fetchTemplate().then((data) => {
-    //        setRows(data.map((desc, index) => ({
-    //            id: index + 1, // или другой способ генерации уникального ID
-    //            jobName: desc.JobName,
-    //            resourceDay: desc.ResourceDay,
-    //            frameDay: desc.FrameDay,
-    //        })));
-
-    //    });
-    //}, []);
-
     useEffect(() => {
-        setRows(fetchTemplate().map((desc, index) => ({
-            id: index + 1, // или другой способ генерации уникального ID
-            jobName: desc.jobName,
-            resourceDay: desc.resourceDay,
-            frameDay: desc.frameDay,
-        })));
+        // Загрузка данных из базы данных
+        fetchTemplate(token).then((data) => {
+            const filter = data.filter((temp) => temp.Department === depatmentid)
+            setRows(filter);
 
-        // Обработчик кликов для закрытия панели при клике вне её
-        const handleClickOutside = (event) => {
-            if (panelRef.current && !panelRef.current.contains(event.target)) {
-                onClose();
-            }
-        };
+            // Получение уникальных категорий
+            const uniqueCategories = [...new Set(filter.map((item) => item.category))];
+            setCategories(uniqueCategories);
+            console.log("filter", filter);
+        });
+    }, [token, depatmentid]);
 
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [onClose]);
+    //useEffect(() => {
+    //    const handleClickOutside = (event) => {
+    //        if (panelRef.current && !panelRef.current.contains(event.target)) {
+    //            onClose();
+    //        }
+    //    };
+
+    //    document.addEventListener('mousedown', handleClickOutside);
+    //    return () => {
+    //        document.removeEventListener('mousedown', handleClickOutside);
+    //    };
+    //}, [onClose]);
 
     const handleSelectAllClick = (event) => {
         if (event.target.checked) {
@@ -89,25 +86,47 @@ export default function TemplatePanel({ onClose, onAdd }) {
 
     const isSelected = (id) => selected.indexOf(id) !== -1;
 
+    const handleCategoryChange = (event) => {
+        setSelectedCategory(event.target.value);
+    };
+
+    // Фильтрация строк по категории
+    const filteredRows = selectedCategory ? rows.filter((row) => row.category === selectedCategory) : rows;
+
+
     return (
         <Box
             ref={panelRef}
             sx={{
-            position: 'fixed',
-            top: 0,
-            right: 0,
-            width: '50vw', 
-            height: '100vh', 
-            bgcolor: 'background.paper',
-            boxShadow: 3,
-            zIndex: 1200, 
-            p: 2,
-            display: 'flex',
-            flexDirection: 'column',
-        }}>
-            <Paper sx={{ width: '100%', mb: 2 }}>
+                position: 'fixed',
+                top: 0,
+                right: 0,
+                width: '50vw',
+                height: '100vh',
+                bgcolor: 'background.paper',
+                boxShadow: 3,
+                zIndex: 1200,
+                p: 2,
+                display: 'flex',
+                flexDirection: 'column',
+            }}>
+            <Paper sx={{ width: '100%', mb: 2, overflowY: 'auto' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
                     <h2>Выбор из шаблона</h2>
+                    <FormControl sx={{ minWidth: 200 }}>
+                        <InputLabel id="category-select-label">Категория</InputLabel>
+                        <Select
+                            labelId="category-select-label"
+                            value={selectedCategory}
+                            label="Категория"
+                            onChange={handleCategoryChange}
+                        >
+                            <MenuItem value=""><em>Все</em></MenuItem>
+                            {categories.map((category) => (
+                                <MenuItem key={category} value={category}>{category}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
                     <Tooltip title="Закрыть">
                         <IconButton onClick={onClose}>
                             <CloseIcon />
@@ -138,7 +157,7 @@ export default function TemplatePanel({ onClose, onAdd }) {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {rows.map((row) => {
+                            {filteredRows.map((row) => {
                                 const isItemSelected = isSelected(row.id);
                                 const labelId = `template-table-checkbox-${row.id}`;
 
@@ -184,8 +203,3 @@ export default function TemplatePanel({ onClose, onAdd }) {
         </Box>
     );
 }
-
-TemplatePanel.propTypes = {
-    onClose: PropTypes.func.isRequired,
-    onAdd: PropTypes.func.isRequired,
-};

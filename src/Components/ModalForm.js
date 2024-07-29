@@ -385,8 +385,8 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                     onChange={handleDepartmentChange}
                                 >
                                     {departament.map(item => (
-                                        <MenuItem key={item.id } value={item.id}>
-                                            {item.Name}
+                                        <MenuItem key={item.id} value={item.id}>
+                                            {item.Department}
                                         </MenuItem>
                                     ))}
                                 </Select>
@@ -440,7 +440,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                 <TabPanel value={tabIndex} index={1}>
                     <Grid container spacing={2}>
                         <Grid item xs={12}>
-                            <CustomTable jobDescriptions={formData.JobDescription} handleJobChange={handleJobChange} />
+                            <CustomTable depatmentid={formData.Department?.id || -1 } token={token} jobDescriptions={formData.JobDescription} handleJobChange={handleJobChange} />
                         </Grid>
                         <Grid item xs={12} md={6}>
                             <TextField

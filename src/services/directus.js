@@ -6,7 +6,7 @@ import {
 
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
     .with(authentication('cookie', { credentials: 'include', autoRefresh: true }))
-//    .with(graphql({ credentials: 'include' }))
+    .with(graphql({ credentials: 'include' }))
     .with(rest({ credentials: 'include' }))
     ;
 
@@ -64,15 +64,13 @@ export const fetchData = async (token) => {
     return [data, departament, CurrentUser];
 };
 
-export const fetchTemplate = () => {
-    const data = [
-        { id: 1, jobName: 'выуваывавы', resourceDay: 3, frameDay: 3 },
-        { id: 2, jobName: 'Шаблон 2', resourceDay: 2, frameDay: 3 },
-        { id: 3, jobName: 'Шаблон 3', resourceDay: 5, frameDay: 3 },
-        { id: 4, jobName: 'Шаблон 4', resourceDay: 4, frameDay: 3 },
-        { id: 5, jobName: 'Шаблон 5', resourceDay: 6, frameDay: 3 },
+export const fetchTemplate = async (token) => {
+    const data = await directus.request(
+        withToken(token, 
+            readItems('JobTemplate', {
+            fields: ['*'],
+        })));
 
-    ];
     return data;
 };
 

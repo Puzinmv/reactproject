@@ -16,7 +16,7 @@ import Typography from '@mui/material/Typography';
 import Toolbar from '@mui/material/Toolbar';
 import TemplatePanel from './TemplatePanel';
 
-export default function CustomTable({ jobDescriptions, handleJobChange }) {
+export default function CustomTable({ token, depatmentid, jobDescriptions, handleJobChange }) {
     const [rows, setRows] = useState(jobDescriptions || []);
     const [selected, setSelected] = useState([]);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -52,6 +52,7 @@ export default function CustomTable({ jobDescriptions, handleJobChange }) {
     };
 
     const handleAddFromTemplate = (templateRows) => {
+        console.log(templateRows);
         const allowedKeys = rows.length > 0
             ? Object.keys(rows[0]).filter(key => key !== 'id')
             : [];
@@ -59,18 +60,14 @@ export default function CustomTable({ jobDescriptions, handleJobChange }) {
         let maxId = rows.length ? Math.max(...rows.map(r => r.id)) : 0;
 
         const newRows = templateRows.map((row) => {
-            const filteredRow = Object.keys(row)
-                .reduce((obj, key) => {
-                    if (allowedKeys.includes(key)) obj[key] = row[key];
-                    return obj;
-                }, {});
             maxId += 1;
             return {
-                ...filteredRow,
-                id: maxId
+                jobName: row.jobName,
+                resourceDay: row.resourceDay,
+                frameDay: row.frameDay,
+                id: maxId,
             };
         });
-
         setRows([...rows, ...newRows]);
     };
     const handleCellEdit = (id, key, value) => {
@@ -152,7 +149,7 @@ export default function CustomTable({ jobDescriptions, handleJobChange }) {
                                             {row.id}
                                         </TableCell>
                                         <TableCell
-                                            sx={{ width: '90%' }}
+                                            sx={{ width: '90%', whiteSpace: 'pre-line' }}
                                             component="th"
                                             id={labelId}
                                             scope="row"
@@ -197,6 +194,8 @@ export default function CustomTable({ jobDescriptions, handleJobChange }) {
             </Paper>
             {isPanelOpen && (
                 <TemplatePanel
+                    depatmentid={depatmentid}
+                    token={token}
                     onClose={() => setIsPanelOpen(false)}
                     onAdd={handleAddFromTemplate}
                 />

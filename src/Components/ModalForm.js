@@ -424,6 +424,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                 margin="dense"
                             />
                         </Grid>
+                        <Grid item xs={12}>
                         <Box mt={1}>
                             <Typography variant="h6" gutterBottom>
                                 Файлы
@@ -433,7 +434,8 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                 onUpload={handleFileUpload}
                                 onDelete={handleFileDelete}
                             />
-                        </Box>
+                            </Box>
+                        </Grid>
                     </Grid>
                 </TabPanel>
 

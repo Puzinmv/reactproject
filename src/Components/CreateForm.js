@@ -4,7 +4,7 @@ import {
     Select, MenuItem, FormControl, FormHelperText, Grid
 } from '@mui/material';
 import axios from 'axios';
-import { fetchUser, GetfilesInfo, uploadFilesDirectus, deleteFileDirectus, CreateItemDirectus } from '../services/directus';
+import { fetchUser, uploadFilesDirectus, CreateItemDirectus, UpdateData } from '../services/directus';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
@@ -16,7 +16,6 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
     const [customerOptions, setCustomerOptions] = useState([]);
     const [InitiatorOptions, setInitiatorOptions] = useState([]);
     const [errors, setErrors] = useState({});
-    const [fileInfo, setfileInfo] = useState([]);
 
     useEffect(() => {
         const fetchCustomerOptions = async () => {
@@ -37,12 +36,6 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
         };
         fetchUserOptions();
         fetchCustomerOptions();
-
-        GetfilesInfo(formData.Files).then((fileInfo) => {
-            setfileInfo(fileInfo)
-        }).catch((error) => {
-                console.error('Error fetching file info:', error);
-            });
     }, [token]);
 
 
@@ -61,8 +54,20 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
             return;
         }
         try {
-            console.log('createNewitem',formData)
-            await CreateItemDirectus(formData, token);
+            console.log('createNewitem', formData)
+            const files = Array.from(formData.Files.map((file)=>file.file));
+            const item = await CreateItemDirectus({ ...formData, Files: [] }, token);
+            console.log(item)
+            if (files.length > 0) {
+                const uploadedFiles = await uploadFilesDirectus(files, token);
+                const newFiles = uploadedFiles.map((file, index) => ({
+                    id: index+1,
+                    Project_Card_id: item.id,
+                    directus_files_id: file.id
+                }));
+                console.log({ ...item, Files: newFiles });
+                await UpdateData({ ...item, Files: newFiles }, token);
+            }
             onDataSaved();
             onClose();
         } catch (error) {
@@ -97,8 +102,10 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
 
     const handleDepartmentChange = (event) => {
         const value = event.target.value
-        const department = departament.find(dep => dep.id === value) || {};
-        if (value.value) setFormData({ ...formData, Department: department });
+        if (value) { 
+            const department = departament.find(dep => dep.id === value) || {};
+            setFormData({ ...formData, Department: department });
+        }
     };
 
     const handleDescriptionChange = (editor, fieldName) => {
@@ -110,56 +117,26 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
         ? InitiatorOptions.find((option) => option.id === formData.initiator.id) || ''
         : '';
 
-    const handleFileUpload = async (files, token) => {
-            const updateFilesArray = (currentFiles, uploadedFiles, projectCardId) => {
+    const handleFileUpload = async (files) => {
+            const updateFilesArray = (currentFiles, uploadedFiles) => {
                 const maxId = currentFiles.reduce((max, file) => Math.max(max, file.id), 0);
                 const newFiles = uploadedFiles.map((file, index) => ({
                     id: maxId + index + 1,
-                    Project_Card_id: projectCardId,
-                    directus_files_id: file.id
+                    filename_download: file.name,
+                    file: file,
                 }));
                 return [...currentFiles, ...newFiles];
         };
-        console.log('добавление файлов', files)
-        //try {
-        //    const filesArray = Array.from(files);
-        //    const uploadedFiles = await uploadFilesDirectus(filesArray, token);
-        //    const newformData = { ...formData, Files: updateFilesArray(formData.Files, uploadedFiles, formData.id) };
-        //    await UpdateData(newformData, token);
-        //    setFormData(newformData);
-        //    GetfilesInfo(newformData.Files).then((fileInfo) => {
-        //        setfileInfo(fileInfo)
-        //    }).catch((error) => {
-        //        console.error('Ошибка при загрузке информаци о файлах:', error);
-        //    });
-        //} catch (error) {
-        //    console.error('Ошибка при загрузке файлов:', error);
-        //}
+        const filesArray = Array.from(files);
+        setFormData({ ...formData, Files: updateFilesArray(formData.Files, filesArray) })
     };
 
-    const handleFileDelete = async (fileId, token) => {
-        const updateFilesArray = (currentFiles, deletedFileId) => {
-            return currentFiles.filter(file => file.directus_files_id !== deletedFileId);
-        };
-
-        console.log('удаление файла', fileId)
-        //try {
-        //    await deleteFileDirectus(fileId);
-        //    const newformData = { ...formData, Files: updateFilesArray(formData.Files, fileId) };
-        //    await UpdateData(newformData, token);
-        //    setFormData(newformData);
-        //    GetfilesInfo(newformData.Files).then((fileInfo) => {
-        //        setfileInfo(fileInfo)
-        //    }).catch((error) => {
-        //        console.error('Ошибка при загрузке информаци о файлах', error);
-        //    });
-        //} catch (error) {
-        //    console.error('Ошибка при удалении файла:', error);
-        //}
+    const handleFileDelete = async (fileId) => {
+        const files = formData.Files.filter((file) => file.id !== fileId)
+        setFormData({ ...formData, Files: files });
     };
 
 
- 
     return (
         <Modal open={true} onClose={onClose}>
             <Box sx={{
@@ -314,7 +291,7 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
                             >
                                 {departament.map(item => (
                                     <MenuItem key={item.id} value={item.id}>
-                                        {item.Name}
+                                        {item.Department}
                                     </MenuItem>
                                 ))}
                             </Select>
@@ -352,16 +329,18 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
                             margin="dense"
                         />
                     </Grid>
+                    <Grid item xs={12}>
                     <Box mt={1}>
                         <Typography variant="h6" gutterBottom>
                             Файлы
                         </Typography>
                         <FileUpload
-                            files={fileInfo}
+                            files={formData.Files}
                             onUpload={handleFileUpload}
                             onDelete={handleFileDelete}
                         />
-                    </Box>
+                        </Box>
+                    </Grid>
                 </Grid>
                 <Box mt={1}>
                     <Button variant="contained" color="primary" onClick={handleSave} sx={{ mr: 1 }}>

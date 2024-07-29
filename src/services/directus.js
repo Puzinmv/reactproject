@@ -114,9 +114,10 @@ export const UpdateData = async (data, token) => {
         // Подготавливаем данные для сохранения
         const savedata = {
             ...data,
-            initiator: data.initiator.id || '',
-            Department: data.Department.id || 0
+            initiator: data.initiator.id || data.initiator,
+            Department: data.Department.id || data.Department
         };
+
         ['id', 'user_created', 'date_created', 'date_updated', 'user_updated', 'sort'].forEach(key => delete savedata[key]);
         const req = await directus.request(withToken(token, updateItem('Project_Card', id, savedata)));
         console.log("update", savedata);
@@ -137,7 +138,6 @@ export const CreateItemDirectus = async (data, token) => {
         };
         ['id', 'user_created', 'date_created', 'date_updated', 'user_updated', 'sort'].forEach(key => delete savedata[key]);
         const req = await directus.request(withToken(token, createItem('Project_Card', savedata)));
-        console.log("create", savedata);
         return req;
     } catch (error) {
         console.error("Error create data:", error);

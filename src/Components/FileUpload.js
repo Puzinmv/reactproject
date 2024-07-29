@@ -18,17 +18,17 @@ const FileUpload = ({ files, onUpload, onDelete }) => {
                 {files.map((file, index) => (
                     <ListItem key={index}>
                         <Grid container alignItems="center">
-                            <Grid item xs={8}>
+                            <Grid item xs={10}>
                                 <ListItemText primary={file.filename_download} />
                             </Grid>
-                            <Grid item xs={2}>
-                                <IconButton edge="end" aria-label="delete" onClick={() => onDelete(file.id)}>
-                                    <DeleteIcon />
-                                </IconButton>
-                            </Grid>
-                            <Grid item xs={2}>
+                            <Grid item xs={1}>
                                 <IconButton edge="end" aria-label="download" onClick={() => handleDownload(file)}>
                                     <FileDownloadIcon />
+                                </IconButton>
+                            </Grid>
+                            <Grid item xs={1}>
+                                <IconButton edge="end" aria-label="delete" onClick={() => onDelete(file.id)}>
+                                    <DeleteIcon />
                                 </IconButton>
                             </Grid>
                         </Grid>

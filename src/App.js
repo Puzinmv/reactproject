@@ -23,21 +23,21 @@ function App() {
     const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
     const [tableData, setTableData] = useState([]);
     const [token, setToken] = useState(null);
-    const [CurrentUser, setCurrentUser] = useState(null);
-    const [departament, setdepartament] = useState(null);
+    const [CurrentUser, setCurrentUser] = useState({});
+    const [departament, setdepartament] = useState([]);
 
 
-    useEffect(() => {
-        const refreshtoken = async () => {
-            const token = await refreshlogin();
-            if (token) {
-                console.log('refreshlogin', token);
-                setToken(token);
-                fetchTableData(token);
-            }
-        };
-        refreshtoken();
-    }, []);
+    //useEffect(() => {
+    //    const refreshtoken = async () => {
+    //        const token = await refreshlogin();
+    //        if (token) {
+    //            console.log('refreshlogin', token);
+    //            setToken(token);
+    //            fetchTableData(token);
+    //        }
+    //    };
+    //    refreshtoken();
+    //}, []);
 
     const fetchTableData = async (token) => {
         const [data, departament, user]= await fetchData(token);
@@ -60,7 +60,6 @@ function App() {
     };
 
     const handleCreate = () => {
-        console.log('cоздать новую карту проекта')
         setSelectedRow(
             {"status": "draft",
             "title": "",
@@ -98,7 +97,7 @@ function App() {
                 "first_name": CurrentUser.first_name,
                 "last_name": CurrentUser.first_name,
             },
-            "Department": {}
+            "Department": { id: '', Department: '' }
             });
         setIsCreateOpen(true);
     };

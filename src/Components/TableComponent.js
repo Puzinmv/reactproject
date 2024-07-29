@@ -85,7 +85,7 @@ const TableComponent = ({ data, onRowSelect, onCreate }) => {
     const [order, setOrder] = useState('desc');
     const [orderBy, setOrderBy] = useState('id');
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(5);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
     const [anchorEl, setAnchorEl] = useState(null);
     const [globalSearch, setGlobalSearch] = useState('');
     const [columnSearch, setColumnSearch] = useState({});
@@ -273,7 +273,7 @@ const TableComponent = ({ data, onRowSelect, onCreate }) => {
                 </Table>
             </TableContainer>
             <TablePagination
-                rowsPerPageOptions={[5, 10, 25]}
+                rowsPerPageOptions={[10, 50, 100]}
                 component="div"
                 count={filteredData.length}
                 rowsPerPage={rowsPerPage}

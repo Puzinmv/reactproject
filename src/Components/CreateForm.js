@@ -314,7 +314,7 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
                             >
                                 {departament.map(item => (
                                     <MenuItem key={item.id} value={item.id}>
-                                        {item.Department}
+                                        {item.Name}
                                     </MenuItem>
                                 ))}
                             </Select>

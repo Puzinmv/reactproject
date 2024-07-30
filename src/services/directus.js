@@ -1,7 +1,8 @@
 import {
-    createDirectus, authentication, graphql, rest, withToken,
+    createDirectus, authentication,  rest, withToken,
     readItems, refresh, readUsers, updateItem, readMe, readFile,
-    uploadFiles, deleteFile, createItem
+    uploadFiles, deleteFile, createItem,
+    //graphql,
 } from "@directus/sdk";
 
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
@@ -137,7 +138,6 @@ export const UpdateData = async (data, token) => {
     try {
         // Извлекаем id из data
         const id = data.id;
-
         // Подготавливаем данные для сохранения
         const savedata = {
             ...data,
@@ -145,9 +145,9 @@ export const UpdateData = async (data, token) => {
             Department: data.Department.id || data.Department
         };
 
-        ['id', 'user_created', 'date_created', 'date_updated', 'user_updated', 'sort'].forEach(key => delete savedata[key]);
+        ['id', 'user_created', 'date_created',
+            'date_updated', 'user_updated', 'sort'].forEach(key => delete savedata[key]);
         const req = await directus.request(withToken(token, updateItem('Project_Card', id, savedata)));
-        console.log("update", savedata);
         return req;
     } catch (error) {
         console.error("Error updating data:", error);
@@ -196,7 +196,6 @@ export const uploadFilesDirectus = async (files, token) => {
 
 export const deleteFileDirectus = async (fileId) => {
     try {
-        console.log(fileId)
         await directus.request(deleteFile(fileId));;
     } catch (error) {
         console.error('Ошибка при удалении файла:', error);

@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
-import { TextField, Button, Box, Container, Typography } from '@mui/material';
+import { TextField, Button, Box, Container, Typography, Alert } from '@mui/material';
 
 const LoginForm = ({ onLogin }) => {
     const [email, setEmail] = useState('test');
     const [password, setPassword] = useState('123');
+    const [error, setError] = useState('');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        onLogin(`${email}@asterit.ru`, password);
+        const isSuccess = await onLogin(`${email}@asterit.ru`, password);
+        console.log(isSuccess)
+        if (!isSuccess) {
+
+            setError('Неверный логин или пароль');
+        } else {
+            setError('');
+        }
     };
 
     const handleEmailChange = (e) => {
@@ -17,12 +25,11 @@ const LoginForm = ({ onLogin }) => {
 
     return (
         <Container maxWidth="xs" sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100vh' }}>
-            <Box
-                sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-            >
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <Typography component="h1" variant="h5" sx={{ mb: 2 }}>
                     Авторизация
                 </Typography>
+                {error && <Alert severity="error" sx={{ width: '100%', mb: 2 }}>{error}</Alert>}
                 <Box
                     component="form"
                     onSubmit={handleSubmit}

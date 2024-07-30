@@ -1,21 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Box from '@mui/material/Box';
-import Paper from '@mui/material/Paper';
-import Table from '@mui/material/Table';
-import TableContainer from '@mui/material/TableContainer';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableRow from '@mui/material/TableRow';
-import TableHead from '@mui/material/TableHead';
-import Checkbox from '@mui/material/Checkbox';
-import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
-import Button from '@mui/material/Button';
+import {
+    Box, Paper, Table, TableContainer, TableBody, TableCell, TableRow, TableHead,
+    Checkbox, IconButton, Tooltip, Button, Select, MenuItem, FormControl, InputLabel
+} from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
 import { fetchTemplate } from '../services/directus';
 
 export default function TemplatePanel({ depatmentid, token, onClose, onAdd }) {

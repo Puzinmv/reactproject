@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
     Modal, Box, Tabs, Tab, TextField, Button, Typography, Autocomplete,
-    InputLabel, Select, MenuItem, FormControl, FormHelperText, Switch
+    InputLabel, Select, MenuItem, FormControl, FormHelperText,
+    Switch, Grid, InputAdornment
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
-import InputAdornment from '@mui/material/InputAdornment';
-import { fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus, deleteFileDirectus, fetchCustomer, fetchCustomerContact } from '../services/directus';
+//import InputAdornment from '@mui/material/InputAdornment';
+import {
+    fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus,
+    deleteFileDirectus, fetchCustomer, fetchCustomerContact
+} from '../services/directus';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
@@ -46,7 +49,6 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
         const fetchCustomerOptions = async () => {
             try {
                 const response = await fetchCustomer(token, formData.initiator.last_name);
-                console.log(response)
                 setCustomerOptions(response.map(item => ({
                     name: item.shortName,
                     id: item.id,
@@ -73,7 +75,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
         }).catch((error) => {
                 console.error('Error fetching file info:', error);
             });
-    }, [token]);
+    }, [formData.Files, formData.initiator.last_name, token]);
 
     useEffect(() => {
         settotoalCostPerHour(`${Math.round(totoalCost*100 / (formData.resourceSumm * 8))/100} ₽/час`);
@@ -92,7 +94,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
         setFormData({
             ...formData, Cost: value
         })
-    }, [formData.resourceSumm]);
+    }, [formData, formData.resourceSumm]);
 
     const validateFields = () => {
         const newErrors = {};
@@ -161,7 +163,6 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                 jobTitle: item.jobTitle,
                 tel: item.tel
             })))
-            console.log(response)
         } catch (error) {
             console.error('Error fetching customer сontact options:', error);
         }
@@ -362,7 +363,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                 <Autocomplete
                                     options={customerContactOptions}
                                     getOptionLabel={(option) => option.name}
-                                    value={customerOptions.find((option) => option.name === formData.CustomerContact) || null}
+                                    value={customerContactOptions.find((option) => option.name === formData.CustomerContact) || null}
                                     onChange={handleCustomerContactChange}
                                     renderInput={(params) => (
                                         <TextField

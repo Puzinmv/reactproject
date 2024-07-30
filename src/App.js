@@ -8,7 +8,7 @@ import LoginForm from './Components/LoginForm.js';
 import CreateForm from './Components/CreateForm.js';
 import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
 import { login, logout, refreshlogin, fetchData } from './services/directus';
-import Cookies from 'js-cookie';
+//import Cookies from 'js-cookie';
 
 
 const theme = createTheme({
@@ -29,22 +29,26 @@ function App() {
 
 
     useEffect(() => {
-        const refreshtoken = async () => await refreshlogin();
-
-        const CookiesRefreshToken = Cookies.get('directus_refresh_token');
-        const CookiesSessionToken = Cookies.get('directus_session_token');
-        console.log(CookiesRefreshToken, CookiesSessionToken)
-        if (CookiesRefreshToken && CookiesSessionToken) {
+        //const CookiesRefreshToken = Cookies.get('directus_refresh_token');
+        //const CookiesSessionToken = Cookies.get('directus_session_token');
+        //console.log(CookiesRefreshToken, CookiesSessionToken)
+        //if (CookiesRefreshToken && CookiesSessionToken) {
+        //}
+        const refreshtoken = async () => {
             try {
-                const token = refreshtoken()
-                if (token) {
+                const token = await refreshlogin();
+                if (token !== null) {
                     setToken(token);
                     fetchTableData(token);
+                } else {
+                    setToken(null);
                 }
             } catch (error) {
                 setToken(null);
             }
-        }
+        };
+
+        refreshtoken();
     }, []);
 
     const fetchTableData = async (token) => {
@@ -100,6 +104,8 @@ function App() {
             "dateStart": "",
             "deadline": "",
             "Files": [],
+            "priceAproved": false,
+            "jobCalculated": false,
             "initiator": {
                 "id": CurrentUser.id,
                 "first_name": CurrentUser.first_name,
@@ -121,9 +127,9 @@ function App() {
             const token = await login(email, password);
             setToken(token);
             fetchTableData(token);
+            return true;
         } catch (error) {
-            console.error('Login failed:', error);
-            alert('Login failed');
+            return false;
         }
     };
 
@@ -137,7 +143,7 @@ function App() {
 
     return (
         <ThemeProvider theme={theme}>
-            <ResponsiveAppBar onLogout={handleLogout} current={CurrentUser} />
+            <ResponsiveAppBar handleLogout={handleLogout} current={CurrentUser} />
             <div className="App">
                 {token ? (
                     <TableComponent

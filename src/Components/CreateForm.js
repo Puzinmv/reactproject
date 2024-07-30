@@ -3,8 +3,10 @@ import {
     Modal, Box, TextField, Button, Typography, Autocomplete, InputLabel,
     Select, MenuItem, FormControl, FormHelperText, Grid
 } from '@mui/material';
-import axios from 'axios';
-import { fetchUser, uploadFilesDirectus, CreateItemDirectus, UpdateData } from '../services/directus';
+import {
+    fetchUser, uploadFilesDirectus, CreateItemDirectus, UpdateData,
+    fetchCustomer, fetchCustomerContact
+} from '../services/directus';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
@@ -14,14 +16,21 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
 
     const [formData, setFormData] = useState(row);
     const [customerOptions, setCustomerOptions] = useState([]);
+    const [customerContactOptions, setCustomerContactOptions] = useState([]);
     const [InitiatorOptions, setInitiatorOptions] = useState([]);
     const [errors, setErrors] = useState({});
 
     useEffect(() => {
         const fetchCustomerOptions = async () => {
             try {
-                const response = await axios.get('https://jsonplaceholder.typicode.com/users');
-                setCustomerOptions(response.data);
+                const response = await fetchCustomer(token, formData.initiator.last_name);
+                console.log(response)
+                setCustomerOptions(response.map(item => ({
+                    name: item.shortName,
+                    id: item.id,
+                    fullName: item.fullName,
+                    CRMID: item.CRMID
+                })))
             } catch (error) {
                 console.error('Error fetching customer options:', error);
             }
@@ -36,7 +45,7 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
         };
         fetchUserOptions();
         fetchCustomerOptions();
-    }, [token]);
+    }, [token, formData.initiator.last_name]);
 
 
     const validateFields = () => {
@@ -86,8 +95,37 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
         setFormData({ ...formData, [name]: newValue });
     };
 
-    const handleCustomerChange = (event, newValue) => {
-        setFormData({ ...formData, Customer: newValue ? newValue.name : '' });
+    const handleCustomerChange = async (event, value) => {
+        setFormData({
+            ...formData,
+            Customer: value ? value?.name : '',
+            CustomerCRMID: value ? value.CRMID : ''
+        });
+
+        try {
+            const response = await fetchCustomerContact(token, value.CRMID);
+            setCustomerContactOptions(response.map(item => ({
+                name: item.Name,
+                id: item.id,
+                email: item.email,
+                jobTitle: item.jobTitle,
+                tel: item.tel
+            })))
+            console.log(response)
+        } catch (error) {
+            console.error('Error fetching customer сontact options:', error);
+        }
+
+    };
+    const handleCustomerContactChange = (event, value) => {
+        console.log(value, formData.CustomerContact)
+        setFormData({
+            ...formData,
+            CustomerContact: value.name ? value.name : '',
+            CustomerContactEmail: value.email ? value.email : '',
+            CustomerContactJobTitle: value.jobTitle ? value.jobTitle : '',
+            CustomerContactTel: value.tel ? value.tel : '',
+        });
     };
 
     const handleInitiatorChange = (event, newValue) => {
@@ -203,8 +241,6 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                     label="Заказчик"
                                     margin="dense"
                                     InputProps={params.InputProps}
-                                    error={!!errors.Customer}
-                                    helperText={errors.Customer}
                                 />
                             )}
                             fullWidth
@@ -222,24 +258,42 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
                         />
                     </Grid>
                     <Grid item xs={12} md={8}>
-                        <TextField
-                            label="Контакт заказчика ФИО"
-                            name="CustomerContact"
-                            value={formData.CustomerContact}
-                            onChange={handleChange}
-                            fullWidth
-                            margin="dense"
-                        />
+                        {customerContactOptions.length > 0 ? (
+                            <Autocomplete
+                                options={customerContactOptions}
+                                getOptionLabel={(option) => option.name}
+                                value={customerContactOptions.find((option) => option.name === formData.CustomerContact) || null}
+                                onChange={handleCustomerContactChange}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Контакт заказчика ФИО"
+                                        margin="dense"
+                                        InputProps={params.InputProps}
+                                    />
+                                )}
+                                fullWidth
+                                disableClearable
+                            />
+                        ) : (
+                            <TextField
+                                label="Контакт заказчика ФИО"
+                                name="CustomerContact"
+                                value={formData.CustomerContact}
+                                onChange={handleChange}
+                                fullWidth
+                                margin="dense"
+                            />)}
                     </Grid>
                     <Grid item xs={12} md={4}>
-                        <TextField
-                            label="Контакт заказчика CRMID"
-                            name="CustomerContactCRMID"
-                            value={formData.CustomerContactCRMID}
-                            onChange={handleChange}
-                            fullWidth
-                            margin="dense"
-                        />
+                        {/*<TextField*/}
+                        {/*    label="Контакт заказчика CRMID"*/}
+                        {/*    name="CustomerContactCRMID"*/}
+                        {/*    value={formData.CustomerContactCRMID}*/}
+                        {/*    onChange={handleChange}*/}
+                        {/*    fullWidth*/}
+                        {/*    margin="dense"*/}
+                        {/*/>*/}
                     </Grid>
                     <Grid item xs={12} md={4}>
                         <TextField

@@ -1,6 +1,5 @@
 import React from 'react';
-import { Box, Button, List, ListItem, ListItemText, Grid } from '@mui/material';
-import IconButton from '@mui/material/IconButton';
+import { Box, Button, List, ListItem, ListItemText, Grid, IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { CloudUpload } from '@mui/icons-material';

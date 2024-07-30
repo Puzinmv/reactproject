@@ -80,7 +80,8 @@ export default function TemplatePanel({ depatmentid, token, onClose, onAdd }) {
     };
 
     const handleAdd = () => {
-        onAdd(rows.filter((row) => selected.includes(row.id)));
+        const Addrows = selected.map((cel) => rows.filter((row) => cel === row.id)[0])
+        onAdd(Addrows);
         onClose();
     };
 
@@ -140,7 +141,7 @@ export default function TemplatePanel({ depatmentid, token, onClose, onAdd }) {
                     >
                         <TableHead>
                             <TableRow>
-                                <TableCell padding="checkbox">
+                                <TableCell padding="checkbox" align="center">
                                     <Checkbox
                                         color="primary"
                                         indeterminate={selected.length > 0 && selected.length < rows.length}
@@ -172,7 +173,7 @@ export default function TemplatePanel({ depatmentid, token, onClose, onAdd }) {
                                         selected={isItemSelected}
                                         sx={{ cursor: 'pointer' }}
                                     >
-                                        <TableCell padding="checkbox">
+                                        <TableCell sx={{ width: 20, textAlign: 'center', padding:'checkbox' }} >
                                             <Checkbox
                                                 color="primary"
                                                 checked={isItemSelected}
@@ -181,9 +182,9 @@ export default function TemplatePanel({ depatmentid, token, onClose, onAdd }) {
                                                 }}
                                             />
                                         </TableCell>
-                                        <TableCell align="center">{row.jobName}</TableCell>
-                                        <TableCell align="center">{row.resourceDay}</TableCell>
-                                        <TableCell align="center">{row.frameDay}</TableCell>
+                                        <TableCell sx={{ width: '90%', whiteSpace: 'pre-line', textAlign: 'left' }}>{row.jobName}</TableCell>
+                                        <TableCell sx={{ width: 80, textAlign: 'center' }}>{row.resourceDay}</TableCell>
+                                        <TableCell sx={{ width: 80, textAlign: 'center' }}>{row.frameDay}</TableCell>
                                     </TableRow>
                                 );
                             })}

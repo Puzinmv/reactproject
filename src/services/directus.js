@@ -74,6 +74,40 @@ export const fetchTemplate = async (token) => {
     return data;
 };
 
+export const fetchCustomer = async (token, initiator) => {
+    const data = await directus.request(
+        withToken(token,
+            readItems('Customers', {
+                fields: ['*'],
+                filter: {
+                    manager: {
+                        _contains: initiator
+                    }
+                }
+            })
+        )
+    );
+
+    return data;
+};
+
+export const fetchCustomerContact = async (token, CRMID) => {
+    const data = await directus.request(
+        withToken(token,
+            readItems('Customer_Contact', {
+                fields: ['*'],
+                filter: {
+                    customerCRMID: {
+                        _contains: CRMID
+                    }
+                }
+            })
+        )
+    );
+
+    return data;
+};
+
 export const GetfilesInfo = async (files, token) => {
     if (!files.length) {
         return [];

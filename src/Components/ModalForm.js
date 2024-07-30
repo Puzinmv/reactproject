@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Box, Tabs, Tab, TextField, Button, Typography, Autocomplete, InputLabel, Select, MenuItem, FormControl, FormHelperText } from '@mui/material';
+import {
+    Modal, Box, Tabs, Tab, TextField, Button, Typography, Autocomplete,
+    InputLabel, Select, MenuItem, FormControl, FormHelperText, Switch
+} from '@mui/material';
 import Grid from '@mui/material/Grid';
 import InputAdornment from '@mui/material/InputAdornment';
-import axios from 'axios';
-import { fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus, deleteFileDirectus } from '../services/directus';
+import { fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus, deleteFileDirectus, fetchCustomer, fetchCustomerContact } from '../services/directus';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
@@ -21,6 +23,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
     const [tabIndex, setTabIndex] = useState(0);
     const [formData, setFormData] = useState(row);
     const [customerOptions, setCustomerOptions] = useState([]);
+    const [customerContactOptions, setCustomerContactOptions] = useState([]);
     const [InitiatorOptions, setInitiatorOptions] = useState([]);
     const [errors, setErrors] = useState({});
     const [fileInfo, setfileInfo] = useState([]);
@@ -34,7 +37,6 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
             data.otherPayments || 0
         ].reduce((sum, value) => sum + value, 0);
     };
-    const [Cost, setCost] = useState(formData.Cost);
     const [totoalCost, settotoalCost] = useState(calculateTotalCost(formData));
     const [totoalCostPerHour, settotoalCostPerHour] = useState(0);
     const [CostPerHour, setCostPerHour] = useState(0);
@@ -43,8 +45,14 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
     useEffect(() => {
         const fetchCustomerOptions = async () => {
             try {
-                const response = await axios.get('https://jsonplaceholder.typicode.com/users');
-                setCustomerOptions(response.data);
+                const response = await fetchCustomer(token, formData.initiator.last_name);
+                console.log(response)
+                setCustomerOptions(response.map(item => ({
+                    name: item.shortName,
+                    id: item.id,
+                    fullName: item.fullName,
+                    CRMID: item.CRMID
+                })))
             } catch (error) {
                 console.error('Error fetching customer options:', error);
             }
@@ -81,7 +89,6 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
 
     useEffect(() => {
         const value = formData.resourceSumm * 8 * formData.Department.CostHour;
-        setCost(value);
         setFormData({
             ...formData, Cost: value
         })
@@ -133,9 +140,42 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
             settotoalCost(calculateTotalCost({ ...formData, [name]: newValue }));
         }
     };
+    const handleChangeSwitch = (e) => {
+        const { name, checked } = e.target;
+        setFormData({ ...formData, [name]: checked })
+    }
 
-    const handleCustomerChange = (event, newValue) => {
-        setFormData({ ...formData, Customer: newValue ? newValue.name : '' });
+    const handleCustomerChange = async (event, value) => {
+        setFormData({
+            ...formData,
+            Customer: value ? value?.name : '',
+            CustomerCRMID: value ? value.CRMID : ''
+        });
+
+        try {
+            const response = await fetchCustomerContact(token, value.CRMID);
+            setCustomerContactOptions(response.map(item => ({
+                name: item.Name,
+                id: item.id,
+                email: item.email,
+                jobTitle: item.jobTitle,
+                tel: item.tel
+            })))
+            console.log(response)
+        } catch (error) {
+            console.error('Error fetching customer сontact options:', error);
+        }
+
+    };
+    
+    const handleCustomerContactChange = (event, value) => {
+        setFormData({
+            ...formData,
+            CustomerContact: value.name ? value.name : '',
+            CustomerContactEmail: value.email ? value.email : '',
+            CustomerContactJobTitle: value.jobTitle ? value.jobTitle : '',
+            CustomerContactTel: value.tel ? value.tel : '',
+        });
     };
 
     const handleInitiatorChange = (event, newValue) => {
@@ -197,6 +237,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
         }
     };
 
+
     const handleFileDelete = async (fileId, token) => {
         const updateFilesArray = (currentFiles, deletedFileId) => {
             return currentFiles.filter(file => file.directus_files_id !== deletedFileId);
@@ -250,7 +291,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                     <Tab label="Финансы" />
                 </Tabs>
                 <TabPanel value={tabIndex} index={0}>
-                    <Grid container spacing={2}>
+                    <Grid container spacing={1}>
                         <Grid item xs={12} md={3}>
                             <Autocomplete
                                 options={InitiatorOptions}
@@ -317,24 +358,44 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                             />
                         </Grid>
                         <Grid item xs={12} md={8}>
-                            <TextField
-                                label="Контакт заказчика ФИО"
-                                name="CustomerContact"
-                                value={formData.CustomerContact}
+                            {customerContactOptions.length > 0 ? (
+                                <Autocomplete
+                                    options={customerContactOptions}
+                                    getOptionLabel={(option) => option.name}
+                                    value={customerOptions.find((option) => option.name === formData.CustomerContact) || null}
+                                    onChange={handleCustomerContactChange}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Контакт заказчика ФИО"
+                                            margin="dense"
+                                            InputProps={params.InputProps}
+                                        />
+                                    )}
+                                    fullWidth
+                                    disableClearable
+                                />
+                            ): (
+                                <TextField
+                                    label = "Контакт заказчика ФИО"
+                                    name = "CustomerContact"
+                                    value = {formData.CustomerContact}
                                 onChange={handleChange}
                                 fullWidth
                                 margin="dense"
-                            />
+                            />)}
+                               
+
                         </Grid>
                         <Grid item xs={12} md={4}>
-                            <TextField
-                                label="Контакт заказчика CRMID"
-                                name="CustomerContactCRMID"
-                                value={formData.CustomerContactCRMID}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                            />
+                            {/*<TextField*/}
+                            {/*    label="Контакт заказчика CRMID"*/}
+                            {/*    name="CustomerContactCRMID"*/}
+                            {/*    value={formData.CustomerContactCRMID}*/}
+                            {/*    onChange={handleChange}*/}
+                            {/*    fullWidth*/}
+                            {/*    margin="dense"*/}
+                            {/*/>*/}
                         </Grid>
                         <Grid item xs={12} md={4}>
                             <TextField
@@ -440,26 +501,54 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                 </TabPanel>
 
                 <TabPanel value={tabIndex} index={1}>
-                    <Grid container spacing={2}>
+                    <Grid container spacing={1}>
                         <Grid item xs={12}>
                             <CustomTable depatmentid={formData.Department?.id || -1 } token={token} jobDescriptions={formData.JobDescription} handleJobChange={handleJobChange} />
                         </Grid>
-                        <Grid item xs={12} md={6}>
+                        <TextField
+                            label="Комментарии к оценке работ"
+                            name="CommentJob"
+                            value={formData.CommentJob}
+                            onChange={handleChange}
+                            fullWidth
+                            multiline
+                            margin="dense"
+                        />
+                        <Grid item xs={6} md={6} container justifyContent="flex-end" alignItems="center">
+                            <Grid item>
+                                <Typography
+                                    variant="body1"
+                                    color="textPrimary"
+                                 >
+                                    Расчет трудозатрат произведен
+                                </Typography>
+                            </Grid>
+                            <Grid item>
+                                <Switch
+                                    checked={formData.jobCalculated || false}
+                                    name="jobCalculated"
+                                    onChange={handleChangeSwitch}
+                                />
+                            </Grid>
+                        </Grid>
+                        <Grid item xs={3} md={3}>
                             <TextField
                                 label="Ресурсная оценка (Трудозатраты)"
                                 name="resourceSumm"
                                 value={formData.resourceSumm}
                                 onChange={handleChange}
+                                size="small"
                                 fullWidth
                                 margin="dense"
                             />
                         </Grid>
-                        <Grid item xs={12} md={6}>
+                        <Grid item xs={3} md={3}>
                             <TextField
                                 label="Рамочная оценка (Длительность)"
                                 name="frameSumm"
                                 value={formData.frameSumm}
                                 onChange={handleChange}
+                                size="small"
                                 fullWidth
                                 margin="dense"
                             />
@@ -497,8 +586,8 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                     </Grid>
                 </TabPanel>
                 <TabPanel value={tabIndex} index={2}>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12} md={4}>
+                    <Grid container spacing={2} style={{ padding: '0 16px' }}>
+                        <Grid item xs={6} md={3}>
                             <TextField
                                 label="Цена"
                                 name="Price"
@@ -515,7 +604,21 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                 {SummPerHour}
                             </FormHelperText>
                         </Grid>
-                        <Grid item xs={12} md={4}>
+                        <Grid item xs={6} md={3} container alignItems="center">
+                            <Grid item>
+                                <Typography variant="body1" color="textPrimary">
+                                    Цена согласована
+                                </Typography>
+                            </Grid>
+                            <Grid item>
+                                <Switch
+                                    checked={formData.priceAproved || false}
+                                    name="priceAproved"
+                                    onChange={handleChangeSwitch}
+                                />
+                            </Grid>
+                        </Grid>
+                        <Grid item xs={6} md={3}>
                             <TextField
                                 label="Себестоимость"
                                 name="Cost"
@@ -533,7 +636,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                 {CostPerHour}
                             </FormHelperText>
                         </Grid>
-                        <Grid item xs={12} md={4}>
+                        <Grid item xs={6} md={3}>
                             <TextField
                                 label="Себестоимость с накладными"
                                 name="TotalCost"
@@ -550,116 +653,125 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                 {totoalCostPerHour}
                             </FormHelperText>
                         </Grid>
-                        <Grid item xs={12}>
-                            <Typography variant="h6" gutterBottom>
-                                Накладные расходы
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                label="Стоимость билетов"
-                                name="tiketsCost"
-                                value={formData.tiketsCost}
-                                onChange={handleChange}
-                                size="small"
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                label="Описание стоимости билетов"
-                                name="tiketsCostDescription"
-                                value={formData.tiketsCostDescription}
-                                onChange={handleChange}
-                                size="small"
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                label="Стоимость отелей"
-                                name="HotelCost"
-                                value={formData.HotelCost}
-                                onChange={handleChange}
-                                size="small"
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                label="Описание стоимости отелей"
-                                name="HotelCostDescription"
-                                value={formData.HotelCostDescription}
-                                onChange={handleChange}
-                                size="small"
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                label="Суточные расходы"
-                                name="dailyCost"
-                                value={formData.dailyCost}
-                                onChange={handleChange}
-                                size="small"
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                label="Описание суточных расходов"
-                                name="dailyCostDescription"
-                                value={formData.dailyCostDescription}
-                                onChange={handleChange}
-                                size="small"
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                label="Прочие платежи"
-                                name="otherPayments"
-                                value={formData.otherPayments}
-                                onChange={handleChange}
-                                size="small"
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                label="Описание прочих платежей"
-                                name="otherPaymentsDescription"
-                                value={formData.otherPaymentsDescription}
-                                onChange={handleChange}
-                                size="small"
-                                fullWidth
-                                margin="dense"
-                            />
+                        <Grid item xs={12} md={8}>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12}>
+                                    <Typography variant="h6" gutterBottom>
+                                        Накладные расходы
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={6} md={3}>
+                                    <TextField
+                                        label="Стоимость билетов"
+                                        name="tiketsCost"
+                                        value={formData.tiketsCost}
+                                        onChange={handleChange}
+                                        size="small"
+                                        fullWidth
+                                        margin="dense"
+                                    />
+                                </Grid>
+                                <Grid item xs={6} md={9}>
+                                    <TextField
+                                        label="Описание стоимости билетов"
+                                        name="tiketsCostDescription"
+                                        value={formData.tiketsCostDescription}
+                                        onChange={handleChange}
+                                        size="small"
+                                        fullWidth
+                                        margin="dense"
+                                    />
+                                </Grid>
+                                <Grid item xs={6} md={3}>
+                                    <TextField
+                                        label="Стоимость отелей"
+                                        name="HotelCost"
+                                        value={formData.HotelCost}
+                                        onChange={handleChange}
+                                        size="small"
+                                        fullWidth
+                                        margin="dense"
+                                    />
+                                </Grid>
+                                <Grid item xs={6} md={9}>
+                                    <TextField
+                                        label="Описание стоимости отелей"
+                                        name="HotelCostDescription"
+                                        value={formData.HotelCostDescription}
+                                        onChange={handleChange}
+                                        size="small"
+                                        fullWidth
+                                        margin="dense"
+                                    />
+                                </Grid>
+                                <Grid item xs={6} md={3}>
+                                    <TextField
+                                        label="Суточные расходы"
+                                        name="dailyCost"
+                                        value={formData.dailyCost}
+                                        onChange={handleChange}
+                                        size="small"
+                                        fullWidth
+                                        margin="dense"
+                                    />
+                                </Grid>
+                                <Grid item xs={6} md={9}>
+                                    <TextField
+                                        label="Описание суточных расходов"
+                                        name="dailyCostDescription"
+                                        value={formData.dailyCostDescription}
+                                        onChange={handleChange}
+                                        size="small"
+                                        fullWidth
+                                        margin="dense"
+                                    />
+                                </Grid>
+                                <Grid item xs={6} md={3}>
+                                    <TextField
+                                        label="Прочие платежи"
+                                        name="otherPayments"
+                                        value={formData.otherPayments}
+                                        onChange={handleChange}
+                                        size="small"
+                                        fullWidth
+                                        margin="dense"
+                                    />
+                                </Grid>
+                                <Grid item xs={6} md={9}>
+                                    <TextField
+                                        label="Описание прочих платежей"
+                                        name="otherPaymentsDescription"
+                                        value={formData.otherPaymentsDescription}
+                                        onChange={handleChange}
+                                        size="small"
+                                        fullWidth
+                                        margin="dense"
+                                    />
+                                </Grid>
+                            </Grid>
                         </Grid>
                         <Grid item xs={12}>
                             <Typography variant="h6" gutterBottom>
                                 Данные для старта проекта
                             </Typography>
                         </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                label="Компания"
-                                name="company"
-                                value={formData.company}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                            />
+                        <Grid item xs={6} md={2}>
+                            <FormControl fullWidth margin="dense">
+                                <InputLabel id="company-label">Компания</InputLabel>
+                                <Select
+                                    labelId="company-label"
+                                    id="company"
+                                    name="company"
+                                    value={formData.company}
+                                    label="Компания"
+                                    onChange={handleChange}
+                                >
+                                    <MenuItem value={'Астерит'}>Астерит</MenuItem>
+                                    <MenuItem value={'Профинтег'}>Профинтег</MenuItem>
+                                </Select>
+                            </FormControl>
                         </Grid>
-
-                        <Grid item xs={12} md={6}>
+                        <Grid item xs={6} md={4}>
                             <TextField
                                 label="Номер дата контракта"
                                 name="contract"
@@ -669,7 +781,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                 margin="dense"
                             />
                         </Grid>
-                        <Grid item xs={12} md={6}>
+                        <Grid item xs={6} md={3}>
                             <TextField
                                 label="Дата начала"
                                 name="dateStart"
@@ -683,7 +795,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                 }}
                             />
                         </Grid>
-                        <Grid item xs={12} md={6}>
+                        <Grid item xs={6} md={3}>
                             <TextField
                                 label="Крайний срок"
                                 name="deadline"

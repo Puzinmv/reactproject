@@ -6,7 +6,7 @@ import {
 
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
     .with(authentication('cookie', { credentials: 'include', autoRefresh: true }))
-    .with(graphql({ credentials: 'include' }))
+    //.with(graphql({ credentials: 'include' }))
     .with(rest({ credentials: 'include' }))
     ;
 
@@ -17,13 +17,6 @@ export const login = async (email, password) => {
 
 
 export const refreshlogin = async () => {
-    //const getCookie = (name) => {
-    //    const value = `; ${document.cookie}`;
-    //    const parts = value.split(`; ${name}=`);
-    //    if (parts.length === 2) return parts.pop().split(';').shift();
-    //};
-    //const sessionToken = getCookie('directus_session_token');
-    //if (sessionToken) return sessionToken;
     let token = null;
     try {
         const req = await directus.request(refresh('cookie'));

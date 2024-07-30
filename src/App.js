@@ -8,6 +8,7 @@ import LoginForm from './Components/LoginForm.js';
 import CreateForm from './Components/CreateForm.js';
 import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
 import { login, logout, refreshlogin, fetchData } from './services/directus';
+import Cookies from 'js-cookie';
 
 
 const theme = createTheme({
@@ -27,17 +28,24 @@ function App() {
     const [departament, setdepartament] = useState([]);
 
 
-    //useEffect(() => {
-    //    const refreshtoken = async () => {
-    //        const token = await refreshlogin();
-    //        if (token) {
-    //            console.log('refreshlogin', token);
-    //            setToken(token);
-    //            fetchTableData(token);
-    //        }
-    //    };
-    //    refreshtoken();
-    //}, []);
+    useEffect(() => {
+        const refreshtoken = async () => await refreshlogin();
+
+        const CookiesRefreshToken = Cookies.get('directus_refresh_token');
+        const CookiesSessionToken = Cookies.get('directus_session_token');
+        console.log(CookiesRefreshToken, CookiesSessionToken)
+        if (CookiesRefreshToken && CookiesSessionToken) {
+            try {
+                const token = refreshtoken()
+                if (token) {
+                    setToken(token);
+                    fetchTableData(token);
+                }
+            } catch (error) {
+                setToken(null);
+            }
+        }
+    }, []);
 
     const fetchTableData = async (token) => {
         const [data, departament, user]= await fetchData(token);

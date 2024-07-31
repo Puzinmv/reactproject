@@ -24,7 +24,6 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
         const fetchCustomerOptions = async () => {
             try {
                 const response = await fetchCustomer(token, formData.initiator.last_name);
-                console.log(response)
                 setCustomerOptions(response.map(item => ({
                     name: item.shortName,
                     id: item.id,
@@ -91,8 +90,7 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        let newValue = value;
-        setFormData({ ...formData, [name]: newValue });
+        setFormData({ ...formData, [name]: value });
     };
 
     const handleCustomerChange = async (event, value) => {

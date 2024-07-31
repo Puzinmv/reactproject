@@ -18,11 +18,9 @@ export default function TemplatePanel({ depatmentid, token, onClose, onAdd }) {
         fetchTemplate(token).then((data) => {
             const filter = data.filter((temp) => temp.Department === depatmentid)
             setRows(filter);
-
             // Получение уникальных категорий
             const uniqueCategories = [...new Set(filter.map((item) => item.category))];
             setCategories(uniqueCategories);
-            console.log("filter", filter);
         });
     }, [token, depatmentid]);
 

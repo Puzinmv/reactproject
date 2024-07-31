@@ -39,7 +39,7 @@ export default function CustomTable({ token, depatmentid, jobDescriptions, handl
         }
         setSelected(newSelected);
     };
-    useEffect(() => { handleJobChange(rows) }, [rows]);
+    useEffect(() => { handleJobChange(rows) }, [handleJobChange, rows]);
 
     const handleAddRow = () => {
         const newRow = { id: rows.length + 1, jobName: '', resourceDay: 0, frameDay: 0 };
@@ -52,11 +52,6 @@ export default function CustomTable({ token, depatmentid, jobDescriptions, handl
     };
 
     const handleAddFromTemplate = (templateRows) => {
-        console.log(templateRows);
-        const allowedKeys = rows.length > 0
-            ? Object.keys(rows[0]).filter(key => key !== 'id')
-            : [];
-
         let maxId = rows.length ? Math.max(...rows.map(r => r.id)) : 0;
 
         const newRows = templateRows.map((row) => {

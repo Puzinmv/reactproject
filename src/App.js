@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-//import './App.css';
 import TableComponent from './Components/TableComponent.js';
 import ModalForm from './Components/ModalForm.js';
 import ColumnVisibilityModal from './Components/ColumnVisibilityModal.js';
@@ -37,6 +36,7 @@ function App() {
         const refreshtoken = async () => {
             try {
                 const token = await refreshlogin();
+                console.log(token)
                 if (token !== null) {
                     setToken(token);
                     fetchTableData(token);
@@ -52,13 +52,25 @@ function App() {
     }, []);
 
     const fetchTableData = async (token) => {
-        const [data, departament, user]= await fetchData(token);
-        console.log('Data', data);
-        console.log('departament', departament);
-        console.log('user', user);
-        setTableData(data);
-        setCurrentUser(user);
-        setdepartament(departament)
+        try {
+            const [data, departament, user] = await fetchData(token);
+            console.log('Data', data);
+            console.log('departament', departament);
+            console.log('user', user);
+            setTableData(data);
+            setCurrentUser(user);
+            setdepartament(departament)
+        } catch (error) {
+            const errors = error.errors || [];
+            const hasInvalidCredentialsError = errors.some(err => err.extensions?.code === 'INVALID_CREDENTIALS');
+
+            if (hasInvalidCredentialsError) {
+                await logout()
+                setToken(null);
+            } else {
+                console.error(errors);
+            }
+        }
     };
 
     const handleLogout = async () => {
@@ -109,7 +121,7 @@ function App() {
             "initiator": {
                 "id": CurrentUser.id,
                 "first_name": CurrentUser.first_name,
-                "last_name": CurrentUser.first_name,
+                "last_name": CurrentUser.last_name,
             },
             "Department": { id: '', Department: '' }
             });

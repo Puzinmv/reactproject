@@ -7,8 +7,7 @@ import LoginForm from './Components/LoginForm.js';
 import CreateForm from './Components/CreateForm.js';
 import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
 import { login, logout, refreshlogin, fetchData } from './services/directus';
-//import Cookies from 'js-cookie';
-
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const theme = createTheme({
     typography: {
@@ -25,14 +24,11 @@ function App() {
     const [token, setToken] = useState(null);
     const [CurrentUser, setCurrentUser] = useState({});
     const [departament, setdepartament] = useState([]);
+    const navigate = useNavigate();
+    const location = useLocation();
 
 
     useEffect(() => {
-        //const CookiesRefreshToken = Cookies.get('directus_refresh_token');
-        //const CookiesSessionToken = Cookies.get('directus_session_token');
-        //console.log(CookiesRefreshToken, CookiesSessionToken)
-        //if (CookiesRefreshToken && CookiesSessionToken) {
-        //}
         const refreshtoken = async () => {
             try {
                 const token = await refreshlogin();
@@ -50,6 +46,18 @@ function App() {
 
         refreshtoken();
     }, []);
+
+    useEffect(() => {
+        const searchParams = new URLSearchParams(location.search);
+        const rowId = searchParams.get('id');
+        if (rowId) {
+            const row = tableData.find(item => item.id === parseInt(rowId));
+            if (row) {
+                setSelectedRow(row);
+                setIsModalOpen(true);
+            }
+        }
+    }, [location.search, tableData]);
 
     const fetchTableData = async (token) => {
         try {
@@ -81,6 +89,7 @@ function App() {
     const handleRowSelect = (row) => {
         setSelectedRow(row);
         setIsModalOpen(true);
+        navigate(`?id=${row.id}`);
     };
 
     const handleCreate = () => {
@@ -132,6 +141,7 @@ function App() {
         setIsModalOpen(false);
         setIsCreateOpen(false);
         setSelectedRow(null);
+        navigate('/');
     };
 
     const handleLogin = async (email, password) => {

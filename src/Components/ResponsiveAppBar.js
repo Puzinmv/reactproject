@@ -27,23 +27,7 @@ function ResponsiveAppBar({ handleLogout, current }) {
         <AppBar position="static">
             <Container maxWidth="xl">
                 <Toolbar disableGutters>
-                    <image src = '../../public/logo.png' />
-                    <Typography
-                        variant="h6"
-                        noWrap
-                        sx={{
-                            mr: 2,
-                            display: { xs: 'none', md: 'flex' },
-                            fontFamily: 'monospace',
-                            fontWeight: 700,
-                            letterSpacing: '.3rem',
-                            color: 'inherit',
-                            textDecoration: 'none',
-                        }}
-                    >
-                        Астерит
-                    </Typography>
-
+                    <img src="/logo.png" alt="Logo" style={{ marginRight: '16px', height: '40px' }} />
                     <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
                         {pages.map((page) => (
                             <Button

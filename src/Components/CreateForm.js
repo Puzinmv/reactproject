@@ -11,7 +11,6 @@ import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
 
-
 const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
 
     const [formData, setFormData] = useState(row);

@@ -6,7 +6,7 @@ import ColumnVisibilityModal from './Components/ColumnVisibilityModal.js';
 import LoginForm from './Components/LoginForm.js';
 import CreateForm from './Components/CreateForm.js';
 import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
-import { login, logout, refreshlogin, fetchData } from './services/directus';
+import { login, logout, fetchData } from './services/directus';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const theme = createTheme({
@@ -29,22 +29,30 @@ function App() {
 
 
     useEffect(() => {
-        const refreshtoken = async () => {
-            try {
-                const token = await refreshlogin();
-                console.log(token)
-                if (token !== null) {
-                    setToken(token);
-                    fetchTableData(token);
-                } else {
-                    setToken(null);
-                }
-            } catch (error) {
-                setToken(null);
+        const accessToken = localStorage.getItem('accessToken')
+        try {
+            if (accessToken !== null) {
+                setToken(accessToken);
+                fetchTableData(accessToken)
             }
-        };
+        } catch (e) {
+            setToken(null);
+        }
+        //if (accessToken) {
+        //    const refreshtoken = async () => {
+        //        const token = await refreshlogin();
+        //        console.log(token)
+        //        if (token !== null) {
+        //            setToken(token);
+        //            fetchTableData(token);
+        //        } else {
+        //            setToken(null);
+        //        }
+        //    };
 
-        refreshtoken();
+        //    refreshtoken();
+        //}
+
     }, []);
 
     useEffect(() => {
@@ -94,7 +102,8 @@ function App() {
 
     const handleCreate = () => {
         setSelectedRow(
-            {"status": "draft",
+            {
+            "status": "Новая карта",
             "title": "",
             "Description": "",
             "Customer": "",
@@ -108,7 +117,7 @@ function App() {
             "JobDescription": [],
             "resourceSumm": 0,
             "frameSumm": 0,
-            "jobOnTrip": '<figure class="table op- uc - figure_align - center op - uc - figure"><table class="op - uc - table"><tbody><tr class="op - uc - table--row"><td class="op - uc - table--cell" style="background - color: #E2EFD9; border: 1.0pt solid windowtext; padding: 0cm 5.4pt; vertical - align: top; width: 19.0pt; "><p class="op - uc - p">№</p></td><td class="op - uc - table--cell" style="background - color: #E2EFD9; border - bottom - style: solid; border - color: windowtext; border - left - style: none; border - right - style: solid; border - top - style: solid; border - width: 1.0pt; padding: 0cm 5.4pt; vertical - align: top; width: 255.2pt; "><p class="op - uc - p">Адрес(а)&nbsp;для проведения работ:</p></td><td class="op - uc - table--cell" style="background - color: #E2EFD9; border - bottom - style: solid; border - color: windowtext; border - left - style: none; border - right - style: solid; border - top - style: solid; border - width: 1.0pt; padding: 0cm 5.4pt; vertical - align: top; width: 255.2pt; "><p class="op - uc - p">Количество дней</p></td><td class="op - uc - table--cell" style="background - color: #E2EFD9; border - bottom - style: solid; border - color: windowtext; border - left - style: none; border - right - style: solid; border - top - style: solid; border - width: 1.0pt; padding: 0cm 5.4pt; vertical - align: top; width: 230.6pt; "><p class="op - uc - p">Какие работы проводятся по указанным адресам:</p></td></tr><tr class="op - uc - table--row"><td class="op - uc - table--cell" style="border - bottom - style: solid; border - color: windowtext; border - left - style: solid; border - right - style: solid; border - top - style: none; border - width: 1.0pt; padding: 0cm 5.4pt; vertical - align: top; width: 19.0pt; "><p class="op - uc - p">1.</p></td><td class="op - uc - table--cell" style="border - bottom: 1.0pt solid windowtext; border - left - style: none; border - right: 1.0pt solid windowtext; border - top - style: none; padding: 0cm 5.4pt; vertical - align: top; width: 255.2pt; "><p class="op - uc - p"></p></td><td class="op - uc - table--cell" style="border - bottom: 1.0pt solid windowtext; border - left - style: none; border - right: 1.0pt solid windowtext; border - top - style: none; padding: 0cm 5.4pt; vertical - align: top; width: 255.2pt; "><p class="op - uc - p"></p></td><td class="op - uc - table--cell" style="border - bottom: 1.0pt solid windowtext; border - left - style: none; border - right: 1.0pt solid windowtext; border - top - style: none; padding: 0cm 5.4pt; vertical - align: top; width: 230.6pt; "><p class="op - uc - p"></p></td></tr><tr class="op - uc - table--row"><td class="op - uc - table--cell" style="border - bottom - style: solid; border - color: windowtext; border - left - style: solid; border - right - style: solid; border - top - style: none; border - width: 1.0pt; padding: 0cm 5.4pt; vertical - align: top; width: 19.0pt; "><p class="op - uc - p">2.</p></td><td class="op - uc - table--cell" style="border - bottom: 1.0pt solid windowtext; border - left - style: none; border - right: 1.0pt solid windowtext; border - top - style: none; padding: 0cm 5.4pt; vertical - align: top; width: 255.2pt; "><p class="op - uc - p"></p></td><td class="op - uc - table--cell" style="border - bottom: 1.0pt solid windowtext; border - left - style: none; border - right: 1.0pt solid windowtext; border - top - style: none; padding: 0cm 5.4pt; vertical - align: top; width: 255.2pt; "><p class="op - uc - p"></p></td><td class="op - uc - table--cell" style="border - bottom: 1.0pt solid windowtext; border - left - style: none; border - right: 1.0pt solid windowtext; border - top - style: none; padding: 0cm 5.4pt; vertical - align: top; width: 230.6pt; "><p class="op - uc - p"></p></td></tr></tbody></table></figure>',
+            "jobOnTrip": '<figure><table style="width: 606px;"><tbody><tr><td style="width: 19px; text-align: center;"><p>№</p></td><td style="width: 251px;"><p style="text-align: center;">Адрес(а)для проведения работ:</p></td><td style="width: 93px;"><p style="text-align: center;">Количество дней</p></td><td style="width: 209px;"><p style="text-align: center;">Какие работы проводятся по указанным адресам:</p></td></tr><tr><td style="width: 19px; text-align: center;"><p>1.</p></td><td style="width: 251px;">&nbsp;</td><td style="width: 93px;">&nbsp;</td><td style="width: 209px;">&nbsp;</td></tr><tr><td style="width: 19px; text-align: center;"><p>2.</p></td><td style="width: 251px;">&nbsp;</td><td style="width: 93px;">&nbsp;</td><td style="width: 209px;">&nbsp;</td></tr></tbody></table ></figure > ',
             "Limitations": "",
             "Price": 0,
             "Cost": 0,

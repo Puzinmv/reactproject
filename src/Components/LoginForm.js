@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { TextField, Button, Box, Container, Typography, Alert } from '@mui/material';
 
 const LoginForm = ({ onLogin }) => {
-    const [email, setEmail] = useState('test');
+    const [email, setEmail] = useState('puzin.m.v');
     const [password, setPassword] = useState('123');
     const [error, setError] = useState('');
 

@@ -6,7 +6,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { fetchTemplate } from '../services/directus';
 
-export default function TemplatePanel({ depatmentid, token, onClose, onAdd }) {
+function TemplatePanel({ depatmentid, token, onClose, onAdd }) {
     const [rows, setRows] = useState([]);
     const [selected, setSelected] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -190,3 +190,5 @@ export default function TemplatePanel({ depatmentid, token, onClose, onAdd }) {
         </Box>
     );
 }
+
+export default TemplatePanel;

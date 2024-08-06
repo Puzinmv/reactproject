@@ -11,7 +11,6 @@ const LoginForm = ({ onLogin }) => {
         const isSuccess = await onLogin(`${email}@asterit.ru`, password);
         console.log(isSuccess)
         if (!isSuccess) {
-
             setError('Неверный логин или пароль');
         } else {
             setError('');

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Modal, Box, Tabs, Tab, TextField, Button, Typography, Autocomplete,
     InputLabel, Select, MenuItem, FormControl, FormHelperText,
-    Switch, Grid, InputAdornment
+    Switch, Grid, InputAdornment, FormControlLabel
 } from '@mui/material';
 //import InputAdornment from '@mui/material/InputAdornment';
 import {
@@ -529,22 +529,22 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                             multiline
                             margin="dense"
                         />
-                        <Grid item xs={6} md={6} container justifyContent="flex-end" alignItems="center">
-                            <Grid item>
-                                <Typography
-                                    variant="body1"
-                                    color="textPrimary"
-                                 >
-                                    Расчет трудозатрат произведен
-                                </Typography>
-                            </Grid>
-                            <Grid item>
-                                <Switch
-                                    checked={formData.jobCalculated || false}
-                                    name="jobCalculated"
-                                    onChange={handleChangeSwitch}
-                                />
-                            </Grid>
+                        <Grid container item xs={12} md={6} justifyContent="flex-end" alignItems="center">
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={formData.jobCalculated || false}
+                                        name="jobCalculated"
+                                        onChange={handleChangeSwitch}
+                                    />
+                                }
+                                label={
+                                    <Typography variant="body1" color="textPrimary">
+                                        Расчет трудозатрат произведен
+                                    </Typography>
+                                }
+                                labelPlacement="start" // Размещаем метку перед переключателем
+                            />
                         </Grid>
                         <Grid item xs={3} md={3}>
                             <TextField
@@ -619,18 +619,26 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                 {SummPerHour}
                             </FormHelperText>
                         </Grid>
-                        <Grid item xs={6} md={3} container alignItems="center">
+                        <Grid item xs={12} md={3} container alignItems="center">
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={formData.priceAproved || false}
+                                        name="priceAproved"
+                                        onChange={handleChangeSwitch}
+                                    />
+                                }
+                                label={
+                                    <Typography variant="body1" color="textPrimary">
+                                        Цена согласована
+                                    </Typography>
+                                }
+                                labelPlacement="start" 
+                            />
                             <Grid item>
-                                <Typography variant="body1" color="textPrimary">
-                                    Цена согласована
+                                <Typography variant="caption" color="textSecondary">
+                                    В случае нулевой стоимости проект будет стартован как инвестиционный
                                 </Typography>
-                            </Grid>
-                            <Grid item>
-                                <Switch
-                                    checked={formData.priceAproved || false}
-                                    name="priceAproved"
-                                    onChange={handleChangeSwitch}
-                                />
                             </Grid>
                         </Grid>
                         <Grid item xs={6} md={3}>

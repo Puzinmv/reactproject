@@ -157,9 +157,12 @@ function App() {
     const handleLogin = async (email, password) => {
         try {
             const token = await login(email, password);
-            setToken(token);
-            fetchTableData(token);
-            return true;
+            if (token) {
+                setToken(token);
+                fetchTableData(token);
+                return true;
+            }
+            return false;
         } catch (error) {
             return false;
         }

@@ -136,6 +136,7 @@ function App() {
             "Files": [],
             "priceAproved": false,
             "jobCalculated": false,
+            "CommentJob": "",
             "initiator": {
                 "id": CurrentUser.id,
                 "first_name": CurrentUser.first_name,

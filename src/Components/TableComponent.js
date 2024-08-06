@@ -32,7 +32,7 @@ const fieldNames = [
   { columnId: 'tiketsCost', label: 'Стоимость билетов', visible: false },
   { columnId: 'tiketsCostDescription', label: 'Описание стоимости билетов', visible: false },
   { columnId: 'HotelCost', label: 'Стоимость проживания', visible: false },
-    { columnId: 'HotelCostDescription', label: 'Описание стоимости проживания', visible: false },
+  { columnId: 'HotelCostDescription', label: 'Описание стоимости проживания', visible: false },
   { columnId: 'dailyCost', label: 'Суточные расходы', visible: false },
   { columnId: 'dailyCostDescription', label: 'Описание суточных расходов', visible: false },
   { columnId: 'otherPayments', label: 'Другие платежи', visible: false },
@@ -54,15 +54,26 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('ru-RU', options);
 };
 
+const statusStyles = {
+    'Новая карта': { color: 'blue' },
+    'Оценка трудозатрат проведена': { color: 'orange' },
+    'Экономика согласована': { color: 'green' },
+    'Проект стартован': { color: 'red' },
+};
+
 const formatField = (field, value) => {
-  if (field === 'date_created' || field === 'date_updated' || field === 'dateStart' || field === 'deadline') {
+    if (field === 'status') {
+        const style = statusStyles[value] || {};
+        return <span style={style}>{value}</span>;
+    }
+    if (field === 'date_created' || field === 'date_updated' || field === 'dateStart' || field === 'deadline') {
     return formatDate(value);
-  }
-  if (field === 'Department') {
-      if (value === null) return '';
-      return value.hasOwnProperty('Name') ? value.Department : '';
-  }
-  if (field === 'Description' || field === 'jobOnTrip') {
+    }
+    if (field === 'Department') {
+        if (value === null) return '';
+        return value.hasOwnProperty('Name') ? value.Department : '';
+    }
+    if (field === 'Description' || field === 'jobOnTrip') {
     return <div dangerouslySetInnerHTML={{ __html: value }} />;
     }
     if (field === 'Price' || field === 'Cost' || field === 'tiketsCost'
@@ -72,13 +83,13 @@ const formatField = (field, value) => {
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
         return parts.join(',') + ' ₽';
     }
-  if (typeof value === 'object' && value !== null) {
+    if (typeof value === 'object' && value !== null) {
     if (value.first_name && value.last_name) {
-      return `${value.first_name} ${value.last_name}`;
+        return `${value.first_name} ${value.last_name}`;
     }
     return JSON.stringify(value);
-  }
-  return value;
+    }
+    return value;
 };
 
 const TableComponent = ({ data, onRowSelect, onCreate }) => {

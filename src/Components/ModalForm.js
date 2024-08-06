@@ -22,6 +22,7 @@ const TabPanel = ({ children, value, index }) => {
     );
 };
 
+
 const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
     const [tabIndex, setTabIndex] = useState(0);
     const [formData, setFormData] = useState(row);
@@ -94,7 +95,16 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
         setFormData({
             ...formData, Cost: value
         })
-    }, [formData, formData.resourceSumm]);
+        if (formData.jobCalculated && !formData.priceAproved) {
+            setFormData({ ...formData, status: 'Оценка трудозатрат проведена' });
+        }
+        if (formData.jobCalculated && formData.priceAproved) {
+            setFormData({ ...formData, status: 'Экономика согласована' });
+        }
+        if (!formData.jobCalculated && !formData.priceAproved) {
+            setFormData({ ...formData, status: 'Новая карта' });
+        }
+    }, [formData]);
 
     const validateFields = () => {
         const newErrors = {};
@@ -144,7 +154,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
     };
     const handleChangeSwitch = (e) => {
         const { name, checked } = e.target;
-        setFormData({ ...formData, [name]: checked })
+        setFormData({ ...formData, [name]: checked });
     }
 
     const handleCustomerChange = async (event, value) => {
@@ -271,7 +281,11 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
         }, 0);
         setFormData({ ...formData, JobDescription: jobDescriptions, frameSumm: frame, resourceSumm: resource });
     };
- 
+    const handleCreateProject = () => {
+        setFormData({ ...formData, status: 'Проект стартован' });
+        handleSave();
+    };
+    
     return (
         <Modal open={true} onClose={onClose}>
             <Box sx={{
@@ -812,13 +826,20 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                         </Grid>
                     </Grid>
                 </TabPanel>
-                <Box mt={1}>
-                    <Button variant="contained" color="primary" onClick={handleSave} sx={{ mr: 1 }}>
-                        Сохранить
-                    </Button>
-                    <Button variant="contained" color="secondary" onClick={handleCancel}>
-                        Отмена
-                    </Button>
+                <Box mt={1} display="flex" justifyContent="space-between" alignItems="center">
+                    <Box>
+                        <Button variant="contained" color="primary" onClick={handleSave} sx={{ mr: 1 }}>
+                            Сохранить
+                        </Button>
+                        <Button variant="contained" color="secondary" onClick={handleCancel}>
+                            Отмена
+                        </Button>
+                    </Box>
+                    {(formData.status === 'Экономика согласована') && (
+                        <Button variant="contained" sx={{ bgcolor: 'green' }} onClick={handleCreateProject}>
+                            Создать проект
+                        </Button>
+                    )}
                 </Box>
             </Box>
         </Modal>

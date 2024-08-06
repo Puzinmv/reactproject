@@ -35,6 +35,7 @@ const FileUpload = ({ files, onUpload, onDelete }) => {
                 ))}
             </List>
             <Button
+                sx={{ bgcolor: '#018786' }}
                 variant="contained"
                 component="label"
                 startIcon={<CloudUpload />}

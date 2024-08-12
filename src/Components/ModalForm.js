@@ -13,6 +13,7 @@ import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
 import CustomTable from './CustomTable'; 
+import axios from 'axios';
 
 const TabPanel = ({ children, value, index }) => {
     return (
@@ -96,10 +97,10 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
             ...formData, Cost: value
         })
         if (formData.jobCalculated && !formData.priceAproved) {
-            setFormData({ ...formData, status: 'Оценка трудозатрат проведена' });
+            setFormData({ ...formData, status: 'Оценка трудозатрат проведена ' });
         }
         if (formData.jobCalculated && formData.priceAproved) {
-            setFormData({ ...formData, status: 'Экономика согласована' });
+            setFormData({ ...formData, status: 'Экономика согласована ' });
         }
         if (!formData.jobCalculated && !formData.priceAproved) {
             setFormData({ ...formData, status: 'Новая карта' });
@@ -282,8 +283,86 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
         setFormData({ ...formData, JobDescription: jobDescriptions, frameSumm: frame, resourceSumm: resource });
     };
     const handleCreateProject = () => {
-        setFormData({ ...formData, status: 'Проект стартован' });
-        handleSave();
+        let data = JSON.stringify({
+            "name": "Имя проекта",
+            "description": {
+                "raw": "**Описание**"
+            },
+            "public": false,
+            "statusExplanation": {
+                "raw": "**Описание статуса проекта**"
+            },
+            "customField32": "Цель проекта",
+            "customField28": {
+                "raw": "**Описание работ**"
+            },
+            "customField29": 17,
+            "customField30": 21,
+            "customField33": {
+                "raw": "**Адреса проведения работ**"
+            },
+            "customField34": {
+                "raw": "**Ограничения со стороны исполнителей**"
+            },
+            "_meta": {
+                "copyMembers": true,
+                "copyVersions": true,
+                "copyCategories": true,
+                "copyWorkPackages": true,
+                "copyWorkPackageAttachments": true,
+                "copyWiki": true,
+                "copyWikiPageAttachments": true,
+                "copyForums": true,
+                "copyQueries": true,
+                "copyBoards": true,
+                "copyOverview": true,
+                "copyStorages": true,
+                "copyStorageProjectFolders": true,
+                "copyFileLinks": true,
+                "sendNotifications": false
+            },
+            "_links": {
+                "status": {
+                    "href": "/api/v3/project_statuses/not_started"
+                },
+                "parent": {
+                    "href": null
+                },
+                "customField1": {
+                    "href": "/api/v3/users/22"
+                }
+            }
+        });
+
+        let config = {
+            method: 'post',
+            maxBodyLength: Infinity,
+            url: `https://openproject.asterit.ru/api/v3/projects/${formData.OpenProject_Template_id}/copy`,
+            headers: {
+                'X-Authentication-Scheme': 'Session',
+                'X-CSRF-TOKEN': 'cqDD5jprMMh0kaT8uOMviX2XT1dWzph4msFxrCwm3nod-q2akrA--s3vZ-G6g6kQv4KaLPz61Yfhr9DtfvY-6Q',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json, text/plain, */*',
+                'X-Requested-With': 'XMLHttpRequest',
+                'sec-ch-ua-platform': '"Windows"',
+                'Sec-Fetch-Site': 'same-origin',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Dest': 'empty',
+                'host': 'openproject.asterit.ru'
+            },
+            data: data
+        };
+
+        axios.request(config)
+            .then((response) => {
+                console.log(JSON.stringify(response.data));
+                setFormData({ ...formData, status: 'Проект стартован' });
+                handleSave();
+            })
+            .catch((error) => {
+                console.log(error);
+            });
+
     };
     
     return (
@@ -403,14 +482,6 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
 
                         </Grid>
                         <Grid item xs={12} md={4}>
-                            {/*<TextField*/}
-                            {/*    label="Контакт заказчика CRMID"*/}
-                            {/*    name="CustomerContactCRMID"*/}
-                            {/*    value={formData.CustomerContactCRMID}*/}
-                            {/*    onChange={handleChange}*/}
-                            {/*    fullWidth*/}
-                            {/*    margin="dense"*/}
-                            {/*/>*/}
                         </Grid>
                         <Grid item xs={12} md={4}>
                             <TextField
@@ -523,7 +594,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                         <TextField
                             label="Комментарии к оценке работ"
                             name="CommentJob"
-                            value={formData.CommentJob}
+                            value={formData.CommentJob || ''}
                             onChange={handleChange}
                             fullWidth
                             multiline
@@ -543,7 +614,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                         Расчет трудозатрат произведен
                                     </Typography>
                                 }
-                                labelPlacement="start" // Размещаем метку перед переключателем
+                                labelPlacement="start" 
                             />
                         </Grid>
                         <Grid item xs={3} md={3}>
@@ -587,11 +658,31 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                 onChange={(event, editor) => handleDescriptionChange(editor, 'jobOnTrip')}
                             />
                         </Grid>
+                        <Grid item xs={6} md={4}>
+                            <FormControl fullWidth margin="dense">
+                                <InputLabel id="OpenProject-template">Шаблон проекта</InputLabel>
+                                <Select
+                                    labelId="OpenProject-template-label"
+                                    id="OpenProject-template"
+                                    name="OpenProject_Template_id"
+                                    value={formData.OpenProject_Template_id || ''}
+                                    label="Шаблон проекта"
+                                    onChange={handleChange}
+                                >
+                                    <MenuItem value={38}>ИТ_Шаблон_МЭ</MenuItem>
+                                    <MenuItem value={31}>ЗИ_Шаблон_КИИ</MenuItem>
+                                    <MenuItem value={30}>ЗИ_Шаблон_КИИ_П</MenuItem>
+                                    <MenuItem value={29}>ЗИ_Шаблон_ПДн</MenuItem>
+                                    <MenuItem value={49}>ОАЗИС_Шаблон_Аудит_Защищенности</MenuItem>
+                                    <MenuItem value={50}>ОАЗИС_Шаблон_Пентест_Внешний</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
                         <Grid item xs={12}>
                             <TextField
                                 label="Ограничения со стороны исполнителей"
                                 name="Limitations"
-                                value={formData.Limitations}
+                                value={formData.Limitations || ''}
                                 onChange={handleChange}
                                 fullWidth
                                 multiline

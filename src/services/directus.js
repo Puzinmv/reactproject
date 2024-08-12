@@ -79,8 +79,9 @@ export const fetchData = async (token) => {
                 return await makeRequest(newToken);
             }
         }
+        localStorage.removeItem('accessToken'); 
         console.error(error);
-        //throw error;
+        throw error;
     }
 };
 

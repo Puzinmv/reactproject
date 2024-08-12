@@ -63,7 +63,7 @@ const statusStyles = {
 
 const formatField = (field, value) => {
     if (field === 'status') {
-        const style = statusStyles[value] || {};
+        const style = statusStyles[value.trim()] || {};
         return <span style={style}>{value}</span>;
     }
     if (field === 'date_created' || field === 'date_updated' || field === 'dateStart' || field === 'deadline') {

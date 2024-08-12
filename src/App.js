@@ -195,6 +195,7 @@ function App() {
                         departament={departament}
                         onClose={handleCloseModal}
                         token={token}
+                        currentUser={CurrentUser}
                         onDataSaved={handleDataSaved}
                     />
                 )}

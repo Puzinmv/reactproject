@@ -49,7 +49,7 @@ export const fetchData = async (token) => {
                         user_updated: ['id', 'first_name', 'last_name']
                     },
                     {
-                        initiator: ['id', 'first_name', 'last_name']
+                        initiator: ['id', 'first_name', 'last_name', 'Head']
                     },
                     {
                         Department: ['*']

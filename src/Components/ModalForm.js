@@ -24,7 +24,7 @@ const TabPanel = ({ children, value, index }) => {
 };
 
 
-const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
+const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved }) => {
     const [tabIndex, setTabIndex] = useState(0);
     const [formData, setFormData] = useState(row);
     const [customerOptions, setCustomerOptions] = useState([]);
@@ -84,7 +84,8 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
     }, [totoalCost, formData.resourceSumm]);
 
     useEffect(() => {
-        setCostPerHour(`${Math.round(formData.Cost * 100/ (formData.resourceSumm * 8))/100} ₽/час`);
+        setCostPerHour(`${Math.round(formData.Cost * 100 / (formData.resourceSumm * 8)) / 100} ₽/час`);
+
     }, [formData.Cost, formData.resourceSumm]);
 
     useEffect(() => {
@@ -96,6 +97,10 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
         setFormData({
             ...formData, Cost: value
         })
+
+    }, [formData.Department.CostHour, formData.resourceSumm]);
+
+    useEffect(() => {
         if (formData.jobCalculated && !formData.priceAproved) {
             setFormData({ ...formData, status: 'Оценка трудозатрат проведена ' });
         }
@@ -105,7 +110,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
         if (!formData.jobCalculated && !formData.priceAproved) {
             setFormData({ ...formData, status: 'Новая карта' });
         }
-    }, [formData]);
+    }, [formData.jobCalculated, formData.priceAproved]);
 
     const validateFields = () => {
         const newErrors = {};
@@ -364,7 +369,9 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
             });
 
     };
-    
+
+    console.log("render")
+
     return (
         <Modal open={true} onClose={onClose}>
             <Box sx={{
@@ -607,6 +614,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                         checked={formData.jobCalculated || false}
                                         name="jobCalculated"
                                         onChange={handleChangeSwitch}
+                                        disabled={currentUser.role !== '3e06b866-b3fb-4060-b918-235af1a83082'}
                                     />
                                 }
                                 label={
@@ -716,6 +724,7 @@ const ModalForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                     <Switch
                                         checked={formData.priceAproved || false}
                                         name="priceAproved"
+                                        disabled={currentUser.role !== 'bd467e17-bf32-4699-8ec0-c7f997edb3fc' && formData.initiator?.Head !== currentUser.id}
                                         onChange={handleChangeSwitch}
                                     />
                                 }

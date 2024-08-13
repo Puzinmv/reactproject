@@ -174,28 +174,14 @@ export const GetfilesInfo = async (files, token) => {
     if (!files.length) {
         return [];
     }
-
-    const makeRequest = async (token, fileId) => {
+    console.log(files, token);
+    const fileInfoPromises = files.map(async (file) => {
         const result = await directus.request(
-            withToken(token, readFile(fileId, {
+            withToken(token, readFile(file.directus_files_id, {
                 fields: ['id', 'filename_download'],
             }))
         );
         return result;
-    };
-
-    const fileInfoPromises = files.map(async (file) => {
-        try {
-            return await makeRequest(token, file.directus_files_id);
-        } catch (error) {
-            if (error.response && error.response.status === 401) {
-                const newToken = await refreshlogin();
-                if (newToken) {
-                    return await makeRequest(newToken, file.directus_files_id);
-                }
-            }
-            throw error; // Проброс ошибки дальше для обработки на более высоком уровне
-        }
     });
 
     const fileInfo = await Promise.all(fileInfoPromises);
@@ -289,26 +275,12 @@ export const logout = async () => {
 };
 
 export const uploadFilesDirectus = async (files, token) => {
-    const makeRequest = async (token, file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await directus.request(withToken(token, uploadFiles(formData)));
-        return response;
-    };
-
     try {
         const uploadPromises = files.map(async (file) => {
-            try {
-                return await makeRequest(token, file);
-            } catch (error) {
-                if (error.response && error.response.status === 401) {
-                    const newToken = await refreshlogin();
-                    if (newToken) {
-                        return await makeRequest(newToken, file);
-                    }
-                }
-                throw error; // Проброс ошибки для обработки на более высоком уровне
-            }
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await directus.request(withToken(token, uploadFiles(formData)));
+            return response
         });
         const responses = await Promise.all(uploadPromises);
         return responses;
@@ -319,19 +291,9 @@ export const uploadFilesDirectus = async (files, token) => {
 };
 
 export const deleteFileDirectus = async (fileId, token) => {
-    const makeRequest = async (token) => {
-        await directus.request(withToken(token, deleteFile(fileId)));
-    };
-
     try {
-        await makeRequest(token);
+        await directus.request(withToken(token, deleteFile(fileId)));
     } catch (error) {
-        if (error.response && error.response.status === 401) {
-            const newToken = await refreshlogin();
-            if (newToken) {
-                return await makeRequest(newToken);
-            }
-        }
         console.error('Ошибка при удалении файла:', error);
         throw error;
     }

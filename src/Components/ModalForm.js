@@ -72,7 +72,7 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
         fetchUserOptions();
         fetchCustomerOptions();
 
-        GetfilesInfo(formData.Files).then((fileInfo) => {
+        GetfilesInfo(formData.Files, token).then((fileInfo) => {
             setfileInfo(fileInfo)
         }).catch((error) => {
                 console.error('Error fetching file info:', error);
@@ -94,22 +94,30 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
 
     useEffect(() => {
         const value = formData.resourceSumm * 8 * formData.Department.CostHour;
-        setFormData({
-            ...formData, Cost: value
-        })
+        setFormData(prevData => {
+            if (prevData.Cost !== value) {
+                return { ...prevData, Cost: value };
+            }
+            return prevData;
+        });
 
     }, [formData.Department.CostHour, formData.resourceSumm]);
 
     useEffect(() => {
+        let newStatus = 'Новая карта';
+
         if (formData.jobCalculated && !formData.priceAproved) {
-            setFormData({ ...formData, status: 'Оценка трудозатрат проведена ' });
+            newStatus = 'Оценка трудозатрат проведена';
+        } else if (formData.jobCalculated && formData.priceAproved) {
+            newStatus = 'Экономика согласована';
         }
-        if (formData.jobCalculated && formData.priceAproved) {
-            setFormData({ ...formData, status: 'Экономика согласована ' });
-        }
-        if (!formData.jobCalculated && !formData.priceAproved) {
-            setFormData({ ...formData, status: 'Новая карта' });
-        }
+
+        setFormData(prevData => {
+            if (prevData.status !== newStatus) {
+                return { ...prevData, status: newStatus };
+            }
+            return prevData;
+        });
     }, [formData.jobCalculated, formData.priceAproved]);
 
     const validateFields = () => {
@@ -228,7 +236,7 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
         ? InitiatorOptions.find((option) => option.id === formData.initiator.id) || ''
         : '';
 
-    const handleFileUpload = async (files, token) => {
+    const handleFileUpload = async (files) => {
             const updateFilesArray = (currentFiles, uploadedFiles, projectCardId) => {
                 const maxId = currentFiles.reduce((max, file) => Math.max(max, file.id), 0);
                 const newFiles = uploadedFiles.map((file, index) => ({
@@ -239,12 +247,13 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
                 return [...currentFiles, ...newFiles];
             };
         try {
+            console.log(token)
             const filesArray = Array.from(files);
             const uploadedFiles = await uploadFilesDirectus(filesArray, token);
             const newformData = { ...formData, Files: updateFilesArray(formData.Files, uploadedFiles, formData.id) };
             await UpdateData(newformData, token);
             setFormData(newformData);
-            GetfilesInfo(newformData.Files).then((fileInfo) => {
+            GetfilesInfo(newformData.Files, token).then((fileInfo) => {
                 setfileInfo(fileInfo)
             }).catch((error) => {
                 console.error('Ошибка при загрузке информаци о файлах:', error);
@@ -255,18 +264,18 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
     };
 
 
-    const handleFileDelete = async (fileId, token) => {
+    const handleFileDelete = async (fileId) => {
         const updateFilesArray = (currentFiles, deletedFileId) => {
             return currentFiles.filter(file => file.directus_files_id !== deletedFileId);
         };
 
         try {
-            console.log(fileId)
-            await deleteFileDirectus(fileId);
+            console.log(fileId, token)
+            await deleteFileDirectus(fileId, token);
             const newformData = { ...formData, Files: updateFilesArray(formData.Files, fileId) };
             await UpdateData(newformData, token);
             setFormData(newformData);
-            GetfilesInfo(newformData.Files).then((fileInfo) => {
+            GetfilesInfo(newformData.Files, token).then((fileInfo) => {
                 setfileInfo(fileInfo)
             }).catch((error) => {
                 console.error('Ошибка при загрузке информаци о файлах', error);

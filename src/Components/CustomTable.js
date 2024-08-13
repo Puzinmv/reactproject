@@ -14,12 +14,16 @@ import ImportContactsIcon from '@mui/icons-material/ImportContacts';
 import TableHead from '@mui/material/TableHead';
 import Typography from '@mui/material/Typography';
 import Toolbar from '@mui/material/Toolbar';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import TemplatePanel from './TemplatePanel';
 
 export default function CustomTable({ token, depatmentid, jobDescriptions, handleJobChange }) {
     const [rows, setRows] = useState(jobDescriptions || []);
     const [selected, setSelected] = useState([]);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
+    const [openSnackbar, setOpenSnackbar] = useState(false);
 
     const handleClick = (event, id) => {
         const selectedIndex = selected.indexOf(id);
@@ -39,7 +43,8 @@ export default function CustomTable({ token, depatmentid, jobDescriptions, handl
         }
         setSelected(newSelected);
     };
-    useEffect(() => { handleJobChange(rows) }, [handleJobChange, rows]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect( () => { handleJobChange(rows) } , [rows]);
 
     const handleAddRow = () => {
         const newRow = { id: rows.length + 1, jobName: '', resourceDay: 0, frameDay: 0 };
@@ -72,6 +77,15 @@ export default function CustomTable({ token, depatmentid, jobDescriptions, handl
 
     const isSelected = (id) => selected.indexOf(id) !== -1;
 
+    const handleCopyToClipboard = () => {
+        const rowsForCopy = rows.map(row => [row.id, row.jobName, row.resourceDay, row.frameDay].join('\t')).join('\n');
+        navigator.clipboard.writeText(rowsForCopy).then(() => {
+            setOpenSnackbar(true);  // Показать уведомление при успешном копировании
+        }).catch(err => {
+            setOpenSnackbar(true);  // Показать уведомление при ошибке копирования
+        });
+    };
+
     return (
         <Box sx={{ width: '100%' }}>
             <Paper sx={{ width: '100%', mb: 2 }}>
@@ -101,6 +115,11 @@ export default function CustomTable({ token, depatmentid, jobDescriptions, handl
                     <Tooltip title="Выбрать из шаблона">
                         <IconButton onClick={() => setIsPanelOpen(true)}>
                             <ImportContactsIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Копировать в буфер обмена">
+                        <IconButton onClick={handleCopyToClipboard}>
+                            <ContentCopyIcon />
                         </IconButton>
                     </Tooltip>
                 </Toolbar>
@@ -195,6 +214,16 @@ export default function CustomTable({ token, depatmentid, jobDescriptions, handl
                     onAdd={handleAddFromTemplate}
                 />
             )}
+            <Snackbar
+                open={openSnackbar}
+                autoHideDuration={3000}
+                onClose={() => setOpenSnackbar(false)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert onClose={() => setOpenSnackbar(false)} severity="success" sx={{ width: '100%' }}>
+                    Таблица скопирована в буфер обмена
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }

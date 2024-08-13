@@ -174,7 +174,6 @@ export const GetfilesInfo = async (files, token) => {
     if (!files.length) {
         return [];
     }
-    console.log(files, token);
     const fileInfoPromises = files.map(async (file) => {
         const result = await directus.request(
             withToken(token, readFile(file.directus_files_id, {

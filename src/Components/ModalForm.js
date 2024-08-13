@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Modal, Box, Tabs, Tab, TextField, Button, Typography, Autocomplete,
     InputLabel, Select, MenuItem, FormControl, FormHelperText,
@@ -9,11 +9,12 @@ import {
     fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus,
     deleteFileDirectus, fetchCustomer, fetchCustomerContact
 } from '../services/directus';
+import CreateProject from '../services/openproject';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
 import CustomTable from './CustomTable'; 
-import axios from 'axios';
+
 
 const TabPanel = ({ children, value, index }) => {
     return (
@@ -83,14 +84,37 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
         settotoalCostPerHour(`${Math.round(totoalCost*100 / (formData.resourceSumm * 8))/100} ₽/час`);
     }, [totoalCost, formData.resourceSumm]);
 
+
+    const prevResourceSummRef = useRef(formData.resourceSumm);
+
     useEffect(() => {
         setCostPerHour(`${Math.round(formData.Cost * 100 / (formData.resourceSumm * 8)) / 100} ₽/час`);
-
+        if (prevResourceSummRef.current !== formData.resourceSumm) {
+            setFormData(prevFormData => ({
+                ...prevFormData,
+                jobCalculated: false,
+            }));
+            prevResourceSummRef.current = formData.resourceSumm;
+        }
     }, [formData.Cost, formData.resourceSumm]);
 
     useEffect(() => {
         setSummPerHour(`${Math.round(formData.Price * 100 / (formData.frameSumm * 8)) / 100} ₽/час по длительности`);
     }, [formData.Price, formData.frameSumm]);
+
+
+    const prevPriceRef = useRef(formData.Price);
+    const prevCostRef = useRef(formData.Cost);
+
+    useEffect(() => {
+        if (prevPriceRef.current !== formData.Price || prevCostRef.current !== formData.Cost) {
+            setFormData(prevFormData => ({
+                ...prevFormData,
+                priceAproved: false,
+            }));
+            prevPriceRef.current = formData.Price;
+        }
+    }, [formData.Price, formData.Cost]);
 
     useEffect(() => {
         const value = formData.resourceSumm * 8 * formData.Department.CostHour;
@@ -247,7 +271,6 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
                 return [...currentFiles, ...newFiles];
             };
         try {
-            console.log(token)
             const filesArray = Array.from(files);
             const uploadedFiles = await uploadFilesDirectus(filesArray, token);
             const newformData = { ...formData, Files: updateFilesArray(formData.Files, uploadedFiles, formData.id) };
@@ -270,7 +293,6 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
         };
 
         try {
-            console.log(fileId, token)
             await deleteFileDirectus(fileId, token);
             const newformData = { ...formData, Files: updateFilesArray(formData.Files, fileId) };
             await UpdateData(newformData, token);
@@ -297,87 +319,13 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
         setFormData({ ...formData, JobDescription: jobDescriptions, frameSumm: frame, resourceSumm: resource });
     };
     const handleCreateProject = () => {
-        let data = JSON.stringify({
-            "name": "Имя проекта",
-            "description": {
-                "raw": "**Описание**"
-            },
-            "public": false,
-            "statusExplanation": {
-                "raw": "**Описание статуса проекта**"
-            },
-            "customField32": "Цель проекта",
-            "customField28": {
-                "raw": "**Описание работ**"
-            },
-            "customField29": 17,
-            "customField30": 21,
-            "customField33": {
-                "raw": "**Адреса проведения работ**"
-            },
-            "customField34": {
-                "raw": "**Ограничения со стороны исполнителей**"
-            },
-            "_meta": {
-                "copyMembers": true,
-                "copyVersions": true,
-                "copyCategories": true,
-                "copyWorkPackages": true,
-                "copyWorkPackageAttachments": true,
-                "copyWiki": true,
-                "copyWikiPageAttachments": true,
-                "copyForums": true,
-                "copyQueries": true,
-                "copyBoards": true,
-                "copyOverview": true,
-                "copyStorages": true,
-                "copyStorageProjectFolders": true,
-                "copyFileLinks": true,
-                "sendNotifications": false
-            },
-            "_links": {
-                "status": {
-                    "href": "/api/v3/project_statuses/not_started"
-                },
-                "parent": {
-                    "href": null
-                },
-                "customField1": {
-                    "href": "/api/v3/users/22"
-                }
-            }
-        });
-
-        let config = {
-            method: 'post',
-            maxBodyLength: Infinity,
-            url: `https://openproject.asterit.ru/api/v3/projects/${formData.OpenProject_Template_id}/copy`,
-            headers: {
-                'X-Authentication-Scheme': 'Session',
-                'X-CSRF-TOKEN': 'cqDD5jprMMh0kaT8uOMviX2XT1dWzph4msFxrCwm3nod-q2akrA--s3vZ-G6g6kQv4KaLPz61Yfhr9DtfvY-6Q',
-                'Content-Type': 'application/json',
-                'Accept': 'application/json, text/plain, */*',
-                'X-Requested-With': 'XMLHttpRequest',
-                'sec-ch-ua-platform': '"Windows"',
-                'Sec-Fetch-Site': 'same-origin',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Dest': 'empty',
-                'host': 'openproject.asterit.ru'
-            },
-            data: data
-        };
-
-        axios.request(config)
-            .then((response) => {
-                console.log(JSON.stringify(response.data));
-                setFormData({ ...formData, status: 'Проект стартован' });
-                handleSave();
-            })
-            .catch((error) => {
-                console.log(error);
-            });
-
-    };
+        const response = CreateProject(formData.OpenProject_Template_id);
+        if (response) {
+            console.log(JSON.stringify(response));
+            setFormData({ ...formData, status: 'Проект стартован' });
+            handleSave();
+        }
+    }
 
     console.log("render")
 
@@ -623,7 +571,7 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
                                         checked={formData.jobCalculated || false}
                                         name="jobCalculated"
                                         onChange={handleChangeSwitch}
-                                        disabled={currentUser.role !== '3e06b866-b3fb-4060-b918-235af1a83082'}
+                                        //disabled={currentUser.role !== '3e06b866-b3fb-4060-b918-235af1a83082'}
                                     />
                                 }
                                 label={
@@ -733,7 +681,7 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
                                     <Switch
                                         checked={formData.priceAproved || false}
                                         name="priceAproved"
-                                        disabled={currentUser.role !== 'bd467e17-bf32-4699-8ec0-c7f997edb3fc' && formData.initiator?.Head !== currentUser.id}
+                                        //disabled={currentUser.role !== 'bd467e17-bf32-4699-8ec0-c7f997edb3fc' && formData.initiator?.Head !== currentUser.id}
                                         onChange={handleChangeSwitch}
                                     />
                                 }

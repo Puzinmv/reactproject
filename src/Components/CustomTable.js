@@ -78,7 +78,11 @@ export default function CustomTable({ token, depatmentid, jobDescriptions, handl
     const isSelected = (id) => selected.indexOf(id) !== -1;
 
     const handleCopyToClipboard = () => {
-        const rowsForCopy = rows.map(row => [row.id, row.jobName, row.resourceDay, row.frameDay].join('\t')).join('\n');
+        const rowsForCopy = rows.map(row => {
+            const formattedJobName = `"${row.jobName.replace(/"/g, '""')}"`; // Оборачиваем в кавычки и экранируем кавычки внутри текста
+            return [row.id, formattedJobName, row.resourceDay, row.frameDay].join('\t');
+        }).join('\n');
+        console.log(rowsForCopy)
         navigator.clipboard.writeText(rowsForCopy).then(() => {
             setOpenSnackbar(true);  // Показать уведомление при успешном копировании
         }).catch(err => {

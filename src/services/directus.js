@@ -1,6 +1,6 @@
 import {
     createDirectus, authentication,  rest, withToken,
-    readItems, refresh, readUsers, updateItem, readMe, readFile,
+    readItems, readUsers, updateItem, readMe, readFile,
     uploadFiles, deleteFile, createItem,
     //graphql,
 } from "@directus/sdk";

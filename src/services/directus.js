@@ -15,7 +15,6 @@ export const login = async (email, password) => {
     try {
         const user = await directus.login(email, password);
         localStorage.setItem('accessToken', user.access_token)
-        console.log(user)
         return user.access_token;
     } catch (e) {
         console.error(e)
@@ -27,7 +26,6 @@ export const refreshlogin = async () => {
     let token = null;
     try {
         const req = await directus.request(refresh('cookie'));
-        console.log(req);
         token = req?.access_token || null; // Используем опциональную цепочку для безопасного доступа к свойству
         if (token) localStorage.setItem('accessToken', token)
     } catch (error) {

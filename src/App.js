@@ -78,7 +78,7 @@ function App() {
             setdepartament(departament)
         } catch (error) {
             const errors = error.errors || [];
-            const hasInvalidCredentialsError = errors.some(err => err.extensions?.code === 'INVALID_CREDENTIALS');
+            const hasInvalidCredentialsError = errors.some(err => (err.extensions?.code === 'INVALID_CREDENTIALS' || err.extensions?.code === 'TOKEN_EXPIRED'));
 
             if (hasInvalidCredentialsError) {
                 await logout()

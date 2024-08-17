@@ -22,22 +22,21 @@ export const login = async (email, password) => {
 
 };
 
-export const refreshlogin = async () => {
-    let token = null;
-    try {
-        const req = await directus.request(refresh('cookie'));
-        token = req?.access_token || null; // Используем опциональную цепочку для безопасного доступа к свойству
-        if (token) localStorage.setItem('accessToken', token)
-    } catch (error) {
-        token = null; // Если возникает ошибка, возвращаем null
-    }
-    return token;
-};
+//export const refreshlogin = async () => {
+//    let token = null;
+//    try {
+//        const req = await directus.request(refresh('cookie'));
+//        token = req?.access_token || null; // Используем опциональную цепочку для безопасного доступа к свойству
+//        if (token) localStorage.setItem('accessToken', token)
+//    } catch (error) {
+//        token = null; // Если возникает ошибка, возвращаем null
+//    }
+//    return token;
+//};
 
 export const fetchData = async (token) => {
     const makeRequest = async (token) => {
-        const data = await directus.request(
-            withToken(token, readItems('Project_Card', {
+        const data = await directus.request(readItems('Project_Card', {
                 fields: [
                     '*',
                     {
@@ -56,14 +55,14 @@ export const fetchData = async (token) => {
                         Files: ['*']
                     },
                 ],
-            }))
+            })
         );
 
         const departament = await directus.request(
-            withToken(token, readItems('Department', { fields: ['*'] }))
+             readItems('Department', { fields: ['*'] })
         );
 
-        const CurrentUser = await directus.request(withToken(token, readMe({ fields: ['*'] })));
+        const CurrentUser = await directus.request(readMe({ fields: ['*'] }));
 
         return [data, departament, CurrentUser];
     };
@@ -71,13 +70,6 @@ export const fetchData = async (token) => {
     try {
         return await makeRequest(token);
     } catch (error) {
-        if (error.response && error.response.status === 401) {
-            const newToken = await refreshlogin();
-            if (newToken) {
-                return await makeRequest(newToken);
-            }
-        }
-        localStorage.removeItem('accessToken'); 
         console.error(error);
         throw error;
     }
@@ -86,10 +78,9 @@ export const fetchData = async (token) => {
 export const fetchTemplate = async (token) => {
     const makeRequest = async (token) => {
         const data = await directus.request(
-            withToken(token,
-                readItems('JobTemplate', {
+                    readItems('JobTemplate', {
                     fields: ['*'],
-                }))
+                })
         );
         return data;
     };
@@ -97,21 +88,14 @@ export const fetchTemplate = async (token) => {
     try {
         return await makeRequest(token);
     } catch (error) {
-        if (error.response && error.response.status === 401) {
-            const newToken = await refreshlogin();
-            if (newToken) {
-                return await makeRequest(newToken);
-            }
-        }
         console.error(error);
-        //throw error; 
+        throw error; 
     }
 };
 
 export const fetchCustomer = async (token, initiator) => {
     const makeRequest = async (token) => {
         const data = await directus.request(
-            withToken(token,
                 readItems('Customers', {
                     fields: ['*'],
                     filter: {
@@ -120,7 +104,6 @@ export const fetchCustomer = async (token, initiator) => {
                         }
                     }
                 })
-            )
         );
         return data;
     };
@@ -128,20 +111,14 @@ export const fetchCustomer = async (token, initiator) => {
     try {
         return await makeRequest(token);
     } catch (error) {
-        if (error.response && error.response.status === 401) {
-            const newToken = await refreshlogin();
-            if (newToken) {
-                return await makeRequest(newToken);
-            }
-        }
-        throw error; // Проброс ошибки дальше для обработки на более высоком уровне
+        console.error(error);
+        throw error; 
     }
 };
 
 export const fetchCustomerContact = async (token, CRMID) => {
     const makeRequest = async (token) => {
         const data = await directus.request(
-            withToken(token,
                 readItems('Customer_Contact', {
                     fields: ['*'],
                     filter: {
@@ -150,7 +127,6 @@ export const fetchCustomerContact = async (token, CRMID) => {
                         }
                     }
                 })
-            )
         );
         return data;
     };
@@ -158,13 +134,8 @@ export const fetchCustomerContact = async (token, CRMID) => {
     try {
         return await makeRequest(token);
     } catch (error) {
-        if (error.response && error.response.status === 401) {
-            const newToken = await refreshlogin();
-            if (newToken) {
-                return await makeRequest(newToken);
-            }
-        }
-        //throw error;
+        console.error(error);
+        throw error; 
     }
 };
 
@@ -174,9 +145,9 @@ export const GetfilesInfo = async (files, token) => {
     }
     const fileInfoPromises = files.map(async (file) => {
         const result = await directus.request(
-            withToken(token, readFile(file.directus_files_id, {
+            readFile(file.directus_files_id, {
                 fields: ['id', 'filename_download'],
-            }))
+            })
         );
         return result;
     });
@@ -188,11 +159,11 @@ export const GetfilesInfo = async (files, token) => {
 export const fetchUser = async (token) => {
     const makeRequest = async (token) => {
         const data = await directus.request(
-            withToken(token, readUsers({
+            readUsers({
                 fields: [
                     '*'
                 ],
-            }))
+            })
         );
         return data;
     };
@@ -200,13 +171,8 @@ export const fetchUser = async (token) => {
     try {
         return await makeRequest(token);
     } catch (error) {
-        if (error.response && error.response.status === 401) {
-            const newToken = await refreshlogin();
-            if (newToken) {
-                return await makeRequest(newToken);
-            }
-        }
-        throw error; // Проброс ошибки дальше для обработки на более высоком уровне
+        console.error(error);
+        throw error; 
     }
 };
 
@@ -227,12 +193,6 @@ export const UpdateData = async (data, token) => {
     try {
         return await makeRequest(token);
     } catch (error) {
-        if (error.response && error.response.status === 401) {
-            const newToken = await refreshlogin();
-            if (newToken) {
-                return await makeRequest(newToken);
-            }
-        }
         console.error("Error updating data:", error);
         throw error;
     }
@@ -247,19 +207,13 @@ export const CreateItemDirectus = async (data, token) => {
             Department: data.Department.id || 0
         };
         ['id', 'user_created', 'date_created', 'date_updated', 'user_updated', 'sort'].forEach(key => delete savedata[key]);
-        const req = await directus.request(withToken(token, createItem('Project_Card', savedata)));
+        const req = await directus.request(createItem('Project_Card', savedata));
         return req;
     };
 
     try {
         return await makeRequest(token);
     } catch (error) {
-        if (error.response && error.response.status === 401) {
-            const newToken = await refreshlogin();
-            if (newToken) {
-                return await makeRequest(newToken);
-            }
-        }
         console.error("Error creating data:", error);
         throw error;
     }
@@ -276,7 +230,7 @@ export const uploadFilesDirectus = async (files, token) => {
         const uploadPromises = files.map(async (file) => {
             const formData = new FormData();
             formData.append('file', file);
-            const response = await directus.request(withToken(token, uploadFiles(formData)));
+            const response = await directus.request(uploadFiles(formData));
             return response
         });
         const responses = await Promise.all(uploadPromises);
@@ -289,7 +243,7 @@ export const uploadFilesDirectus = async (files, token) => {
 
 export const deleteFileDirectus = async (fileId, token) => {
     try {
-        await directus.request(withToken(token, deleteFile(fileId)));
+        await directus.request(withToken(deleteFile(fileId)));
     } catch (error) {
         console.error('Ошибка при удалении файла:', error);
         throw error;

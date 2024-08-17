@@ -8,7 +8,7 @@ import {
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
     .with(authentication('cookie', { credentials: 'include', autoRefresh: true }))
     //.with(graphql({ credentials: 'include' }))
-    .with(rest())
+    .with(rest({ credentials: "include" }))
     ;
 
 export const login = async (email, password) => {

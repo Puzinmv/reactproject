@@ -1,38 +1,43 @@
 import {
     createDirectus, authentication,  rest, withToken,
     readItems, readUsers, updateItem, readMe, readFile,
-    uploadFiles, deleteFile, createItem,
-    //graphql,
+    uploadFiles, deleteFile, createItem
 } from "@directus/sdk";
 
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
     .with(authentication('cookie', { credentials: 'include', autoRefresh: true }))
-    //.with(graphql({ credentials: 'include' }))
     .with(rest({ credentials: "include" }))
     ;
 
 export const login = async (email, password) => {
     try {
         const user = await directus.login(email, password);
-        localStorage.setItem('accessToken', user.access_token)
-        return user.access_token;
+        return user;
     } catch (e) {
         console.error(e)
     }
 
 };
 
-//export const refreshlogin = async () => {
-//    let token = null;
-//    try {
-//        const req = await directus.request(refresh('cookie'));
-//        token = req?.access_token || null; // Используем опциональную цепочку для безопасного доступа к свойству
-//        if (token) localStorage.setItem('accessToken', token)
-//    } catch (error) {
-//        token = null; // Если возникает ошибка, возвращаем null
-//    }
-//    return token;
-//};
+export const getToken = async () => {
+    try {
+        const token = await directus.refresh();
+        return token;
+    } catch (e) {
+        console.error(e)
+    }
+
+};
+
+export const getCurrentUser = async () => {
+    try {
+        const user = await directus.request(readMe());
+        return user;
+    } catch (e) {
+        console.error(e)
+    }
+
+};
 
 export const fetchData = async (token) => {
     const makeRequest = async (token) => {
@@ -61,10 +66,13 @@ export const fetchData = async (token) => {
         const departament = await directus.request(
              readItems('Department', { fields: ['*'] })
         );
+        const limitationTemplate = await directus.request(
+            readItems('JobLimitation', { fields: ['name'] })
+        );
+        const CurrentUser = await getCurrentUser();
 
-        const CurrentUser = await directus.request(readMe({ fields: ['*'] }));
 
-        return [data, departament, CurrentUser];
+        return [data, departament, limitationTemplate, CurrentUser];
     };
 
     try {
@@ -75,71 +83,59 @@ export const fetchData = async (token) => {
     }
 };
 
-export const fetchTemplate = async (token) => {
-    const makeRequest = async (token) => {
+export const fetchTemplate = async () => {
+    try {
         const data = await directus.request(
-                    readItems('JobTemplate', {
-                    fields: ['*'],
-                })
+            readItems('JobTemplate', {
+                fields: ['*'],
+            })
         );
         return data;
-    };
-
-    try {
-        return await makeRequest(token);
     } catch (error) {
         console.error(error);
         throw error; 
     }
 };
 
-export const fetchCustomer = async (token, initiator) => {
-    const makeRequest = async (token) => {
+export const fetchCustomer = async (initiator) => {
+    try {
         const data = await directus.request(
-                readItems('Customers', {
-                    fields: ['*'],
-                    filter: {
-                        manager: {
-                            _contains: initiator
-                        }
+            readItems('Customers', {
+                fields: ['*'],
+                filter: {
+                    manager: {
+                        _contains: initiator
                     }
-                })
+                }
+            })
         );
         return data;
-    };
-
-    try {
-        return await makeRequest(token);
     } catch (error) {
         console.error(error);
         throw error; 
     }
 };
 
-export const fetchCustomerContact = async (token, CRMID) => {
-    const makeRequest = async (token) => {
+export const fetchCustomerContact = async (CRMID) => {
+    try {
         const data = await directus.request(
-                readItems('Customer_Contact', {
-                    fields: ['*'],
-                    filter: {
-                        customerCRMID: {
-                            _contains: CRMID
-                        }
+            readItems('Customer_Contact', {
+                fields: ['*'],
+                filter: {
+                    customerCRMID: {
+                        _contains: CRMID
                     }
-                })
+                }
+            })
         );
         return data;
-    };
-
-    try {
-        return await makeRequest(token);
     } catch (error) {
         console.error(error);
         throw error; 
     }
 };
 
-export const GetfilesInfo = async (files, token) => {
+export const GetfilesInfo = async (files) => {
     if (!files.length) {
         return [];
     }
@@ -156,8 +152,8 @@ export const GetfilesInfo = async (files, token) => {
     return fileInfo;
 };
 
-export const fetchUser = async (token) => {
-    const makeRequest = async (token) => {
+export const fetchUser = async () => {
+    try {
         const data = await directus.request(
             readUsers({
                 fields: [
@@ -166,32 +162,23 @@ export const fetchUser = async (token) => {
             })
         );
         return data;
-    };
-
-    try {
-        return await makeRequest(token);
     } catch (error) {
         console.error(error);
         throw error; 
     }
 };
 
-export const UpdateData = async (data, token) => {
-    const makeRequest = async (token) => {
+export const UpdateData = async (data) => {
+    try {
         const id = data.id;
         const savedata = {
             ...data,
             initiator: data.initiator.id || data.initiator,
             Department: data.Department.id || data.Department
         };
-
         ['id', 'user_created', 'date_created', 'date_updated', 'user_updated', 'sort'].forEach(key => delete savedata[key]);
-        const req = await directus.request(withToken(token, updateItem('Project_Card', id, savedata)));
+        const req = await directus.request(updateItem('Project_Card', id, savedata));
         return req;
-    };
-
-    try {
-        return await makeRequest(token);
     } catch (error) {
         console.error("Error updating data:", error);
         throw error;
@@ -200,7 +187,7 @@ export const UpdateData = async (data, token) => {
 
 
 export const CreateItemDirectus = async (data, token) => {
-    const makeRequest = async (token) => {
+    const makeRequest = async () => {
         const savedata = {
             ...data,
             initiator: data.initiator.id || '',
@@ -225,7 +212,7 @@ export const logout = async () => {
     return result;
 };
 
-export const uploadFilesDirectus = async (files, token) => {
+export const uploadFilesDirectus = async (files) => {
     try {
         const uploadPromises = files.map(async (file) => {
             const formData = new FormData();
@@ -241,7 +228,7 @@ export const uploadFilesDirectus = async (files, token) => {
     }
 };
 
-export const deleteFileDirectus = async (fileId, token) => {
+export const deleteFileDirectus = async (fileId) => {
     try {
         await directus.request(withToken(deleteFile(fileId)));
     } catch (error) {

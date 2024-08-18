@@ -19,7 +19,7 @@ import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import TemplatePanel from './TemplatePanel';
 
-export default function CustomTable({ token, depatmentid, jobDescriptions, handleJobChange }) {
+export default function CustomTable({ depatmentid, jobDescriptions, handleJobChange }) {
     const [rows, setRows] = useState(jobDescriptions || []);
     const [selected, setSelected] = useState([]);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -82,17 +82,16 @@ export default function CustomTable({ token, depatmentid, jobDescriptions, handl
             const formattedJobName = `"${row.jobName.replace(/"/g, '""')}"`; // Оборачиваем в кавычки и экранируем кавычки внутри текста
             return [row.id, formattedJobName, row.resourceDay, row.frameDay].join('\t');
         }).join('\n');
-        console.log(rowsForCopy)
         navigator.clipboard.writeText(rowsForCopy).then(() => {
-            setOpenSnackbar(true);  // Показать уведомление при успешном копировании
+            setOpenSnackbar(true);  
         }).catch(err => {
-            setOpenSnackbar(true);  // Показать уведомление при ошибке копирования
+            console.log(err) 
         });
     };
 
     return (
         <Box sx={{ width: '100%' }}>
-            <Paper sx={{ width: '100%', mb: 2 }}>
+            <Paper sx={{ width: '100%', mb: 1 }}>
                 <Toolbar
                     sx={{
                         pl: { sm: 2 },
@@ -127,7 +126,8 @@ export default function CustomTable({ token, depatmentid, jobDescriptions, handl
                         </IconButton>
                     </Tooltip>
                 </Toolbar>
-                <TableContainer>
+                <TableContainer
+                    sx={{ border: 1, borderColor: 'grey.500'}}>
                     <Table
                         sx={{ minWidth: 750 }}
                         aria-labelledby="tableTitle"
@@ -213,7 +213,6 @@ export default function CustomTable({ token, depatmentid, jobDescriptions, handl
             {isPanelOpen && (
                 <TemplatePanel
                     depatmentid={depatmentid}
-                    token={token}
                     onClose={() => setIsPanelOpen(false)}
                     onAdd={handleAddFromTemplate}
                 />

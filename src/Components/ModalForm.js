@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     Modal, Box, Tabs, Tab, TextField, Button, Typography, Autocomplete,
     InputLabel, Select, MenuItem, FormControl, FormHelperText,
-    Switch, Grid, InputAdornment, FormControlLabel
+    Switch, Grid, InputAdornment, FormControlLabel, ListItemText,
+    ClickAwayListener, Popper, Checkbox, List, ListItem,
 } from '@mui/material';
 //import InputAdornment from '@mui/material/InputAdornment';
 import {
@@ -14,6 +15,7 @@ import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
 import CustomTable from './CustomTable'; 
+import TableJobOnTrip from './TableJobOnTrip'; 
 
 
 const TabPanel = ({ children, value, index }) => {
@@ -24,15 +26,19 @@ const TabPanel = ({ children, value, index }) => {
     );
 };
 
-
-const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved }) => {
+const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
     const [tabIndex, setTabIndex] = useState(0);
     const [formData, setFormData] = useState(row);
     const [customerOptions, setCustomerOptions] = useState([]);
+    const [customer, setCustomer] = useState(null);
     const [customerContactOptions, setCustomerContactOptions] = useState([]);
     const [InitiatorOptions, setInitiatorOptions] = useState([]);
     const [errors, setErrors] = useState({});
     const [fileInfo, setfileInfo] = useState([]);
+    const [autofill, setAutofill] = useState(false);
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [checkedTemplates, setCheckedTemplates] = useState([]);
+    const textFieldRef = useRef(null);
 
     const calculateTotalCost = (data) => {
         return [
@@ -51,34 +57,40 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
     useEffect(() => {
         const fetchCustomerOptions = async () => {
             try {
-                const response = await fetchCustomer(token, formData.initiator.last_name);
-                setCustomerOptions(response.map(item => ({
+                const response = await fetchCustomer(formData.initiator.last_name);
+                const customers = response.map(item => ({
                     name: item.shortName,
                     id: item.id,
                     fullName: item.fullName,
                     CRMID: item.CRMID
-                })))
+                }))
+                setCustomerOptions(customers)
+                return customers;
             } catch (error) {
                 console.error('Error fetching customer options:', error);
             }
         };
         const fetchUserOptions = async () => {
             try {
-                const response = await fetchUser(token);
+                const response = await fetchUser();
                 setInitiatorOptions(response);
             } catch (error) {
                 console.error('Error fetching user options:', error);
             }
         };
         fetchUserOptions();
-        fetchCustomerOptions();
-
-        GetfilesInfo(formData.Files, token).then((fileInfo) => {
+        fetchCustomerOptions().then((customers) => {
+            const value = customers.find((option) => option.name === formData.Customer) || null;
+            setCustomer(value);
+            if (!value) setAutofill(true)
+        });
+        
+        GetfilesInfo(formData.Files).then((fileInfo) => {
             setfileInfo(fileInfo)
         }).catch((error) => {
                 console.error('Error fetching file info:', error);
             });
-    }, [formData.Files, formData.initiator.last_name, token]);
+    }, [formData.Customer, formData.Files, formData.initiator.last_name]);
 
     useEffect(() => {
         settotoalCostPerHour(`${Math.round(totoalCost*100 / (formData.resourceSumm * 8))/100} ₽/час`);
@@ -129,7 +141,6 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
 
     useEffect(() => {
         let newStatus = 'Новая карта';
-
         if (formData.jobCalculated && !formData.priceAproved) {
             newStatus = 'Оценка трудозатрат проведена';
         } else if (formData.jobCalculated && formData.priceAproved) {
@@ -152,6 +163,7 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
         return Object.keys(newErrors).length === 0;
     };
 
+    // стандартные функции изменения полей
     const handleTabChange = (event, newValue) => {
         setTabIndex(newValue);
     };
@@ -161,8 +173,8 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
             return;
         }
         try {
-            console.log('formData',formData)
-            await UpdateData(formData, token);
+            //console.log('formData',formData)
+            await UpdateData(formData);
             onDataSaved();
             onClose();
         } catch (error) {
@@ -189,21 +201,57 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
         if (['Cost', 'tiketsCost', 'HotelCost', 'dailyCost', 'otherPayments'].indexOf(name) > -1) {
             settotoalCost(calculateTotalCost({ ...formData, [name]: newValue }));
         }
+
+        // Проверка соответствия с шаблонами ограничения от исполнителей
+        if (name === 'Limitations') {
+            const newCheckedTemplates = limitation.filter((template) => value.includes(template));
+            setCheckedTemplates(newCheckedTemplates);
+        }
+        
     };
     const handleChangeSwitch = (e) => {
         const { name, checked } = e.target;
         setFormData({ ...formData, [name]: checked });
     }
 
+
+    // показ шаблонов ограничения от исполнителей
+    const handleFocus = (event) => {
+        setAnchorEl(textFieldRef.current);
+    };
+
+    const handleFocusOut = (event) => {
+        if (textFieldRef.current && !textFieldRef.current.contains(event.target) && !anchorEl?.contains(event.relatedTarget)) {
+            setAnchorEl(null);
+        }
+    };
+
+    const handleCheckboxToggle = (template) => {
+        const currentIndex = checkedTemplates.indexOf(template);
+        const newChecked = [...checkedTemplates];
+
+        if (currentIndex === -1) {
+            newChecked.push(template);
+        } else {
+            newChecked.splice(currentIndex, 1);
+        }
+
+        setCheckedTemplates(newChecked);
+
+        const newValue = newChecked.map((item) => `- ${item}`).join('\n');
+        setFormData((prevData) => ({ ...prevData, Limitations: newValue }));
+    };
+
+    //изменения в заказчике
     const handleCustomerChange = async (event, value) => {
         setFormData({
             ...formData,
             Customer: value ? value?.name : '',
-            CustomerCRMID: value ? value.CRMID : ''
+            CustomerCRMID: value ? value?.CRMID : ''
         });
-
+        setCustomer(value);
         try {
-            const response = await fetchCustomerContact(token, value.CRMID);
+            const response = await fetchCustomerContact(value.CRMID);
             setCustomerContactOptions(response.map(item => ({
                 name: item.Name,
                 id: item.id,
@@ -272,11 +320,11 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
             };
         try {
             const filesArray = Array.from(files);
-            const uploadedFiles = await uploadFilesDirectus(filesArray, token);
+            const uploadedFiles = await uploadFilesDirectus(filesArray);
             const newformData = { ...formData, Files: updateFilesArray(formData.Files, uploadedFiles, formData.id) };
-            await UpdateData(newformData, token);
+            await UpdateData(newformData);
             setFormData(newformData);
-            GetfilesInfo(newformData.Files, token).then((fileInfo) => {
+            GetfilesInfo(newformData.Files).then((fileInfo) => {
                 setfileInfo(fileInfo)
             }).catch((error) => {
                 console.error('Ошибка при загрузке информаци о файлах:', error);
@@ -293,11 +341,11 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
         };
 
         try {
-            await deleteFileDirectus(fileId, token);
+            await deleteFileDirectus(fileId);
             const newformData = { ...formData, Files: updateFilesArray(formData.Files, fileId) };
-            await UpdateData(newformData, token);
+            await UpdateData(newformData);
             setFormData(newformData);
-            GetfilesInfo(newformData.Files, token).then((fileInfo) => {
+            GetfilesInfo(newformData.Files).then((fileInfo) => {
                 setfileInfo(fileInfo)
             }).catch((error) => {
                 console.error('Ошибка при загрузке информаци о файлах', error);
@@ -318,6 +366,10 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
         }, 0);
         setFormData({ ...formData, JobDescription: jobDescriptions, frameSumm: frame, resourceSumm: resource });
     };
+
+    const handleJobOnTripChange = (data) => {
+        setFormData({ ...formData, JobOnTripTable: data});
+    };
     const handleCreateProject = () => {
         const response = CreateProject(formData.OpenProject_Template_id);
         if (response) {
@@ -326,8 +378,6 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
             handleSave();
         }
     }
-
-    console.log("render")
 
     return (
         <Modal open={true} onClose={onClose}>
@@ -381,29 +431,62 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
                             />
                         </Grid>
 
-                        <Grid item xs={12}>
-                            <Typography variant="h6" gutterBottom>
-                                Данные о заказчике
-                            </Typography>
+                        <Grid container spacing={2} alignItems="center">
+                            <Grid item xs={12} md={8}>
+                                <Typography variant="h6" gutterBottom>
+                                    Данные о заказчике
+                                </Typography>
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={autofill || false}
+                                            name="autofill"
+                                            onChange={(e) => {
+                                                setCustomerContactOptions([])
+                                                setAutofill(e.target.checked)
+                                            }}
+                                        />
+                                    }
+                                    label={
+                                        <Typography variant="body1" color="textPrimary">
+                                            убрать автозаполнение
+                                        </Typography>
+                                    }
+                                    labelPlacement="end"
+                                />
+                            </Grid>
                         </Grid>
 
                         <Grid item xs={12} md={8}>
-                            <Autocomplete
-                                options={customerOptions}
-                                getOptionLabel={(option) => option.name}
-                                value={customerOptions.find((option) => option.name === formData.Customer) || null}
-                                onChange={handleCustomerChange}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Заказчик"
-                                        margin="dense"
-                                        InputProps={params.InputProps}
-                                    />
-                                )}
-                                fullWidth
-                                disableClearable
-                            />
+                            {autofill ? (
+                                <TextField
+                                    label="Заказчик"
+                                    name="Customer"
+                                    value={formData.Customer}
+                                    onChange={handleChange}
+                                    fullWidth
+                                    margin="dense"
+                                />
+                            ) : (
+                                <Autocomplete
+                                    options={customerOptions}
+                                    getOptionLabel={(option) => option.name}
+                                        value={customer}
+                                    onChange={handleCustomerChange}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Заказчик"
+                                            margin="dense"
+                                            InputProps={params.InputProps}
+                                        />
+                                    )}
+                                    fullWidth
+                                    disableClearable
+                                />
+                            )}
                         </Grid>
                         <Grid item xs={12} md={4}>
                             <TextField
@@ -553,7 +636,11 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
                 <TabPanel value={tabIndex} index={1}>
                     <Grid container spacing={1}>
                         <Grid item xs={12}>
-                            <CustomTable depatmentid={formData.Department?.id || -1 } token={token} jobDescriptions={formData.JobDescription} handleJobChange={handleJobChange} />
+                            <CustomTable
+                                depatmentid={formData.Department?.id || -1}
+                                jobDescriptions={formData.JobDescription}
+                                handleJobChange={handleJobChange}
+                            />
                         </Grid>
                         <TextField
                             label="Комментарии к оценке работ"
@@ -605,23 +692,16 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
                             />
                         </Grid>
                         <Grid item xs={12}>
-                            <Typography
-                                variant="body1"
-                                color="textSecondary"
-                                style={{
-                                    marginTop: '12px',
-                                    marginBottom: '4px',
-                                    fontSize: '0.9rem'
-                                }}
-                            >
-                                Работы на выезде
-                            </Typography>
-                            <CKEditor
-                                id="CKEditorjobOnTrip-label"
-                                editor={ClassicEditor}
-                                data={formData.jobOnTrip || ''}
-                                onChange={(event, editor) => handleDescriptionChange(editor, 'jobOnTrip')}
+                            <TableJobOnTrip
+                                data={formData.JobOnTripTable || []}
+                                handleChange={handleJobOnTripChange}
                             />
+                            {/*<CKEditor*/}
+                            {/*    id="CKEditorjobOnTrip-label"*/}
+                            {/*    editor={ClassicEditor}*/}
+                            {/*    data={formData.jobOnTrip || ''}*/}
+                            {/*    onChange={(event, editor) => handleDescriptionChange(editor, 'jobOnTrip')}*/}
+                            {/*/>*/}
                         </Grid>
                         <Grid item xs={6} md={4}>
                             <FormControl fullWidth margin="dense">
@@ -649,10 +729,36 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
                                 name="Limitations"
                                 value={formData.Limitations || ''}
                                 onChange={handleChange}
+                                onFocus={handleFocus}
                                 fullWidth
                                 multiline
                                 margin="dense"
+                                ref={textFieldRef}
                             />
+                            <Popper
+                                open={Boolean(anchorEl)}
+                                anchorEl={textFieldRef.current}
+                                placement="top-start"
+                                style={{ zIndex: 1300 }} 
+         
+                            >
+                                <ClickAwayListener onClickAway={handleFocusOut}>
+                                    <List style={{ backgroundColor: 'white', border: '1px solid #ccc', padding: '8px', width: textFieldRef.current?.offsetWidth || 300 }}>
+                                        {limitation.map((template) => (
+                                            <ListItem key={template.name} dense>
+                                                <Checkbox
+                                                    edge="start"
+                                                    checked={checkedTemplates.indexOf(template.name) !== -1}
+                                                    tabIndex={-1}
+                                                    disableRipple
+                                                    onChange={() => handleCheckboxToggle(template.name)}
+                                                />
+                                                <ListItemText primary={template.name} />
+                                            </ListItem>
+                                        ))}
+                                    </List>
+                                </ClickAwayListener>
+                            </Popper>
                         </Grid>
                     </Grid>
                 </TabPanel>
@@ -891,7 +997,12 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
                         </Grid>
                     </Grid>
                 </TabPanel>
-                <Box mt={1} display="flex" justifyContent="space-between" alignItems="center">
+                <Box mt={1} display="flex" justifyContent="flex-end" alignItems="center">
+                    {(formData.status === 'Экономика согласована') && (
+                        <Button variant="contained" sx={{ bgcolor: 'green', mr: 1 }} onClick={handleCreateProject}>
+                            Создать проект
+                        </Button>
+                    )}
                     <Box>
                         <Button variant="contained" color="primary" onClick={handleSave} sx={{ mr: 1 }}>
                             Сохранить
@@ -900,11 +1011,7 @@ const ModalForm = ({ row, departament, onClose, token, currentUser, onDataSaved 
                             Отмена
                         </Button>
                     </Box>
-                    {(formData.status === 'Экономика согласована') && (
-                        <Button variant="contained" sx={{ bgcolor: 'green' }} onClick={handleCreateProject}>
-                            Создать проект
-                        </Button>
-                    )}
+
                 </Box>
             </Box>
         </Modal>

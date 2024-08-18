@@ -1,52 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button,
-  TableSortLabel, TablePagination, Paper, Checkbox, IconButton, Menu, MenuItem, TextField
+    TableSortLabel, TablePagination, Paper, Checkbox, IconButton, Menu, MenuItem,
+    TextField, Tooltip, Switch, Typography, FormControlLabel
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddIcon from '@mui/icons-material/Add'; 
-
-
-const fieldNames = [
-  { columnId: 'id', label: 'ID', visible: true },
-  { columnId: 'initiator', label: 'Инициатор', visible: true },
-  { columnId: 'title', label: 'Название', visible: true },
-  { columnId: 'Customer', label: 'Заказчик', visible: true },
-  { columnId: 'Department', label: 'Отдел', visible: true },
-  { columnId: 'status', label: 'Статус', visible: true },
-  { columnId: 'resourceSumm', label: 'Длительность', visible: true },
-  { columnId: 'frameSumm', label: 'Трудозатраты', visible: true },
-  { columnId: 'Price', label: 'Цена', visible: false },
-  { columnId: 'Cost', label: 'Себестоимость', visible: false },
-  { columnId: 'Description', label: 'Описание', visible: false },
-  { columnId: 'CustomerCRMID', label: 'ID Заказчика CRM', visible: false },
-  { columnId: 'CustomerContact', label: 'Контактное лицо', visible: false },
-  { columnId: 'CustomerContactCRMID', label: 'ID Контактного лица CRM', visible: false },
-  { columnId: 'CustomerContactTel', label: 'Телефон контактного лица', visible: false },
-  { columnId: 'CustomerContactEmail', label: 'Email контактного лица', visible: false },
-  { columnId: 'CustomerContactJobTitle', label: 'Должность контактного лица', visible: false },
-  { columnId: 'ProjectScope', label: 'Ограничения от клиента', visible: false },
-  { columnId: 'JobDescription', label: 'Описание работ', visible: false },
-  { columnId: 'jobOnTrip', label: 'Работа на выезде', visible: false },
-  { columnId: 'Limitations', label: 'Ограничения от исполнителей', visible: false },
-  { columnId: 'tiketsCost', label: 'Стоимость билетов', visible: false },
-  { columnId: 'tiketsCostDescription', label: 'Описание стоимости билетов', visible: false },
-  { columnId: 'HotelCost', label: 'Стоимость проживания', visible: false },
-  { columnId: 'HotelCostDescription', label: 'Описание стоимости проживания', visible: false },
-  { columnId: 'dailyCost', label: 'Суточные расходы', visible: false },
-  { columnId: 'dailyCostDescription', label: 'Описание суточных расходов', visible: false },
-  { columnId: 'otherPayments', label: 'Другие платежи', visible: false },
-  { columnId: 'otherPaymentsDescription', label: 'Описание других платежей', visible: false },
-  { columnId: 'company', label: 'Компания', visible: false },
-  { columnId: 'contract', label: 'Договор', visible: false },
-  { columnId: 'dateStart', label: 'Дата начала', visible: false },
-  { columnId: 'deadline', label: 'Срок сдачи', visible: false },
-  { columnId: 'Files', label: 'Файлы', visible: false },
-  { columnId: 'user_created', label: 'Создал', visible: false },
-  { columnId: 'date_created', label: 'Дата создания', visible: false },
-  { columnId: 'user_updated', label: 'Изменил', visible: false },
-  { columnId: 'date_updated', label: 'Дата обновления', visible: false },
-];
+import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import { FIELD_NAMES } from '../constants/index.js';
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
@@ -92,7 +54,7 @@ const formatField = (field, value) => {
     return value;
 };
 
-const TableComponent = ({ data, onRowSelect, onCreate }) => {
+const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
     const [columns, setColumns] = useState([]);
     const [order, setOrder] = useState('desc');
     const [orderBy, setOrderBy] = useState('id');
@@ -101,21 +63,29 @@ const TableComponent = ({ data, onRowSelect, onCreate }) => {
     const [anchorEl, setAnchorEl] = useState(null);
     const [globalSearch, setGlobalSearch] = useState('');
     const [columnSearch, setColumnSearch] = useState({});
+    const [searchingColumn, setSearchingColumn] = useState(null);   // колонка в поиске
+    const [initiatorOptions, setinitiatorOptions] = useState([]);   // перечень инициаторов в картах
+    const [departmentOptions, setdepartmentOptions] = useState([]); // перечень отделов исполнителей в картах
+    const [statusOptions, setstatusOptions] = useState([]);         // перечень статусов в картах
+    const [showMyCards, setShowMyCards] = useState(true);           // показать только мои карты
 
     useEffect(() => {
-        let savedColumns = fieldNames;
+
+        let savedColumns = FIELD_NAMES;
         const LocalStorageColumns = JSON.parse(localStorage.getItem('columns'));
         if (Array.isArray(LocalStorageColumns)) {
             if (LocalStorageColumns.length > 0) {
                 savedColumns = JSON.parse(localStorage.getItem('columns'));
             }
         }
-
+        setinitiatorOptions(['---', ...new Set(data.map(item => item.initiator.first_name + ' ' + item.initiator.last_name))]);
+        setdepartmentOptions(['---', ...new Set(data.map(item => item.Department.Name))]);
+        setstatusOptions(['---', ...new Set(data.map(item => item.status))]);
         setColumns(savedColumns);
     }, [data]);
 
     useEffect(() => {
-        if (JSON.stringify(columns) !== JSON.stringify(fieldNames) && columns.length>0) {
+        if (JSON.stringify(columns) !== JSON.stringify(FIELD_NAMES) && columns.length>0) {
             localStorage.setItem('columns', JSON.stringify(columns));
         }
         
@@ -159,13 +129,31 @@ const TableComponent = ({ data, onRowSelect, onCreate }) => {
     };
 
     const handleColumnSearchChange = (event, columnId) => {
+        const value = event.target.value === '---' ? '' : event.target.value
         setColumnSearch({
             ...columnSearch,
-            [columnId]: event.target.value
+            [columnId]: value
         });
     };
 
+    const handleSearchIconClick = (columnId) => {
+        setSearchingColumn(columnId);
+    };
+
+    const handleSearchBlur = (columnId) => {
+        if (!columnSearch[columnId]) {
+            setSearchingColumn(null);
+        }
+    };
+
+    const handleSwitchChange = (event) => {
+        setShowMyCards(event.target.checked);
+    };
+
     const formatValue = (value) => {
+        if (typeof value === 'object' && value !== null && 'first_name' in value && 'last_name' in value) {
+            return value.first_name + ' ' + value.last_name;
+        }
         if (typeof value === 'object' && value !== null) {
             return JSON.stringify(value).toLowerCase();
         } else if (typeof value === 'string') {
@@ -183,9 +171,13 @@ const TableComponent = ({ data, onRowSelect, onCreate }) => {
             formatValue(row[key]).includes(globalSearch.toLowerCase())
         );
 
-        const columnMatches = Object.keys(columnSearch).every(columnId =>
-            formatValue(row[columnId]).includes(columnSearch[columnId].toLowerCase())
-        );
+        const columnMatches = Object.keys(columnSearch).every(columnId => {
+            if (columnId === 'initiator' && showMyCards) {
+
+                return row[columnId] && formatValue(row[columnId]).toLowerCase().includes(CurrentUser.first_name.toLowerCase());
+            }
+            return formatValue(row[columnId]).toLowerCase().includes(columnSearch[columnId].toLowerCase());
+        });
 
         return globalMatch && columnMatches;
     });
@@ -214,6 +206,22 @@ const TableComponent = ({ data, onRowSelect, onCreate }) => {
                 >
                     Новая карта проекта
                 </Button>
+                <FormControlLabel
+                    control={
+                        <Switch
+                            checked={showMyCards}
+                            onChange={handleSwitchChange}
+                            color="primary"
+                            style={{ marginRight: '16px' }}
+                        />
+                    }
+                    label={
+                        <Typography variant="body1" color="textPrimary">
+                            Мои карты
+                        </Typography>
+                    }
+                    labelPlacement="end"
+                />
                 <TextField
                     label="Поиск..."
                     value={globalSearch}
@@ -231,22 +239,79 @@ const TableComponent = ({ data, onRowSelect, onCreate }) => {
                             {columns.map((column) => (
                                 column.visible && (
                                     <TableCell key={column.columnId}>
-                                        <TableSortLabel
-                                            active={orderBy === column.columnId}
-                                            direction={orderBy === column.columnId ? order : 'asc'}
-                                            onClick={() => handleRequestSort(column.columnId)}
-                                        >
-                                            {column.label}
-                                        </TableSortLabel>
-                                        <TextField
-                                            hiddenLabel
-                                            value={columnSearch[column.columnId] || ''}
-                                            onChange={(event) => handleColumnSearchChange(event, column.columnId)}
-                                            variant="standard"
-                                            size="small"
-                                            margin="normal"
-                                            fullWidth
-                                        />
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            {searchingColumn === column.columnId || columnSearch[column.columnId] ? (
+                                                (column.columnId === 'initiator' || column.columnId === 'Department' || column.columnId === 'status') ? (
+                                                    <TextField
+                                                        select
+                                                        hiddenLabel
+                                                        value={columnSearch[column.columnId] || ''}
+                                                        onChange={(event) => handleColumnSearchChange(event, column.columnId)}
+                                                        onBlur={() => handleSearchBlur(column.columnId)}
+                                                        variant="standard"
+                                                        size="small"
+                                                        margin="none"
+                                                        autoFocus
+                                                        style={{ width: `${column.label.length + 7}ch` }}
+                                                        InputProps={{
+                                                            style: { fontSize: '0.875rem' } 
+                                                        }}
+                                                    >
+                                                        {(column.columnId === 'initiator' ? initiatorOptions :
+                                                            column.columnId === 'Department' ? departmentOptions : statusOptions)
+                                                            .map(option => (
+                                                                <MenuItem
+                                                                    key={option}
+                                                                    value={option}
+                                                                    style={{ fontSize: '0.875rem', padding: '6px 16px' }}
+                                                                >
+                                                                    {option}
+                                                                </MenuItem>
+                                                            ))}
+                                                    </TextField>
+                                                ) : (
+                                                        <TextField
+                                                            hiddenLabel
+                                                            value={columnSearch[column.columnId] || ''}
+                                                            onChange={(event) => handleColumnSearchChange(event, column.columnId)}
+                                                            onBlur={() => handleSearchBlur(column.columnId)}
+                                                            variant="standard"
+                                                            size="small"
+                                                            margin="none"
+                                                            autoFocus
+                                                            InputProps={{
+                                                                style: { fontSize: '0.875rem' } 
+                                                            }}
+                                                            style={{ width: `${column.label.length + 7}ch` }}
+                                                        />
+                                                )
+                                            ) : (
+                                                <TableSortLabel
+                                                    active={orderBy === column.columnId}
+                                                    direction={orderBy === column.columnId ? order : 'asc'}
+                                                    onClick={(event) => {
+                                                        if (event.target.closest('.MuiTableSortLabel-icon')) {
+                                                            handleRequestSort(column.columnId);
+                                                        }
+                                                    }}
+                                                >
+                                                    {column.label}
+                                                    <Tooltip title="Поиск">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleSearchIconClick(column.columnId)}
+                                                                style={{ marginLeft: 4 }}
+                                                            >
+                                                                {(column.columnId === 'initiator' || column.columnId === 'Department' || column.columnId === 'status') ? (
+                                                                    <FilterListIcon fontSize="small" />
+                                                                ) : (
+                                                                    <SearchIcon fontSize="small" />
+                                                                )}
+                                                            </IconButton>
+                                                    </Tooltip>
+                                                </TableSortLabel>
+                                            )}
+                                        </div>
                                     </TableCell>
                                 )
                             ))}

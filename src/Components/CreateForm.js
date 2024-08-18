@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
     Modal, Box, TextField, Button, Typography, Autocomplete, InputLabel,
-    Select, MenuItem, FormControl, FormHelperText, Grid
+    Select, MenuItem, FormControl, FormHelperText, Grid, FormControlLabel,
+    Switch
 } from '@mui/material';
 import {
     fetchUser, uploadFilesDirectus, CreateItemDirectus, UpdateData,
@@ -11,18 +12,22 @@ import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
 
-const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
+
+
+const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
 
     const [formData, setFormData] = useState(row);
     const [customerOptions, setCustomerOptions] = useState([]);
     const [customerContactOptions, setCustomerContactOptions] = useState([]);
     const [InitiatorOptions, setInitiatorOptions] = useState([]);
     const [errors, setErrors] = useState({});
+    const [autofill, setAutofill] = useState(false);
+    const [customer, setCustomer] = useState(null);
 
     useEffect(() => {
         const fetchCustomerOptions = async () => {
             try {
-                const response = await fetchCustomer(token, formData.initiator.last_name);
+                const response = await fetchCustomer(formData.initiator.last_name);
                 setCustomerOptions(response.map(item => ({
                     name: item.shortName,
                     id: item.id,
@@ -35,15 +40,22 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
         };
         const fetchUserOptions = async () => {
             try {
-                const response = await fetchUser(token);
+                const response = await fetchUser();
                 setInitiatorOptions(response);
             } catch (error) {
                 console.error('Error fetching user options:', error);
             }
         };
         fetchUserOptions();
-        fetchCustomerOptions();
-    }, [token, formData.initiator.last_name]);
+        fetchCustomerOptions().then((customers) => {
+            let value = []
+            if (Array.isArray(customers)) { value = customers.find((option) => option.name === formData.Customer) || null; } 
+            setCustomer(value);
+            if (value.length === 0) {
+                setAutofill(true)
+            }
+        });
+    }, [formData.Customer, formData.initiator.last_name]);
 
 
     const validateFields = () => {
@@ -61,19 +73,16 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
             return;
         }
         try {
-            console.log('createNewitem', formData)
             const files = Array.from(formData.Files.map((file)=>file.file));
-            const item = await CreateItemDirectus({ ...formData, Files: [] }, token);
-            console.log(item)
+            const item = await CreateItemDirectus({ ...formData, Files: [] });
             if (files.length > 0) {
-                const uploadedFiles = await uploadFilesDirectus(files, token);
+                const uploadedFiles = await uploadFilesDirectus(files);
                 const newFiles = uploadedFiles.map((file, index) => ({
                     id: index+1,
                     Project_Card_id: item.id,
                     directus_files_id: file.id
                 }));
-                console.log({ ...item, Files: newFiles });
-                await UpdateData({ ...item, Files: newFiles }, token);
+                await UpdateData({ ...item, Files: newFiles });
             }
             onDataSaved();
             onClose();
@@ -100,7 +109,7 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
         });
 
         try {
-            const response = await fetchCustomerContact(token, value.CRMID);
+            const response = await fetchCustomerContact(value.CRMID);
             setCustomerContactOptions(response.map(item => ({
                 name: item.Name,
                 id: item.id,
@@ -108,14 +117,12 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
                 jobTitle: item.jobTitle,
                 tel: item.tel
             })))
-            console.log(response)
         } catch (error) {
             console.error('Error fetching customer сontact options:', error);
         }
 
     };
     const handleCustomerContactChange = (event, value) => {
-        console.log(value, formData.CustomerContact)
         setFormData({
             ...formData,
             CustomerContact: value.name ? value.name : '',
@@ -220,29 +227,62 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
                         />
                     </Grid>
 
-                    <Grid item xs={12}>
-                        <Typography variant="h6" gutterBottom>
-                            Данные о заказчике
-                        </Typography>
+                    <Grid container spacing={2} alignItems="center">
+                        <Grid item xs={12} md={8}>
+                            <Typography variant="h6" gutterBottom>
+                                Данные о заказчике
+                            </Typography>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={autofill || false}
+                                        name="autofill"
+                                        onChange={(e) => {
+                                            setCustomerContactOptions([])
+                                            setAutofill(e.target.checked)
+                                        }}
+                                    />
+                                }
+                                label={
+                                    <Typography variant="body1" color="textPrimary">
+                                        убрать автозаполнение
+                                    </Typography>
+                                }
+                                labelPlacement="end"
+                            />
+                        </Grid>
                     </Grid>
 
                     <Grid item xs={12} md={8}>
-                        <Autocomplete
-                            options={customerOptions}
-                            getOptionLabel={(option) => option.name}
-                            value={customerOptions.find((option) => option.name === formData.Customer) || null}
-                            onChange={handleCustomerChange}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Заказчик"
-                                    margin="dense"
-                                    InputProps={params.InputProps}
-                                />
-                            )}
-                            fullWidth
-                            disableClearable
-                        />
+                        {autofill ? (
+                            <TextField
+                                label="Заказчик"
+                                name="Customer"
+                                value={formData.Customer}
+                                onChange={handleChange}
+                                fullWidth
+                                margin="dense"
+                            />
+                        ) : (
+                            <Autocomplete
+                                options={customerOptions}
+                                getOptionLabel={(option) => option.name}
+                                value={customer}
+                                onChange={handleCustomerChange}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Заказчик"
+                                        margin="dense"
+                                        InputProps={params.InputProps}
+                                    />
+                                )}
+                                fullWidth
+                                disableClearable
+                            />
+                        )}
                     </Grid>
                     <Grid item xs={12} md={4}>
                         <TextField
@@ -281,6 +321,8 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
                                 fullWidth
                                 margin="dense"
                             />)}
+
+
                     </Grid>
                     <Grid item xs={12} md={4}>
                         {/*<TextField*/}
@@ -393,7 +435,7 @@ const CreateForm = ({ row, departament, onClose, token, onDataSaved }) => {
                         </Box>
                     </Grid>
                 </Grid>
-                <Box mt={1}>
+                <Box mt={1} display="flex" justifyContent="flex-end" alignItems="center">
                     <Button variant="contained" color="primary" onClick={handleSave} sx={{ mr: 1 }}>
                         Сохранить
                     </Button>

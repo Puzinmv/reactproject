@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 
 const pages = ['Карта проекта'];
-const settings = ['Профиль', 'Выйти'];
+const settings = ['Выйти'];
 
 function ResponsiveAppBar({ handleLogout, current }) {
   const [setAnchorElNav] = React.useState(null);
@@ -14,6 +14,7 @@ function ResponsiveAppBar({ handleLogout, current }) {
 
   const handleOpenUserMenu = (event) => {
     setAnchorElUser(event.currentTarget);
+
   };
 
   const handleCloseNavMenu = () => {
@@ -64,7 +65,10 @@ function ResponsiveAppBar({ handleLogout, current }) {
                                 >
                                     {settings.map((setting) => (
                                         <MenuItem key={setting}
-                                            onClick={handleLogout}
+                                            onClick={() => {
+                                                handleCloseUserMenu();
+                                                handleLogout();
+                                            }}
                                         >
                                         <Typography textAlign="center">{setting}</Typography>
                                     </MenuItem>

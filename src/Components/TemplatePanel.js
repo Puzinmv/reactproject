@@ -6,7 +6,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { fetchTemplate } from '../services/directus';
 
-function TemplatePanel({ depatmentid, token, onClose, onAdd }) {
+function TemplatePanel({ depatmentid, onClose, onAdd }) {
     const [rows, setRows] = useState([]);
     const [selected, setSelected] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -15,14 +15,14 @@ function TemplatePanel({ depatmentid, token, onClose, onAdd }) {
 
     useEffect(() => {
         // Загрузка данных из базы данных
-        fetchTemplate(token).then((data) => {
+        fetchTemplate().then((data) => {
             const filter = data.filter((temp) => temp.Department === depatmentid)
             setRows(filter);
             // Получение уникальных категорий
             const uniqueCategories = [...new Set(filter.map((item) => item.category))];
             setCategories(uniqueCategories);
         });
-    }, [token, depatmentid]);
+    }, [depatmentid]);
 
     //useEffect(() => {
     //    const handleClickOutside = (event) => {

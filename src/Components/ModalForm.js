@@ -125,6 +125,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                 priceAproved: false,
             }));
             prevPriceRef.current = formData.Price;
+            settotoalCost(calculateTotalCost(formData));
         }
     }, [formData.Price, formData.Cost]);
 
@@ -193,11 +194,12 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
         let newValue = value;
 
         // для чисел
-        if (['Cost', 'tiketsCost', 'HotelCost', 'dailyCost', 'otherPayments', 'Price', 'resourceSumm', 'frameSumm'].indexOf(name) > -1) {
+        if (['Hired','HiredCost','Cost', 'tiketsCost', 'HotelCost', 'dailyCost', 'otherPayments', 'Price', 'resourceSumm', 'frameSumm'].indexOf(name) > -1) {
             newValue = parseCurrency(value);
         }
 
         setFormData({ ...formData, [name]: newValue });
+
         if (['Cost', 'tiketsCost', 'HotelCost', 'dailyCost', 'otherPayments'].indexOf(name) > -1) {
             settotoalCost(calculateTotalCost({ ...formData, [name]: newValue }));
         }
@@ -209,6 +211,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
         }
         
     };
+
     const handleChangeSwitch = (e) => {
         const { name, checked } = e.target;
         setFormData({ ...formData, [name]: checked });
@@ -394,9 +397,9 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                 overflowY: 'auto'
             }}>
                 <Tabs value={tabIndex} onChange={handleTabChange} aria-label="form tabs">
-                    <Tab label="Основное" />
-                    <Tab label="Детали" />
-                    <Tab label="Финансы" />
+                    <Tab label="Общая информация" />
+                    <Tab label="Объем работ" />
+                    <Tab label="Коммерческая часть" />
                 </Tabs>
                 <TabPanel value={tabIndex} index={0}>
                     <Grid container spacing={1}>
@@ -407,17 +410,19 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 value={selectedInitiator}
                                 onChange={handleInitiatorChange}
                                 renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            label="Инициатор"
-                                            margin="dense"
-                                            InputProps={params.InputProps}
-                                            error={!!errors.initiator}
-                                            helperText={errors.initiator}
-                                        />
+                                    <TextField
+                                        {...params}
+                                        label="Инициатор"
+                                        // margin="dense"
+                                        size="small"
+                                        InputProps={params.InputProps}
+                                        error={!!errors.initiator}
+                                        helperText={errors.initiator}
+                                    />
                                     )}
                                 fullWidth
                                 disableClearable
+                                size="small"
                             />
                         </Grid>
                         <Grid item xs={12} md={9}>
@@ -427,7 +432,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 value={formData.title}
                                 onChange={handleChange}
                                 fullWidth
-                                margin="dense"
+                                size="small"
                             />
                         </Grid>
 
@@ -495,7 +500,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 value={formData.CustomerCRMID}
                                 onChange={handleChange}
                                 fullWidth
-                                margin="dense"
+                                size="small"
                             />
                         </Grid>
                         <Grid item xs={12} md={8}>
@@ -509,7 +514,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                         <TextField
                                             {...params}
                                             label="Контакт заказчика ФИО"
-                                            margin="dense"
+                                            size="small"
                                             InputProps={params.InputProps}
                                         />
                                     )}
@@ -521,10 +526,10 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                     label = "Контакт заказчика ФИО"
                                     name = "CustomerContact"
                                     value = {formData.CustomerContact}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                            />)}
+                                    onChange={handleChange}
+                                    fullWidth
+                                    size="small"
+                            />  )}
                                
 
                         </Grid>
@@ -537,7 +542,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 value={formData.CustomerContactJobTitle}
                                 onChange={handleChange}
                                 fullWidth
-                                margin="dense"
+                                size="small"
                             />
                         </Grid>
                         <Grid item xs={12} md={4}>
@@ -547,7 +552,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 value={formData.CustomerContactEmail}
                                 onChange={handleChange}
                                 fullWidth
-                                margin="dense"
+                                size="small"
                             />
                         </Grid>
                         <Grid item xs={12} md={4}>
@@ -557,7 +562,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 value={formData.CustomerContactTel}
                                 onChange={handleChange}
                                 fullWidth
-                                margin="dense"
+                                size="small"
                             />
                         </Grid>
 
@@ -577,6 +582,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                     value={formData.Department ? formData.Department.id : ''}
                                     label="Отдел исполнителей"
                                     onChange={handleDepartmentChange}
+                                    size="small"
                                 >
                                     {departament.map(item => (
                                         <MenuItem key={item.id} value={item.id}>
@@ -673,7 +679,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                             <TextField
                                 label="Ресурсная оценка (Трудозатраты)"
                                 name="resourceSumm"
-                                value={formData.resourceSumm}
+                                value={formData.resourceSumm || 0}
                                 onChange={handleChange}
                                 size="small"
                                 fullWidth
@@ -684,7 +690,31 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                             <TextField
                                 label="Рамочная оценка (Длительность)"
                                 name="frameSumm"
-                                value={formData.frameSumm}
+                                value={formData.frameSumm || 0}
+                                onChange={handleChange}
+                                size="small"
+                                fullWidth
+                                margin="dense"
+                            />
+                        </Grid>
+                        <Grid container item xs={12} md={6}>
+                        </Grid>
+                        <Grid item xs={3} md={3}>
+                            <TextField
+                                label="Стоимость подрядчика"
+                                name="HiredCost"
+                                value={formatCurrency(formData.HiredCost) || 0}
+                                onChange={handleChange}
+                                size="small"
+                                fullWidth
+                                margin="dense"
+                            />
+                        </Grid>
+                        <Grid item xs={3} md={3}>
+                            <TextField
+                                label="Трудозатраты подрядчика"
+                                name="Hired"
+                                value={formData.Hired || 0}
                                 onChange={handleChange}
                                 size="small"
                                 fullWidth
@@ -850,7 +880,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                     <TextField
                                         label="Стоимость билетов"
                                         name="tiketsCost"
-                                        value={formData.tiketsCost}
+                                        value={formatCurrency(formData.tiketsCost)}
                                         onChange={handleChange}
                                         size="small"
                                         fullWidth
@@ -859,7 +889,8 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 </Grid>
                                 <Grid item xs={6} md={9}>
                                     <TextField
-                                        label="Описание стоимости билетов"
+                                        label="Описание"
+                                        placeholder="Самолет, поезд, автобус"
                                         name="tiketsCostDescription"
                                         value={formData.tiketsCostDescription}
                                         onChange={handleChange}
@@ -872,7 +903,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                     <TextField
                                         label="Стоимость отелей"
                                         name="HotelCost"
-                                        value={formData.HotelCost}
+                                        value={formatCurrency(formData.HotelCost)}
                                         onChange={handleChange}
                                         size="small"
                                         fullWidth
@@ -881,7 +912,8 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 </Grid>
                                 <Grid item xs={6} md={9}>
                                     <TextField
-                                        label="Описание стоимости отелей"
+                                        label="Описание"
+                                        placeholder="Пример: 2 ночи"
                                         name="HotelCostDescription"
                                         value={formData.HotelCostDescription}
                                         onChange={handleChange}
@@ -894,7 +926,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                     <TextField
                                         label="Суточные расходы"
                                         name="dailyCost"
-                                        value={formData.dailyCost}
+                                        value={formatCurrency(formData.dailyCost)}
                                         onChange={handleChange}
                                         size="small"
                                         fullWidth
@@ -903,7 +935,8 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 </Grid>
                                 <Grid item xs={6} md={9}>
                                     <TextField
-                                        label="Описание суточных расходов"
+                                        label="Описание"
+                                        placeholder="Пример: 3 дня"
                                         name="dailyCostDescription"
                                         value={formData.dailyCostDescription}
                                         onChange={handleChange}
@@ -916,7 +949,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                     <TextField
                                         label="Прочие платежи"
                                         name="otherPayments"
-                                        value={formData.otherPayments}
+                                        value={formatCurrency(formData.otherPayments)}
                                         onChange={handleChange}
                                         size="small"
                                         fullWidth
@@ -925,7 +958,8 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 </Grid>
                                 <Grid item xs={6} md={9}>
                                     <TextField
-                                        label="Описание прочих платежей"
+                                        label="Описание"
+                                        placeholder="Такси, бензин и другое"
                                         name="otherPaymentsDescription"
                                         value={formData.otherPaymentsDescription}
                                         onChange={handleChange}
@@ -959,7 +993,8 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                         </Grid>
                         <Grid item xs={6} md={4}>
                             <TextField
-                                label="Номер дата контракта"
+                                label="Реквизиты договора"
+                                placeholder="№1 от 01.01.2020"
                                 name="contract"
                                 value={formData.contract}
                                 onChange={handleChange}

@@ -430,6 +430,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 value={formData.title}
                                 onChange={handleChange}
                                 fullWidth
+                                size="small"
                             />
                         </Grid>
 

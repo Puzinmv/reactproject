@@ -1,12 +1,12 @@
 import {
     createDirectus, authentication,  rest, withToken,
     readItems, readUsers, updateItem, readMe, readFile,
-    uploadFiles, deleteFile, createItem
+    uploadFiles, deleteFile, createItem, refresh
 } from "@directus/sdk";
 
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
     .with(authentication('cookie', { credentials: 'include', autoRefresh: true }))
-    .with(rest({ credentials: "include" }))
+    .with(rest({ credentials: 'include' }))
     ;
 
 export const login = async (email, password) => {
@@ -21,7 +21,8 @@ export const login = async (email, password) => {
 
 export const getToken = async () => {
     try {
-        const token = await directus.refresh();
+        const token = await directus.request(refresh('cookie'));
+        console.log(token)
         return token;
     } catch (e) {
         console.error(e)

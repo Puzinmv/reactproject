@@ -32,7 +32,8 @@ function App() {
     useEffect(() => {
         try {
             const token = async () => await getToken();
-            token().then(() => {
+            token().then((token) => {
+                console.log(token)
                 if (token) {
                     fetchTableData()
                 }

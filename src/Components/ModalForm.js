@@ -413,8 +413,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                     <TextField
                                         {...params}
                                         label="Инициатор"
-                                        // margin="dense"
-                                        size="small"
+                                        margin="dense"
                                         InputProps={params.InputProps}
                                         error={!!errors.initiator}
                                         helperText={errors.initiator}
@@ -422,7 +421,6 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                     )}
                                 fullWidth
                                 disableClearable
-                                size="small"
                             />
                         </Grid>
                         <Grid item xs={12} md={9}>
@@ -432,7 +430,6 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 value={formData.title}
                                 onChange={handleChange}
                                 fullWidth
-                                size="small"
                             />
                         </Grid>
 
@@ -500,7 +497,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 value={formData.CustomerCRMID}
                                 onChange={handleChange}
                                 fullWidth
-                                size="small"
+                                margin="dense"
                             />
                         </Grid>
                         <Grid item xs={12} md={8}>
@@ -514,7 +511,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                         <TextField
                                             {...params}
                                             label="Контакт заказчика ФИО"
-                                            size="small"
+                                            margin="dense"
                                             InputProps={params.InputProps}
                                         />
                                     )}
@@ -528,7 +525,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                     value = {formData.CustomerContact}
                                     onChange={handleChange}
                                     fullWidth
-                                    size="small"
+                                    margin="dense"
                             />  )}
                                
 
@@ -542,7 +539,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 value={formData.CustomerContactJobTitle}
                                 onChange={handleChange}
                                 fullWidth
-                                size="small"
+                                margin="dense"
                             />
                         </Grid>
                         <Grid item xs={12} md={4}>
@@ -552,7 +549,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 value={formData.CustomerContactEmail}
                                 onChange={handleChange}
                                 fullWidth
-                                size="small"
+                                margin="dense"
                             />
                         </Grid>
                         <Grid item xs={12} md={4}>
@@ -562,7 +559,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 value={formData.CustomerContactTel}
                                 onChange={handleChange}
                                 fullWidth
-                                size="small"
+                                margin="dense"
                             />
                         </Grid>
 
@@ -582,7 +579,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                     value={formData.Department ? formData.Department.id : ''}
                                     label="Отдел исполнителей"
                                     onChange={handleDepartmentChange}
-                                    size="small"
+                                    margin="dense"
                                 >
                                     {departament.map(item => (
                                         <MenuItem key={item.id} value={item.id}>

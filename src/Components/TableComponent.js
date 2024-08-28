@@ -77,8 +77,10 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
                 savedColumns = JSON.parse(localStorage.getItem('columns'));
             }
         }
-        setinitiatorOptions(['---', ...new Set(data.map(item => item.initiator.first_name + ' ' + item.initiator.last_name || ''))]);
-        setdepartmentOptions(['---', ...new Set(data.map(item => item.Department.Name))]);
+        setinitiatorOptions(['---', ...new Set(data.map(item => item.initiator.first_name
+            //+ ' ' + item.initiator.last_name || ''
+        ))]);
+        setdepartmentOptions(['---', ...new Set(data.map(item => item.Department.Department))]);
         setstatusOptions(['---', ...new Set(data.map(item => item.status))]);
         setColumns(savedColumns);
     }, [data]);
@@ -151,7 +153,8 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
 
     const formatValue = (value) => {
         if (typeof value === 'object' && value !== null && 'first_name' in value && 'last_name' in value) {
-            return value.first_name + ' ' + value.last_name ||'';
+            return value.first_name
+               // + ' ' + value.last_name || '';
         }
         if (typeof value === 'object' && value !== null) {
             return JSON.stringify(value).toLowerCase();

@@ -127,6 +127,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
             prevPriceRef.current = formData.Price;
             settotoalCost(calculateTotalCost(formData));
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formData.Price, formData.Cost]);
 
     useEffect(() => {
@@ -430,7 +431,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                 value={formData.title}
                                 onChange={handleChange}
                                 fullWidth
-                                size="small"
+                                margin="dense"
                             />
                         </Grid>
 

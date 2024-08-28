@@ -7,7 +7,7 @@ import ColumnVisibilityModal from './Components/ColumnVisibilityModal.js';
 import LoginForm from './Components/LoginForm.js';
 import CreateForm from './Components/CreateForm.js';
 import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
-import { login, logout, fetchData, getToken } from './services/directus';
+import { loginEmail, loginAD, logout, fetchData, getToken } from './services/directus';
 import getNewCardData from './constants/index.js';
 
 const theme = createTheme({
@@ -95,14 +95,24 @@ function App() {
         navigate('/');
     };
 
-    const handleLogin = async (email, password) => {
+    const handleLogin = async (email, password, isAD) => {
         try {
-            const token = await login(email, password);
-            if (token) {
-                fetchTableData();
-                return true;
+            if (isAD) {
+                const token = await loginAD(email, password);
+                if (token) {
+                    fetchTableData();
+                    return true;
+                }
+                return false;
+            } else {
+                const token = await loginEmail(email, password);
+                if (token) {
+                    fetchTableData();
+                    return true;
+                }
+                return false;
             }
-            return false;
+
         } catch (error) {
             return false;
         }

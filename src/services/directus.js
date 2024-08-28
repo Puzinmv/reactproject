@@ -21,7 +21,7 @@ export const login = async (email, password) => {
 
 export const getToken = async () => {
     try {
-        const token = await directus.request(refresh('cookie'));
+        const token = await directus.refresh();
         console.log(token)
         return token;
     } catch (e) {

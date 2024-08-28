@@ -14,7 +14,6 @@ export const getNewCardData = (CurrentUser) => {
         "JobDescription": [],
         "resourceSumm": 0,
         "frameSumm": 0,
-        "jobOnTrip": '<figure><table style="width: 606px;"><tbody><tr><td style="width: 19px; text-align: center;"><p>№</p></td><td style="width: 251px;"><p style="text-align: center;">Адрес(а)для проведения работ:</p></td><td style="width: 93px;"><p style="text-align: center;">Количество дней</p></td><td style="width: 209px;"><p style="text-align: center;">Какие работы проводятся по указанным адресам:</p></td></tr><tr><td style="width: 19px; text-align: center;"><p>1.</p></td><td style="width: 251px;">&nbsp;</td><td style="width: 93px;">&nbsp;</td><td style="width: 209px;">&nbsp;</td></tr><tr><td style="width: 19px; text-align: center;"><p>2.</p></td><td style="width: 251px;">&nbsp;</td><td style="width: 93px;">&nbsp;</td><td style="width: 209px;">&nbsp;</td></tr></tbody></table ></figure > ',
         "Limitations": "",
         "Price": 0,
         "Cost": 0,
@@ -28,16 +27,14 @@ export const getNewCardData = (CurrentUser) => {
         "otherPaymentsDescription": "",
         "company": "",
         "contract": "",
-        "dateStart": "",
-        "deadline": "",
         "Files": [],
         "priceAproved": false,
         "jobCalculated": false,
         "CommentJob": "",
         "initiator": {
             "id": CurrentUser.id,
-            "first_name": CurrentUser.first_name,
-            "last_name": CurrentUser.last_name,
+            "first_name": CurrentUser.first_name || '',
+            "last_name": CurrentUser.last_name || '',
         },
         "Department": { id: '', Department: '' }
     }

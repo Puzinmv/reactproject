@@ -105,7 +105,7 @@ export const fetchCustomer = async (initiator) => {
                 fields: ['*'],
                 filter: {
                     manager: {
-                        _contains: initiator
+                        _contains: initiator.split(" ")[0]
                     }
                 }
             })

@@ -57,7 +57,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
     useEffect(() => {
         const fetchCustomerOptions = async () => {
             try {
-                const response = await fetchCustomer(formData.initiator.last_name);
+                const response = await fetchCustomer(formData.initiator.first_name);
                 const customers = response.map(item => ({
                     name: item.shortName,
                     id: item.id,
@@ -90,7 +90,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
         }).catch((error) => {
                 console.error('Error fetching file info:', error);
             });
-    }, [formData.Customer, formData.Files, formData.initiator.last_name]);
+    }, [formData.Customer, formData.Files, formData.initiator.first_name]);
 
     useEffect(() => {
         settotoalCostPerHour(`${Math.round(totoalCost*100 / (formData.resourceSumm * 8))/100} ₽/час`);
@@ -283,7 +283,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
             ...formData, initiator: {
                 id: newValue.id,
                 first_name: newValue.first_name,
-                last_name: newValue.last_name,
+                last_name: newValue.last_name || '',
             }
         });
     };
@@ -406,7 +406,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                         <Grid item xs={12} md={3}>
                             <Autocomplete
                                 options={InitiatorOptions}
-                                getOptionLabel={(option) => `${option.first_name} ${option.last_name}`}
+                                getOptionLabel={(option) => `${option.first_name} ${option.last_name || ''}`}
                                 value={selectedInitiator}
                                 onChange={handleInitiatorChange}
                                 renderInput={(params) => (

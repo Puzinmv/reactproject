@@ -27,7 +27,7 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
     useEffect(() => {
         const fetchCustomerOptions = async () => {
             try {
-                const response = await fetchCustomer(formData.initiator.last_name);
+                const response = await fetchCustomer(formData.initiator.first_name);
                 setCustomerOptions(response.map(item => ({
                     name: item.shortName,
                     id: item.id,
@@ -55,7 +55,7 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
                 setAutofill(true)
             }
         });
-    }, [formData.Customer, formData.initiator.last_name]);
+    }, [formData.Customer, formData.initiator.first_name]);
 
 
     const validateFields = () => {
@@ -137,7 +137,7 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
             ...formData, initiator: {
                 id: newValue.id,
                 first_name: newValue.first_name,
-                last_name: newValue.last_name,
+                last_name: newValue.last_name || '',
             }
         });
     };
@@ -197,7 +197,7 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
                     <Grid item xs={12} md={3}>
                         <Autocomplete
                             options={InitiatorOptions}
-                            getOptionLabel={(option) => `${option.first_name} ${option.last_name}`}
+                            getOptionLabel={(option) => `${option.first_name} ${option.last_name || ''}`}
                             value={selectedInitiator}
                             onChange={handleInitiatorChange}
                             renderInput={(params) => (

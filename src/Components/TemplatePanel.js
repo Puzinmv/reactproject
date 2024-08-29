@@ -100,6 +100,7 @@ function TemplatePanel({ depatmentid, onClose, onAdd }) {
             <Paper sx={{ width: '100%', mb: 2, overflowY: 'auto' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
                     <h2>Выбор из шаблона</h2>
+                    <h3><a href='http://10.0.0.224:8055/admin/content/JobTemplate' target='_blank' rel="noreferrer">Изменить шаблоны</a></h3>
                     <FormControl sx={{ minWidth: 200 }}>
                         <InputLabel id="category-select-label">Категория</InputLabel>
                         <Select

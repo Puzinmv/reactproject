@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React, { useState } from 'react';
 import {
     AppBar, Box, Toolbar, IconButton, Typography, Menu,
     Container, Avatar, Button, Tooltip, MenuItem
@@ -8,8 +8,8 @@ const pages = ['Карта проекта'];
 const settings = ['Выйти'];
 
 function ResponsiveAppBar({ handleLogout, current }) {
-  const [setAnchorElNav] = React.useState(null);
-  const [anchorElUser, setAnchorElUser] = React.useState(null);
+  //const [setAnchorElNav] = useState(null);
+  const [anchorElUser, setAnchorElUser] = useState(null);
 
 
   const handleOpenUserMenu = (event) => {
@@ -17,9 +17,9 @@ function ResponsiveAppBar({ handleLogout, current }) {
 
   };
 
-  const handleCloseNavMenu = () => {
-    setAnchorElNav(null);
-  };
+  //const handleCloseNavMenu = () => {
+  //  setAnchorElNav(null);
+  //};
 
   const handleCloseUserMenu = () => {
     setAnchorElUser(null);
@@ -33,7 +33,7 @@ function ResponsiveAppBar({ handleLogout, current }) {
                         {pages.map((page) => (
                             <Button
                                 key={page}
-                                onClick={handleCloseNavMenu}
+                                onClick={() => { } }
                                 sx={{ my: 2, color: 'white', display: 'block' }}
                             >
                                 {page}

@@ -32,7 +32,8 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
                     name: item.shortName,
                     id: item.id,
                     fullName: item.fullName,
-                    CRMID: item.CRMID
+                    CRMID: item.CRMID,
+                    options: item.shortName,
                 })))
             } catch (error) {
                 console.error('Error fetching customer options:', error);
@@ -47,12 +48,8 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
             }
         };
         fetchUserOptions();
-        fetchCustomerOptions().then((customers) => {
-            let value = []
-            if (Array.isArray(customers)) { value = customers.find((option) => option.name === formData.Customer) || null; } 
-            setCustomer(value);
-        });
-    }, [formData.Customer, formData.initiator.first_name]);
+        fetchCustomerOptions()
+    }, [formData.initiator.first_name]);
 
 
     const validateFields = () => {
@@ -102,9 +99,9 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
         setFormData({
             ...formData,
             Customer: value ? value?.name : '',
-            CustomerCRMID: value ? value.CRMID : ''
+            CustomerCRMID: value ? value?.CRMID : ''
         });
-
+        setCustomer(value);
         try {
             const response = await fetchCustomerContact(value.CRMID);
             setCustomerContactOptions(response.map(item => ({
@@ -119,6 +116,7 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
         }
 
     };
+
     const handleCustomerContactChange = (event, value) => {
         setFormData({
             ...formData,
@@ -263,22 +261,22 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
                                 margin="dense"
                             />
                         ) : (
-                            <Autocomplete
-                                options={customerOptions}
-                                    getOptionLabel={(option) => option.name || ''}
-                                value={customer}
-                                onChange={handleCustomerChange}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Заказчик"
-                                        margin="dense"
-                                        InputProps={params.InputProps}
-                                    />
-                                )}
-                                fullWidth
-                                disableClearable
-                            />
+                                <Autocomplete
+                                    options={customerOptions}
+                                    getOptionLabel={(option) => option.name}
+                                    value={customer}
+                                    onChange={handleCustomerChange}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Заказчик"
+                                            margin="dense"
+                                            InputProps={params.InputProps}
+                                        />
+                                    )}
+                                    fullWidth
+                                    disableClearable
+                                />
                         )}
                     </Grid>
                     <Grid item xs={12} md={4}>
@@ -322,14 +320,6 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
 
                     </Grid>
                     <Grid item xs={12} md={4}>
-                        {/*<TextField*/}
-                        {/*    label="Контакт заказчика CRMID"*/}
-                        {/*    name="CustomerContactCRMID"*/}
-                        {/*    value={formData.CustomerContactCRMID}*/}
-                        {/*    onChange={handleChange}*/}
-                        {/*    fullWidth*/}
-                        {/*    margin="dense"*/}
-                        {/*/>*/}
                     </Grid>
                     <Grid item xs={12} md={4}>
                         <TextField

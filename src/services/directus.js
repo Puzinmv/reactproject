@@ -208,7 +208,9 @@ export const UpdateData = async (data) => {
             initiator: data.initiator.id || data.initiator,
             Department: data.Department.id || data.Department
         };
-        ['id', 'user_created', 'date_created', 'date_updated', 'user_updated', 'sort'].forEach(key => delete savedata[key]);
+        ['id', 'user_created', 'date_created', 'user_updated', 'date_updated', 'sort'].forEach(key => delete savedata[key]);
+        if (!savedata?.dateStart) savedata.dateStart = null;// обнуляем если дата пустая
+        if (!savedata?.deadline) savedata.deadline = null;; // обнуляем если дата пустая
         const req = await directus.request(updateItem('Project_Card', id, savedata));
         return req;
     } catch (error) {

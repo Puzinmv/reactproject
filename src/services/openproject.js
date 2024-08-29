@@ -2,6 +2,7 @@ import axios from 'axios';
 
 function generateTableOnTrip(data) {
     let tableHtml = `
+    <figure class="table op-uc-figure_align-center op-uc-figure">
     <table border="1" cellpadding="5" cellspacing="0">
       <thead>
         <tr>
@@ -28,12 +29,14 @@ function generateTableOnTrip(data) {
     tableHtml += `
       </tbody>
     </table>
+    </figure>
   `;
 
     return tableHtml;
 }
 function generateTableJob(data) {
     let tableHtml = `
+    <figure class="table op-uc-figure_align-center op-uc-figure">
     <table border="1" cellpadding="5" cellspacing="0">
       <thead>
         <tr>
@@ -60,6 +63,7 @@ function generateTableJob(data) {
     tableHtml += `
       </tbody>
     </table>
+    </figure>
   `;
 
     return tableHtml;
@@ -89,6 +93,7 @@ export const CreateProject = (formData) => {
         },
         "customField29": formData.resourceSumm,
         "customField30": formData.frameSumm,
+        "customField31": `http://10.0.0.224/?id=${formData.id}`,
         "customField33": {
             "format": "markdown",
             "raw": generateTableOnTrip(formData.JobOnTripTable),
@@ -149,7 +154,7 @@ export const CreateProject = (formData) => {
 
 };
 
-export const GetProjectTemtplate = () => {
+export const GetProjectTemtplate = async () => {
     const config = {
         method: 'get',
         url: `https://openproject.asterit.ru/api/v3/projects?filters=[{"templated":{"operator":"=","values":["t"]}}]`,
@@ -159,17 +164,21 @@ export const GetProjectTemtplate = () => {
         },
         data: JSON.stringify({})
     };
-
-    const data = axios.request(config)
+    
+    const data = await axios.request(config)
         .then((response) => {
-            console.log(data)
-            return response.data
+            let templateOption = []
+            if (Array.isArray(response.data._embedded.elements)) {
+                response.data._embedded.elements.map((item) => templateOption.push({ name: item.name, value: item.id }))
+            }
+            return templateOption
         })
         .catch((error) => {
             console.log(error);
-            return null
+            return []
         });
-    console.log(data)
+    
+    return data
 };
 
 

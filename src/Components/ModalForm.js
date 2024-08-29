@@ -30,6 +30,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const [tabIndex, setTabIndex] = useState(0);
     const [formData, setFormData] = useState(row);
     const [customerOptions, setCustomerOptions] = useState([]);
+    const [projectTemplateOptions, setProjectTemplateOptions] = useState([]);
     const [customer, setCustomer] = useState(null);
     const [customerContactOptions, setCustomerContactOptions] = useState([]);
     const [InitiatorOptions, setInitiatorOptions] = useState([]);
@@ -91,7 +92,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                 console.error('Error fetching file info:', error);
         });
 
-        GetProjectTemtplate()
+        GetProjectTemtplate().then((data) => setProjectTemplateOptions(data))
     }, [formData.Customer, formData.Files, formData.initiator.first_name]);
 
     useEffect(() => {
@@ -173,13 +174,18 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         setTabIndex(newValue);
     };
 
-    const handleSave = async () => {
+    const handleSave = async (newformData) => {
         if (!validateFields()) {
             return;
         }
         try {
-            console.log('SafeData',formData)
-            await UpdateData(formData);
+            if (!newformData?.target) {
+                console.log('SafeData', newformData)
+                await UpdateData(newformData);
+            } else {
+                console.log('SafeData', formData)
+                await UpdateData(formData);
+            }
             onDataSaved();
             onClose();
         } catch (error) {
@@ -196,7 +202,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
 
         const { name, value } = e.target;
         let newValue = value;
-
+        console.log(name, value)
         // для чисел
         if (['Hired','HiredCost','Cost', 'tiketsCost', 'HotelCost', 'dailyCost', 'otherPayments', 'Price', 'resourceSumm', 'frameSumm'].indexOf(name) > -1) {
             newValue = parseCurrency(value);
@@ -380,9 +386,9 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const handleCreateProject = () => {
         const response = CreateProject(formData);
         if (response) {
-            console.log(JSON.stringify(response));
-            setFormData({ ...formData, Project_created: true});
-            handleSave();
+            const newdata = { ...formData, Project_created: true, status: 'Проект стартован'  }
+            setFormData(newdata);
+            handleSave(newdata);
         }
     }
 
@@ -728,12 +734,6 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                 data={formData.JobOnTripTable || []}
                                 handleChange={handleJobOnTripChange}
                             />
-                            {/*<CKEditor*/}
-                            {/*    id="CKEditorjobOnTrip-label"*/}
-                            {/*    editor={ClassicEditor}*/}
-                            {/*    data={formData.jobOnTrip || ''}*/}
-                            {/*    onChange={(event, editor) => handleDescriptionChange(editor, 'jobOnTrip')}*/}
-                            {/*/>*/}
                         </Grid>
                         <Grid item xs={6} md={4}>
                             <FormControl fullWidth margin="dense">
@@ -742,16 +742,15 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                     labelId="OpenProject-template-label"
                                     id="OpenProject-template"
                                     name="OpenProject_Template_id"
-                                    value={formData.OpenProject_Template_id || ''}
+                                    value={formData.OpenProject_Template_id || 0}
                                     label="Шаблон проекта"
                                     onChange={handleChange}
                                 >
-                                    <MenuItem value={38}>ИТ_Шаблон_МЭ</MenuItem>
-                                    <MenuItem value={31}>ЗИ_Шаблон_КИИ</MenuItem>
-                                    <MenuItem value={30}>ЗИ_Шаблон_КИИ_П</MenuItem>
-                                    <MenuItem value={29}>ЗИ_Шаблон_ПДн</MenuItem>
-                                    <MenuItem value={49}>ОАЗИС_Шаблон_Аудит_Защищенности</MenuItem>
-                                    <MenuItem value={50}>ОАЗИС_Шаблон_Пентест_Внешний</MenuItem>
+                                    {projectTemplateOptions.map(item => (
+                                            <MenuItem key={item.value} value={item.value}>
+                                                {item.name}
+                                            </MenuItem>
+                                        ))}
                                 </Select>
                             </FormControl>
                         </Grid>
@@ -992,6 +991,21 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                     <MenuItem value={'Профинтег'}>Профинтег</MenuItem>
                                 </Select>
                             </FormControl>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={formData.Project_created || false}
+                                        name="Project_created"
+                                        onChange={handleChangeSwitch}
+                                    />
+                                }
+                                label={
+                                    <Typography variant="body1" color="textPrimary">
+                                        проект стартован
+                                    </Typography>
+                                }
+                                labelPlacement="start"
+                            />
                         </Grid>
                         <Grid item xs={6} md={4}>
                             <TextField

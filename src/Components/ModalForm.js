@@ -10,7 +10,7 @@ import {
     fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus,
     deleteFileDirectus, fetchCustomer, fetchCustomerContact
 } from '../services/directus';
-import CreateProject from '../services/openproject';
+import {CreateProject, GetProjectTemtplate} from '../services/openproject';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
@@ -89,7 +89,9 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
             setfileInfo(fileInfo)
         }).catch((error) => {
                 console.error('Error fetching file info:', error);
-            });
+        });
+
+        GetProjectTemtplate()
     }, [formData.Customer, formData.Files, formData.initiator.first_name]);
 
     useEffect(() => {
@@ -148,6 +150,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         } else if (formData.jobCalculated && formData.priceAproved) {
             newStatus = 'Экономика согласована';
         }
+        if (formData.Project_created) newStatus = 'Проект стартован'
 
         setFormData(prevData => {
             if (prevData.status !== newStatus) {
@@ -155,7 +158,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
             }
             return prevData;
         });
-    }, [formData.jobCalculated, formData.priceAproved]);
+    }, [formData.Project_created, formData.jobCalculated, formData.priceAproved]);
 
     const validateFields = () => {
         const newErrors = {};
@@ -175,7 +178,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
             return;
         }
         try {
-            //console.log('formData',formData)
+            console.log('SafeData',formData)
             await UpdateData(formData);
             onDataSaved();
             onClose();
@@ -378,7 +381,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         const response = CreateProject(formData);
         if (response) {
             console.log(JSON.stringify(response));
-            setFormData({ ...formData, status: 'Проект стартован' });
+            setFormData({ ...formData, Project_created: true});
             handleSave();
         }
     }

@@ -66,7 +66,7 @@ function generateTableJob(data) {
 }
 
 export const CreateProject = (formData) => {
-    let data = {
+    const data = {
         "name": formData.title,
         "description": {
             "raw": formData.Description
@@ -83,15 +83,19 @@ export const CreateProject = (formData) => {
             "raw": formData.CustomerContactJobTitle + ' '+ formData.CustomerContactEmail + ' ' + formData.CustomerContactTel
         },
         "customField28": {
-            "raw": generateTableJob(formData.JobDescription)
+            "format": "markdown",
+            "raw": generateTableJob(formData.JobDescription),
+            "html": generateTableJob(formData.JobDescription)
         },
         "customField29": formData.resourceSumm,
         "customField30": formData.frameSumm,
         "customField33": {
-            "raw": generateTableOnTrip(formData.JobOnTripTable)
+            "format": "markdown",
+            "raw": generateTableOnTrip(formData.JobOnTripTable),
+            "html": generateTableOnTrip(formData.JobOnTripTable)
         },
         "customField34": {
-            "raw": formData.Limitations
+            "raw": formData.Limitations,
         },
 
         "_meta": {
@@ -124,7 +128,7 @@ export const CreateProject = (formData) => {
         }
     };
 
-    let config = {
+    const config = {
         method: 'post',
         url: `https://openproject.asterit.ru/api/v3/projects/${formData.OpenProject_Template_id}/copy`,
         headers: {
@@ -143,6 +147,29 @@ export const CreateProject = (formData) => {
             return null
         });
 
+};
+
+export const GetProjectTemtplate = () => {
+    const config = {
+        method: 'get',
+        url: `https://openproject.asterit.ru/api/v3/projects?filters=[{"templated":{"operator":"=","values":["t"]}}]`,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic YXBpa2V5Ojk3ODVkODhlOWZlZDc2MzAyMmIyM2Y2MDJlMTE5Yzc4YWI5N2MxZDU3NmYxNzM0N2M2ZmFlMjRmYzZmYmZmMmY='
+        },
+        data: JSON.stringify({})
+    };
+
+    const data = axios.request(config)
+        .then((response) => {
+            console.log(data)
+            return response.data
+        })
+        .catch((error) => {
+            console.log(error);
+            return null
+        });
+    console.log(data)
 };
 
 

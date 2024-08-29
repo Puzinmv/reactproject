@@ -1,26 +1,26 @@
 import axios from 'axios';
 
 export const CreateProject = (id) => {
-    let data = JSON.stringify({
-        "name": "»м¤ проекта",
+    let data = {
+        "name": "имя проекта",
         "description": {
-            "raw": "**ќписание**"
+            "raw": "описание"
         },
         "public": false,
         "statusExplanation": {
-            "raw": "**ќписание статуса проекта**"
+            "raw": "описание статуса проекта"
         },
-        "customField32": "÷ель проекта",
+        "customField32": "цель проекта",
         "customField28": {
-            "raw": "**ќписание работ**"
+            "raw": "описание работ"
         },
         "customField29": 17,
         "customField30": 21,
         "customField33": {
-            "raw": "**јдреса проведени¤ работ**"
+            "raw": "адреса проведени¤ работ"
         },
         "customField34": {
-            "raw": "**ќграничени¤ со стороны исполнителей**"
+            "raw": "ограничения со стороны исполнителей"
         },
         "_meta": {
             "copyMembers": true,
@@ -50,18 +50,16 @@ export const CreateProject = (id) => {
                 "href": "/api/v3/users/22"
             }
         }
-    });
+    };
 
     let config = {
         method: 'post',
-        maxBodyLength: Infinity,
         url: `https://openproject.asterit.ru/api/v3/projects/${id}/copy`,
         headers: {
-            'X-Authentication-Scheme': 'Session',
-            'X-CSRF-TOKEN': 'cqDD5jprMMh0kaT8uOMviX2XT1dWzph4msFxrCwm3nod-q2akrA--s3vZ-G6g6kQv4KaLPz61Yfhr9DtfvY-6Q',
             'Content-Type': 'application/json',
+            'Authorization': 'Basic YXBpa2V5Ojk3ODVkODhlOWZlZDc2MzAyMmIyM2Y2MDJlMTE5Yzc4YWI5N2MxZDU3NmYxNzM0N2M2ZmFlMjRmYzZmYmZmMmY='
         },
-        data: data
+        data: JSON.stringify(data)
     };
 
     axios.request(config)

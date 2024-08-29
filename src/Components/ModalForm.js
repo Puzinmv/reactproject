@@ -375,7 +375,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         setFormData({ ...formData, JobOnTripTable: data});
     };
     const handleCreateProject = () => {
-        const response = CreateProject(formData.OpenProject_Template_id);
+        const response = CreateProject(formData);
         if (response) {
             console.log(JSON.stringify(response));
             setFormData({ ...formData, status: 'Проект стартован' });

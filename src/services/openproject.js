@@ -1,27 +1,99 @@
 import axios from 'axios';
 
-export const CreateProject = (id) => {
+function generateTableOnTrip(data) {
+    let tableHtml = `
+    <table border="1" cellpadding="5" cellspacing="0">
+      <thead>
+        <tr>
+          <th>№</th>
+          <th>Адрес проведения работ</th>
+          <th>Количество дней</th>
+          <th>Какие работы проводятся по указанным адресам</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+    data.forEach((item, index) => {
+        tableHtml += `
+      <tr>
+        <td>${index}</td>
+        <td>${item.Address}</td>
+        <td>${item.DayOnTrip}</td>
+        <td>${item.JobDecription}</td>
+      </tr>
+    `;
+    });
+
+    tableHtml += `
+      </tbody>
+    </table>
+  `;
+
+    return tableHtml;
+}
+function generateTableJob(data) {
+    let tableHtml = `
+    <table border="1" cellpadding="5" cellspacing="0">
+      <thead>
+        <tr>
+          <th>№</th>
+          <th>Наименование работ</th>
+          <th>Ресурсная</th>
+          <th>Рамочная</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+    data.forEach((item, index) => {
+        tableHtml += `
+      <tr>
+        <td>${index}</td>
+        <td>${item.jobName}</td>
+        <td>${item.resourceDay}</td>
+        <td>${item.frameDay}</td>
+      </tr>
+    `;
+    });
+
+    tableHtml += `
+      </tbody>
+    </table>
+  `;
+
+    return tableHtml;
+}
+
+export const CreateProject = (formData) => {
     let data = {
-        "name": "имя проекта",
+        "name": formData.title,
         "description": {
-            "raw": "описание"
+            "raw": formData.Description
         },
         "public": false,
-        "statusExplanation": {
-            "raw": "описание статуса проекта"
+        //"statusExplanation": {
+        //    "raw": "описание статуса проекта"
+        //},
+        //"customField32": "цель проекта",
+        "customField20": formData.Customer,
+        "customField23": formData.CustomerCRMID,
+        "customField24": formData.CustomerContact,
+        "customField25": {
+            "raw": formData.CustomerContactJobTitle + ' '+ formData.CustomerContactEmail + ' ' + formData.CustomerContactTel
         },
-        "customField32": "цель проекта",
         "customField28": {
-            "raw": "описание работ"
+            "raw": generateTableJob(formData.JobDescription)
         },
-        "customField29": 17,
-        "customField30": 21,
+        "customField29": formData.resourceSumm,
+        "customField30": formData.frameSumm,
         "customField33": {
-            "raw": "адреса проведени¤ работ"
+            "raw": generateTableOnTrip(formData.JobOnTripTable)
         },
         "customField34": {
-            "raw": "ограничения со стороны исполнителей"
+            "raw": formData.Limitations
         },
+
         "_meta": {
             "copyMembers": true,
             "copyVersions": true,
@@ -37,7 +109,7 @@ export const CreateProject = (id) => {
             "copyStorages": true,
             "copyStorageProjectFolders": true,
             "copyFileLinks": true,
-            "sendNotifications": false
+            "sendNotifications": true
         },
         "_links": {
             "status": {
@@ -54,7 +126,7 @@ export const CreateProject = (id) => {
 
     let config = {
         method: 'post',
-        url: `https://openproject.asterit.ru/api/v3/projects/${id}/copy`,
+        url: `https://openproject.asterit.ru/api/v3/projects/${formData.OpenProject_Template_id}/copy`,
         headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Basic YXBpa2V5Ojk3ODVkODhlOWZlZDc2MzAyMmIyM2Y2MDJlMTE5Yzc4YWI5N2MxZDU3NmYxNzM0N2M2ZmFlMjRmYzZmYmZmMmY='
@@ -62,7 +134,7 @@ export const CreateProject = (id) => {
         data: JSON.stringify(data)
     };
 
-    axios.request(config)
+    return axios.request(config)
         .then((response) => {
             return response.data
         })

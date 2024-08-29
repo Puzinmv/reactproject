@@ -42,9 +42,9 @@ function ResponsiveAppBar({ handleLogout, current }) {
                     </Box>
                     {(Object.keys(current).length > 0) && (
                         <Box sx={{ flexGrow: 0 }}>
-                            <Tooltip title={`${current.first_name} ${current.last_name}`}>
+                            <Tooltip title={`${current.first_name}`}>
                             <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                                    <Avatar alt={`${current.first_name} ${current.last_name}`} src="" />
+                                    <Avatar alt={`${current.first_name}`} src="" />
                             </IconButton>
                             </Tooltip>
                                 <Menu

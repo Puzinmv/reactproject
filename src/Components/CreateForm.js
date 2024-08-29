@@ -51,9 +51,6 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
             let value = []
             if (Array.isArray(customers)) { value = customers.find((option) => option.name === formData.Customer) || null; } 
             setCustomer(value);
-            if (value.length === 0) {
-                setAutofill(true)
-            }
         });
     }, [formData.Customer, formData.initiator.first_name]);
 
@@ -268,7 +265,7 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
                         ) : (
                             <Autocomplete
                                 options={customerOptions}
-                                getOptionLabel={(option) => option.name}
+                                    getOptionLabel={(option) => option.name || ''}
                                 value={customer}
                                 onChange={handleCustomerChange}
                                 renderInput={(params) => (

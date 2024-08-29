@@ -2,25 +2,25 @@ import axios from 'axios';
 
 export const CreateProject = (id) => {
     let data = JSON.stringify({
-        "name": "Èìÿ ïðîåêòà",
+        "name": "Â»Ð¼Â¤ Ð¿Ñ€Ð¾ÐµÐºÑ‚Ð°",
         "description": {
-            "raw": "**Îïèñàíèå**"
+            "raw": "**ÑœÐ¿Ð¸ÑÐ°Ð½Ð¸Ðµ**"
         },
         "public": false,
         "statusExplanation": {
-            "raw": "**Îïèñàíèå ñòàòóñà ïðîåêòà**"
+            "raw": "**ÑœÐ¿Ð¸ÑÐ°Ð½Ð¸Ðµ ÑÑ‚Ð°Ñ‚ÑƒÑÐ° Ð¿Ñ€Ð¾ÐµÐºÑ‚Ð°**"
         },
-        "customField32": "Öåëü ïðîåêòà",
+        "customField32": "Ã·ÐµÐ»ÑŒ Ð¿Ñ€Ð¾ÐµÐºÑ‚Ð°",
         "customField28": {
-            "raw": "**Îïèñàíèå ðàáîò**"
+            "raw": "**ÑœÐ¿Ð¸ÑÐ°Ð½Ð¸Ðµ Ñ€Ð°Ð±Ð¾Ñ‚**"
         },
         "customField29": 17,
         "customField30": 21,
         "customField33": {
-            "raw": "**Àäðåñà ïðîâåäåíèÿ ðàáîò**"
+            "raw": "**Ñ˜Ð´Ñ€ÐµÑÐ° Ð¿Ñ€Ð¾Ð²ÐµÐ´ÐµÐ½Ð¸Â¤ Ñ€Ð°Ð±Ð¾Ñ‚**"
         },
         "customField34": {
-            "raw": "**Îãðàíè÷åíèÿ ñî ñòîðîíû èñïîëíèòåëåé**"
+            "raw": "**ÑœÐ³Ñ€Ð°Ð½Ð¸Ñ‡ÐµÐ½Ð¸Â¤ ÑÐ¾ ÑÑ‚Ð¾Ñ€Ð¾Ð½Ñ‹ Ð¸ÑÐ¿Ð¾Ð»Ð½Ð¸Ñ‚ÐµÐ»ÐµÐ¹**"
         },
         "_meta": {
             "copyMembers": true,
@@ -60,13 +60,6 @@ export const CreateProject = (id) => {
             'X-Authentication-Scheme': 'Session',
             'X-CSRF-TOKEN': 'cqDD5jprMMh0kaT8uOMviX2XT1dWzph4msFxrCwm3nod-q2akrA--s3vZ-G6g6kQv4KaLPz61Yfhr9DtfvY-6Q',
             'Content-Type': 'application/json',
-            'Accept': 'application/json, text/plain, */*',
-            'X-Requested-With': 'XMLHttpRequest',
-            'sec-ch-ua-platform': '"Windows"',
-            'Sec-Fetch-Site': 'same-origin',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Dest': 'empty',
-            'host': 'openproject.asterit.ru'
         },
         data: data
     };

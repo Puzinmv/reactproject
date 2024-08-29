@@ -26,7 +26,7 @@ const TabPanel = ({ children, value, index }) => {
     );
 };
 
-const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
+const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limitation }) => {
     const [tabIndex, setTabIndex] = useState(0);
     const [formData, setFormData] = useState(row);
     const [customerOptions, setCustomerOptions] = useState([]);
@@ -663,7 +663,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                         checked={formData.jobCalculated || false}
                                         name="jobCalculated"
                                         onChange={handleChangeSwitch}
-                                        //disabled={currentUser.role !== '3e06b866-b3fb-4060-b918-235af1a83082'}
+                                        disabled={currentUser.ProjectCardRole !== 'Admin' && currentUser.ProjectCardRole !== 'Technical' }
                                     />
                                 }
                                 label={
@@ -816,7 +816,7 @@ const ModalForm = ({ row, departament, onClose, onDataSaved, limitation }) => {
                                     <Switch
                                         checked={formData.priceAproved || false}
                                         name="priceAproved"
-                                        //disabled={currentUser.role !== 'bd467e17-bf32-4699-8ec0-c7f997edb3fc' && formData.initiator?.Head !== currentUser.id}
+                                        disabled={currentUser.ProjectCardRole !== 'Admin' && currentUser.ProjectCardRole !== 'Commercial' }
                                         onChange={handleChangeSwitch}
                                     />
                                 }

@@ -202,7 +202,6 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
 
         const { name, value } = e.target;
         let newValue = value;
-        console.log(name, value)
         // для чисел
         if (['Hired','HiredCost','Cost', 'tiketsCost', 'HotelCost', 'dailyCost', 'otherPayments', 'Price', 'resourceSumm', 'frameSumm'].indexOf(name) > -1) {
             newValue = parseCurrency(value);

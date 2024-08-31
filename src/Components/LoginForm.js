@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { TextField, Button, Box, Container, Typography, Alert, FormControlLabel, Switch } from '@mui/material';
 
 const LoginForm = ({ onLogin }) => {
-    const [email, setEmail] = useState('puzin.m.v');
-    const [password, setPassword] = useState('123');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [login, setLogin] = useState('puzin.m.v');
+    const [login, setLogin] = useState('');
     const [isADLogin, setisADLogin] = useState(true);
 
     const handleSubmit = async (e) => {
@@ -34,9 +34,7 @@ const LoginForm = ({ onLogin }) => {
     };
 
     return (
-        <Container maxWidth="xs" sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '80vh' }}>
-            <a href="http://projectcard.asterit.ru:8055/admin/auth/login/ldap?redirect=http://projectcard.asterit.ru">Login</a>
-            
+        <Container maxWidth="xs" sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '80vh' }}>            
             {isADLogin ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <Typography component="h1" variant="h5" sx={{ mb: 2 }}>

@@ -19,15 +19,14 @@ import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import TemplatePanel from './TemplatePanel';
 
-export default function CustomTable({ depatmentid, jobDescriptions, handleJobChange }) {
+export default function CustomTable({ depatmentid, jobDescriptions, projectCardRole, handleJobChange }) {
     const [rows, setRows] = useState(jobDescriptions || []);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [openSnackbar, setOpenSnackbar] = useState(false);
 
     const handleAddRow = () => {
         const newRow = [...rows, { id: rows.length + 1, jobName: '', resourceDay: 0, frameDay: 0 }];
-        setRows(newRow);
-        handleJobChange(newRow)
+        if (handleJobChange(newRow)) setRows(newRow);
     };
 
     const handleDeleteRow = (index) => {
@@ -38,8 +37,8 @@ export default function CustomTable({ depatmentid, jobDescriptions, handleJobCha
             }
         }
         const newRow = rows.filter((_, i) => i !== index)
-        setRows(newRow);
-        handleJobChange(newRow)
+
+        if (handleJobChange(newRow)) setRows(newRow);
     };
 
     const handleAddFromTemplate = (templateRows) => {
@@ -55,13 +54,11 @@ export default function CustomTable({ depatmentid, jobDescriptions, handleJobCha
             };
         });
         const row = [...rows, ...newRows]
-        setRows(row);
-        handleJobChange(row)
+        if (handleJobChange(row)) setRows(row);
     };
     const handleCellEdit = (id, key, value) => {
-        const newRows = rows.map(row => (row.id === id ? { ...row, [key]: value } : row))
-        setRows(newRows);
-        handleJobChange(newRows)       
+        const newRow = rows.map(row => (row.id === id ? { ...row, [key]: value } : row))
+        if (handleJobChange(newRow)) setRows(newRow);      
     };
 
     const handleCopyToClipboard = () => {
@@ -137,7 +134,8 @@ export default function CustomTable({ depatmentid, jobDescriptions, handleJobCha
                                     >
                                         <TableCell
                                             sx={{ width: 20, textAlign: 'center' }}
-                                            contentEditable
+                                            contentEditable={projectCardRole === 'Admin' ||
+                                            projectCardRole === 'Technical'}
                                             suppressContentEditableWarning
                                             onBlur={(e) => handleCellEdit(row.id, 'id', e.target.textContent)}
                                         >
@@ -148,7 +146,8 @@ export default function CustomTable({ depatmentid, jobDescriptions, handleJobCha
                                             component="th"
                                             scope="row"
                                             padding="none"
-                                            contentEditable
+                                            contentEditable={projectCardRole === 'Admin' ||
+                                                projectCardRole === 'Technical'}
                                             suppressContentEditableWarning
                                             onBlur={(e) => handleCellEdit(row.id, 'jobName', e.target.textContent)}
                                         >
@@ -157,7 +156,8 @@ export default function CustomTable({ depatmentid, jobDescriptions, handleJobCha
                                         <TableCell
                                             sx={{ width: 80 }}
                                             align="right"
-                                            contentEditable
+                                            contentEditable={projectCardRole === 'Admin' ||
+                                                projectCardRole === 'Technical'}
                                             suppressContentEditableWarning
                                             onBlur={(e) => handleCellEdit(row.id, 'resourceDay', e.target.textContent)}
                                         >
@@ -166,7 +166,8 @@ export default function CustomTable({ depatmentid, jobDescriptions, handleJobCha
                                         <TableCell
                                             sx={{ width: 80 }}
                                             align="right"
-                                            contentEditable
+                                            contentEditable={projectCardRole === 'Admin' ||
+                                                projectCardRole === 'Technical'}
                                             suppressContentEditableWarning
                                             onBlur={(e) => handleCellEdit(row.id, 'frameDay', e.target.textContent)}
                                         >

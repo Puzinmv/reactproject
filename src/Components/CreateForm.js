@@ -188,7 +188,7 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
                 maxHeight: '90vh',
             }}>
                 <Box sx={{
-                    maxHeight: '85vh',
+                    maxHeight: 'calc(90vh - 64px)',
                     overflowY: 'auto',
                     paddingRight: '16px', 
                     boxSizing: 'border-box',

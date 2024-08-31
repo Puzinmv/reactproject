@@ -241,15 +241,7 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
                     overflowY: 'auto' 
                 }}
             >
-                <Table
-                    aria-label="table with sticky header"
-                    sx={{
-                        ".MuiTableRow-root:hover": {
-                            backgroundColor: "#cfe2f3",
-                        }
-                    }}
-                    stickyHeader
-                >
+                <Table stickyHeader>
                     <TableHead>
                         <TableRow>
                             {columns.map((column) => (
@@ -354,12 +346,12 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
                         {(rowsPerPage > 0 ? sortedData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage) : sortedData).map((row) => (
                             <TableRow
                                 key={row.id}
-                                hover
                                 onClick={() => handleRowClick(row)}
                                 style={{
                                     cursor: 'pointer',
-                                   // transition: 'background-color 0.3s',
+                                    transition: 'background-color 0.3s',
                                 }}
+                                hover={true}
                             >
                                 {columns.map((column) => (
                                     column.visible && (

@@ -14,6 +14,17 @@ const theme = createTheme({
     typography: {
         fontFamily: 'Roboto, sans-serif',
     },
+    components: {
+        MuiTableRow: {
+            styleOverrides: {
+                root: {
+                    "&.MuiTableRow-hover:hover": {
+                        backgroundColor: '#cfe2f3',
+                    },
+                },
+            },
+        },
+    },
 });
 
 function App() {

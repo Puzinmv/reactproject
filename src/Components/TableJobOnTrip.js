@@ -1,36 +1,39 @@
 import React, { useState } from 'react';
 import {
     Paper, Table, TableBody, TableCell, TableContainer, TableRow, TableHead, IconButton, Tooltip,
-    Typography, Toolbar, Snackbar, Alert as MuiAlert
+    Typography, Toolbar, Snackbar, Alert
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 
 
-export default function TableJobOnTrip({ data, handleChange }) {
+export default function TableJobOnTrip({ data, projectCardRole, handleChange }) {
     const [rows, setRows] = useState(data || []);
     const [openSnackbar, setOpenSnackbar] = useState(false);
 
    
     const handleAddRow = () => {
         const newRows = [...rows, { id: rows.length + 1, Address: '', DayOnTrip: 0, JobDecription: '' }];
-        setRows(newRows);
-        handleChange(newRows)
-        triggerSnackbar();
+        if (handleChange(newRows)) {
+            setRows(newRows)
+            triggerSnackbar();
+        } 
     };
 
     const handleCellEdit = (id, key, value) => {
-        const newrows = rows.map(row => (row.id === id ? { ...row, [key]: value } : row))
-        setRows(newrows);
-        handleChange(newrows)
-        triggerSnackbar();
+        const newRows = rows.map(row => (row.id === id ? { ...row, [key]: value } : row))
+        if (handleChange(newRows)) {
+            setRows(newRows)
+            triggerSnackbar();
+        } 
     };
 
     const handleDeleteRow = (id) => {
-        const newrows = rows.filter((row) => row.id !== id)
-        setRows(newrows);
-        handleChange(newrows)
-        triggerSnackbar();
+        const newRows = rows.filter((row) => row.id !== id)
+        if (handleChange(newRows)) {
+            setRows(newRows)
+            triggerSnackbar();
+        } 
     };
 
     const triggerSnackbar = () => {
@@ -97,7 +100,8 @@ export default function TableJobOnTrip({ data, handleChange }) {
                                         <TableCell
                                             sx={{ width: 20, textAlign: 'center' }}
                                             suppressContentEditableWarning
-                                            contentEditable
+                                            contentEditable={projectCardRole === 'Admin' ||
+                                                projectCardRole === 'Technical'}
                                             onBlur={(e) => handleCellEdit(row.id, 'id', e.target.textContent)}
                                         >
                                             {row.id}
@@ -107,7 +111,8 @@ export default function TableJobOnTrip({ data, handleChange }) {
                                             component="th"
                                             scope="row"
                                             padding="none"
-                                            contentEditable
+                                            contentEditable={projectCardRole === 'Admin' ||
+                                                projectCardRole === 'Technical'}
                                             suppressContentEditableWarning
                                             onBlur={(e) => handleCellEdit(row.id, 'Address', e.target.textContent)}
                                         >
@@ -116,7 +121,8 @@ export default function TableJobOnTrip({ data, handleChange }) {
                                         <TableCell
                                             sx={{ width: 80 }}
                                             align="right"
-                                            contentEditable
+                                            contentEditable={projectCardRole === 'Admin' ||
+                                                projectCardRole === 'Technical'}
                                             suppressContentEditableWarning
                                             onBlur={(e) => handleCellEdit(row.id, 'DayOnTrip', e.target.textContent)}
                                         >
@@ -125,7 +131,8 @@ export default function TableJobOnTrip({ data, handleChange }) {
                                         <TableCell
                                             sx={{ width: '40%' }}
                                             align="right"
-                                            contentEditable
+                                            contentEditable={projectCardRole === 'Admin' ||
+                                                projectCardRole === 'Technical'}
                                             suppressContentEditableWarning
                                             onBlur={(e) => handleCellEdit(row.id, 'JobDecription', e.target.textContent)}
                                         >
@@ -152,9 +159,9 @@ export default function TableJobOnTrip({ data, handleChange }) {
                 anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
                 style={{ position: 'absolute', top: 0, right: 0 }}
             >
-                <MuiAlert  severity="info" color="warning" sx={{ width: '100%' }}>
+                <Alert  severity="info" color="warning" sx={{ width: '100%' }}>
                     Не забудьте оценить накладные расходы на вкладке Коммерческая часть
-                </MuiAlert>
+                </Alert>
             </Snackbar>
         </div>
     );

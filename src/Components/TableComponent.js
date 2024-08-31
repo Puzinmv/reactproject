@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button,
     TableSortLabel, TablePagination, Paper, Checkbox, IconButton, Menu, MenuItem,
-    TextField, Tooltip, Switch, Typography, FormControlLabel
+    TextField, Tooltip, Switch, Typography, FormControlLabel, Box
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddIcon from '@mui/icons-material/Add'; 
@@ -17,16 +17,16 @@ const formatDate = (dateString) => {
 };
 
 const statusStyles = {
-    'Новая карта': { color: 'blue' },
-    'Оценка трудозатрат проведена': { color: 'orange' },
-    'Экономика согласована': { color: 'green' },
-    'Проект стартован': { color: 'red' },
+    'Новая карта': { color: 'primary.main' },
+    'Оценка трудозатрат проведена': { color: 'warning.main' },
+    'Экономика согласована': { color: 'success.main' },
+    'Проект стартован': { color: 'secondary.main' },
 };
 
 const formatField = (field, value) => {
     if (field === 'status') {
         const style = statusStyles[value.trim()] || {};
-        return <span style={style}>{value}</span>;
+        return (<Box sx={style}>{value}</Box>);;
     }
     if (field === 'date_created' || field === 'date_updated' || field === 'dateStart' || field === 'deadline') {
     return formatDate(value);
@@ -77,6 +77,8 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
                 savedColumns = JSON.parse(localStorage.getItem('columns'));
             }
         }
+        const SetSelect = localStorage.getItem('ShowMyCard');
+        if (SetSelect) setShowMyCards(JSON.parse(SetSelect))
         setinitiatorOptions(['---', ...new Set(data.map(item => item.initiator.first_name
             //+ ' ' + item.initiator.last_name || ''
         ))]);
@@ -149,6 +151,7 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
 
     const handleSwitchChange = (event) => {
         setShowMyCards(event.target.checked);
+        localStorage.setItem('ShowMyCard', JSON.stringify(event.target.checked));
     };
 
     const formatValue = (value) => {
@@ -193,8 +196,6 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
         return 0;
     });
 
-    const paginatedData = sortedData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-
     return (
         <Paper>
             <div style={{ display: 'flex', alignItems: 'center', padding: '16px' }}>
@@ -233,8 +234,22 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
                     style={{ marginLeft: 'auto' }}  
                 />
             </div>
-            <TableContainer>
-                <Table>
+            <TableContainer
+                component={Paper}
+                style={{
+                    maxHeight: '76vh',
+                    overflowY: 'auto' 
+                }}
+            >
+                <Table
+                    aria-label="table with sticky header"
+                    sx={{
+                        "& .MuiTableRow-root:hover": {
+                            bgcolor: "#cfe2f3",
+                        }
+                    }}
+                    stickyHeader
+                >
                     <TableHead>
                         <TableRow>
                             {columns.map((column) => (
@@ -336,8 +351,16 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {paginatedData.map((row) => (
-                            <TableRow key={row.id} hover onClick={() => handleRowClick(row)}>
+                        {(rowsPerPage > 0 ? sortedData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage) : sortedData).map((row) => (
+                            <TableRow
+                                key={row.id}
+                                hover
+                                onClick={() => handleRowClick(row)}
+                                style={{
+                                    cursor: 'pointer',
+                                    transition: 'background-color 0.3s',
+                                }}
+                            >
                                 {columns.map((column) => (
                                     column.visible && (
                                         <TableCell key={column.columnId}>
@@ -351,13 +374,15 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
                 </Table>
             </TableContainer>
             <TablePagination
-                rowsPerPageOptions={[10, 50, 100]}
+                rowsPerPageOptions={[10, 50, 100, { value: -1, label: 'Все' }]}
                 component="div"
                 count={filteredData.length}
                 rowsPerPage={rowsPerPage}
                 page={page}
                 onPageChange={handleChangePage}
                 onRowsPerPageChange={handleChangeRowsPerPage}
+                labelRowsPerPage="Показать строк на странице:"
+                labelDisplayedRows={({ from, to, count }) => `${from}-${to} из ${count}`} 
             />
         </Paper>
     );

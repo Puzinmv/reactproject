@@ -47,7 +47,8 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
             data.tiketsCost || 0,
             data.HotelCost || 0,
             data.dailyCost || 0,
-            data.otherPayments || 0
+            data.otherPayments || 0,
+            data.HiredCost || 0
         ].reduce((sum, value) => sum + value, 0);
     };
     const [totoalCost, settotoalCost] = useState(calculateTotalCost(formData));
@@ -114,7 +115,12 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     }, [formData.Cost, formData.resourceSumm]);
 
     useEffect(() => {
-        setSummPerHour(`${Math.round(formData.Price * 100 / (formData.frameSumm * 8)) / 100} ₽/час по длительности`);
+        if (formData.Price) {
+            setSummPerHour(`${Math.round(formData.Price * 100 / (formData.frameSumm * 8)) / 100} ₽/час по длительности`);
+        } else {
+            setSummPerHour('В случае нулевой стоимости проект будет стартован как инвестиционный');
+        }
+
     }, [formData.Price, formData.frameSumm]);
 
 
@@ -209,7 +215,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
 
         setFormData({ ...formData, [name]: newValue });
 
-        if (['Cost', 'tiketsCost', 'HotelCost', 'dailyCost', 'otherPayments'].indexOf(name) > -1) {
+        if (['Cost', 'tiketsCost', 'HotelCost', 'dailyCost', 'otherPayments', 'HiredCost'].indexOf(name) > -1) {
             settotoalCost(calculateTotalCost({ ...formData, [name]: newValue }));
         }
 
@@ -368,6 +374,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     };
 
     const handleJobChange = (jobDescriptions) => {
+        console.log(jobDescriptions)
         const frame = jobDescriptions.reduce((sum, key) => {
             const resourceDay = parseFloat(key.frameDay);
             return sum + (isNaN(resourceDay) ? 0 : resourceDay);
@@ -394,56 +401,57 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     return (
         <Modal open={true} onClose={onClose}>
             <Box sx={{
-                width: 'calc(100% - 20rem)',
+                width: 'calc(100% - 10rem)',
                 bgcolor: 'background.paper',
                 p: 3,
                 mx: 'auto',
                 mt: 4,
                 fontFamily: 'Roboto, sans-serif',
-                ml: '10rem',
-                mr: '10rem',
-                maxHeight: '80vh',
-                overflowY: 'auto'
+                ml: '5rem',
+                mr: '5rem',
+                maxHeight: '90vh',
             }}>
                 <Tabs value={tabIndex} onChange={handleTabChange} aria-label="form tabs">
                     <Tab label="Общая информация" />
                     <Tab label="Объем работ" />
                     <Tab label="Коммерческая часть" />
                 </Tabs>
-                <TabPanel value={tabIndex} index={0}>
-                    <Grid container spacing={1}>
-                        <Grid item xs={12} md={3}>
-                            <Autocomplete
-                                options={InitiatorOptions}
-                                getOptionLabel={(option) => `${option.first_name} ${option.last_name || ''}`}
-                                value={selectedInitiator}
-                                onChange={handleInitiatorChange}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Инициатор"
-                                        margin="dense"
-                                        InputProps={params.InputProps}
-                                        error={!!errors.initiator}
-                                        helperText={errors.initiator}
-                                    />
-                                    )}
-                                fullWidth
-                                disableClearable
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={9}>
-                            <TextField
-                                label="Название проекта"
-                                name="title"
-                                value={formData.title}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-
-                        <Grid container spacing={2} alignItems="center">
+                <Box sx={{
+                    maxHeight: '80vh',
+                    overflowY: 'auto'
+                }}>
+                    <TabPanel value={tabIndex} index={0}>
+                        <Grid container spacing={1}>
+                            <Grid item xs={12} md={3}>
+                                <Autocomplete
+                                    options={InitiatorOptions}
+                                    getOptionLabel={(option) => `${option.first_name} ${option.last_name || ''}`}
+                                    value={selectedInitiator}
+                                    onChange={handleInitiatorChange}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Инициатор"
+                                            margin="dense"
+                                            InputProps={params.InputProps}
+                                            error={!!errors.initiator}
+                                            helperText={errors.initiator}
+                                        />
+                                        )}
+                                    fullWidth
+                                    disableClearable
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={9}>
+                                <TextField
+                                    label="Название проекта"
+                                    name="title"
+                                    value={formData.title}
+                                    onChange={handleChange}
+                                    fullWidth
+                                    margin="dense"
+                                />
+                            </Grid>
                             <Grid item xs={12} md={8}>
                                 <Typography variant="h6" gutterBottom>
                                     Данные о заказчике
@@ -469,584 +477,582 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                     labelPlacement="end"
                                 />
                             </Grid>
-                        </Grid>
-
-                        <Grid item xs={12} md={8}>
-                            {autofill ? (
+                            <Grid item xs={12} md={8}>
+                                {autofill ? (
+                                    <TextField
+                                        label="Заказчик"
+                                        name="Customer"
+                                        value={formData.Customer}
+                                        onChange={handleChange}
+                                        fullWidth
+                                        margin="dense"
+                                    />
+                                ) : (
+                                    <Autocomplete
+                                        options={customerOptions}
+                                        getOptionLabel={(option) => option.name}
+                                            value={customer}
+                                        onChange={handleCustomerChange}
+                                        renderInput={(params) => (
+                                            <TextField
+                                                {...params}
+                                                label="Заказчик"
+                                                margin="dense"
+                                                InputProps={params.InputProps}
+                                            />
+                                        )}
+                                        fullWidth
+                                        disableClearable
+                                    />
+                                )}
+                            </Grid>
+                            <Grid item xs={12} md={4}>
                                 <TextField
-                                    label="Заказчик"
-                                    name="Customer"
-                                    value={formData.Customer}
+                                    label="Заказчик CRMID"
+                                    name="CustomerCRMID"
+                                    value={formData.CustomerCRMID}
                                     onChange={handleChange}
                                     fullWidth
                                     margin="dense"
                                 />
-                            ) : (
-                                <Autocomplete
-                                    options={customerOptions}
-                                    getOptionLabel={(option) => option.name}
-                                        value={customer}
-                                    onChange={handleCustomerChange}
-                                    renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            label="Заказчик"
-                                            margin="dense"
-                                            InputProps={params.InputProps}
-                                        />
-                                    )}
-                                    fullWidth
-                                    disableClearable
-                                />
-                            )}
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                            <TextField
-                                label="Заказчик CRMID"
-                                name="CustomerCRMID"
-                                value={formData.CustomerCRMID}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={8}>
-                            {customerContactOptions.length > 0 ? (
-                                <Autocomplete
-                                    options={customerContactOptions}
-                                    getOptionLabel={(option) => option.name}
-                                    value={customerContactOptions.find((option) => option.name === formData.CustomerContact) || null}
-                                    onChange={handleCustomerContactChange}
-                                    renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            label="Контакт заказчика ФИО"
-                                            margin="dense"
-                                            InputProps={params.InputProps}
-                                        />
-                                    )}
-                                    fullWidth
-                                    disableClearable
-                                />
-                            ): (
-                                <TextField
-                                    label = "Контакт заказчика ФИО"
-                                    name = "CustomerContact"
-                                    value = {formData.CustomerContact}
-                                    onChange={handleChange}
-                                    fullWidth
-                                    margin="dense"
-                            />  )}
+                            </Grid>
+                            <Grid item xs={12} md={8}>
+                                {customerContactOptions.length > 0 ? (
+                                    <Autocomplete
+                                        options={customerContactOptions}
+                                        getOptionLabel={(option) => option.name}
+                                        value={customerContactOptions.find((option) => option.name === formData.CustomerContact) || null}
+                                        onChange={handleCustomerContactChange}
+                                        renderInput={(params) => (
+                                            <TextField
+                                                {...params}
+                                                label="Контакт заказчика ФИО"
+                                                margin="dense"
+                                                InputProps={params.InputProps}
+                                            />
+                                        )}
+                                        fullWidth
+                                        disableClearable
+                                    />
+                                ): (
+                                    <TextField
+                                        label = "Контакт заказчика ФИО"
+                                        name = "CustomerContact"
+                                        value = {formData.CustomerContact}
+                                        onChange={handleChange}
+                                        fullWidth
+                                        margin="dense"
+                                />  )}
                                
 
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                            <TextField
-                                label="Должность"
-                                name="CustomerContactJobTitle"
-                                value={formData.CustomerContactJobTitle}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                            <TextField
-                                label="Email"
-                                name="CustomerContactEmail"
-                                value={formData.CustomerContactEmail}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                            <TextField
-                                label="Телефон"
-                                name="CustomerContactTel"
-                                value={formData.CustomerContactTel}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-
-                        <Grid item xs={12}>
-                            <Typography variant="h6" gutterBottom>
-                                Данные о проекте
-                            </Typography>
-                        </Grid>
-
-                        <Grid item xs={12} md={6}>
-                            <FormControl fullWidth margin="dense" error={!!errors.Department}>
-                                <InputLabel id="Department-label">Отдел исполнителей</InputLabel>
-                                <Select
-                                    labelId="Department-label"
-                                    id="Department"
-                                    name="Department"
-                                    value={formData.Department ? formData.Department.id : ''}
-                                    label="Отдел исполнителей"
-                                    onChange={handleDepartmentChange}
-                                    margin="dense"
-                                >
-                                    {departament.map(item => (
-                                        <MenuItem key={item.id} value={item.id}>
-                                            {item.Department}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                                {errors.Department && <FormHelperText>{errors.Department}</FormHelperText>}
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <Typography
-                                variant="body1"
-                                color="textSecondary"
-                                style={{
-                                    marginTop: '12px',
-                                    marginBottom: '4px',
-                                    fontSize: '0.9rem'
-                                }}
-                            >
-                                Описание проекта
-                            </Typography>
-                            <CKEditor
-                                id="CKEditor-label"
-                                editor={ClassicEditor}
-                                data={formData.Description || ''}
-                                name="Description"
-                                onChange={(event, editor) => handleDescriptionChange(editor, 'Description')}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Ограничения от инициатора"
-                                name="ProjectScope"
-                                value={formData.ProjectScope}
-                                onChange={handleChange}
-                                fullWidth
-                                multiline
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                        <Box mt={1}>
-                            <Typography variant="h6" gutterBottom>
-                                Файлы
-                            </Typography>
-                            <FileUpload
-                                files={fileInfo}
-                                onUpload={handleFileUpload}
-                                onDelete={handleFileDelete}
-                            />
-                            </Box>
-                        </Grid>
-                    </Grid>
-                </TabPanel>
-
-                <TabPanel value={tabIndex} index={1}>
-                    <Grid container spacing={1}>
-                        <Grid item xs={12}>
-                            <CustomTable
-                                depatmentid={formData.Department?.id || -1}
-                                jobDescriptions={formData.JobDescription}
-                                handleJobChange={handleJobChange}
-                            />
-                        </Grid>
-                        <TextField
-                            label="Комментарии к оценке работ"
-                            name="CommentJob"
-                            value={formData.CommentJob || ''}
-                            onChange={handleChange}
-                            fullWidth
-                            multiline
-                            margin="dense"
-                        />
-                        <Grid container item xs={12} md={6} justifyContent="flex-end" alignItems="center">
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={formData.jobCalculated || false}
-                                        name="jobCalculated"
-                                        onChange={handleChangeSwitch}
-                                        disabled={currentUser.ProjectCardRole !== 'Admin' && currentUser.ProjectCardRole !== 'Technical' }
-                                    />
-                                }
-                                label={
-                                    <Typography variant="body1" color="textPrimary">
-                                        Расчет трудозатрат произведен
-                                    </Typography>
-                                }
-                                labelPlacement="start" 
-                            />
-                        </Grid>
-                        <Grid item xs={3} md={3}>
-                            <TextField
-                                label="Ресурсная оценка (Трудозатраты)"
-                                name="resourceSumm"
-                                value={formData.resourceSumm || 0}
-                                onChange={handleChange}
-                                size="small"
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={3} md={3}>
-                            <TextField
-                                label="Рамочная оценка (Длительность)"
-                                name="frameSumm"
-                                value={formData.frameSumm || 0}
-                                onChange={handleChange}
-                                size="small"
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid container item xs={12} md={6}>
-                        </Grid>
-                        <Grid item xs={3} md={3}>
-                            <TextField
-                                label="Стоимость подрядчика"
-                                name="HiredCost"
-                                value={formatCurrency(formData.HiredCost) || 0}
-                                onChange={handleChange}
-                                size="small"
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={3} md={3}>
-                            <TextField
-                                label="Трудозатраты подрядчика"
-                                name="Hired"
-                                value={formData.Hired || 0}
-                                onChange={handleChange}
-                                size="small"
-                                fullWidth
-                                margin="dense"
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TableJobOnTrip
-                                data={formData.JobOnTripTable || []}
-                                handleChange={handleJobOnTripChange}
-                            />
-                        </Grid>
-                        <Grid item xs={6} md={4}>
-                            <FormControl fullWidth margin="dense">
-                                <InputLabel id="OpenProject-template">Шаблон проекта</InputLabel>
-                                <Select
-                                    labelId="OpenProject-template-label"
-                                    id="OpenProject-template"
-                                    name="OpenProject_Template_id"
-                                    value={formData.OpenProject_Template_id || 0}
-                                    label="Шаблон проекта"
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <TextField
+                                    label="Должность"
+                                    name="CustomerContactJobTitle"
+                                    value={formData.CustomerContactJobTitle}
                                     onChange={handleChange}
-                                >
-                                    {projectTemplateOptions.map(item => (
-                                            <MenuItem key={item.value} value={item.value}>
-                                                {item.name}
-                                            </MenuItem>
-                                        ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Ограничения со стороны исполнителей"
-                                name="Limitations"
-                                value={formData.Limitations || ''}
-                                onChange={handleChange}
-                                onFocus={handleFocus}
-                                fullWidth
-                                multiline
-                                margin="dense"
-                                ref={textFieldRef}
-                            />
-                            <Popper
-                                open={Boolean(anchorEl)}
-                                anchorEl={textFieldRef.current}
-                                placement="top-start"
-                                style={{ zIndex: 1300 }} 
-         
-                            >
-                                <ClickAwayListener onClickAway={handleFocusOut}>
-                                    <List style={{ backgroundColor: 'white', border: '1px solid #ccc', padding: '8px', width: textFieldRef.current?.offsetWidth || 300 }}>
-                                        {limitation.map((template) => (
-                                            <ListItem key={template.name} dense>
-                                                <Checkbox
-                                                    edge="start"
-                                                    checked={checkedTemplates.indexOf(template.name) !== -1}
-                                                    tabIndex={-1}
-                                                    disableRipple
-                                                    onChange={() => handleCheckboxToggle(template.name)}
-                                                />
-                                                <ListItemText primary={template.name} />
-                                            </ListItem>
-                                        ))}
-                                    </List>
-                                </ClickAwayListener>
-                            </Popper>
-                        </Grid>
-                    </Grid>
-                </TabPanel>
-                <TabPanel value={tabIndex} index={2}>
-                    <Grid container spacing={2} style={{ padding: '0 16px' }}>
-                        <Grid item xs={6} md={3}>
-                            <TextField
-                                label="Цена"
-                                name="Price"
-                                value={formatCurrency(formData.Price)}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                                aria-describedby="Sum-helper-text"
-                                InputProps={{
-                                    endAdornment: <InputAdornment position="end">₽</InputAdornment>,
-                                }}
-                            />
-                            <FormHelperText id="Sum-helper-text">
-                                {SummPerHour}
-                            </FormHelperText>
-                        </Grid>
-                        <Grid item xs={12} md={3} container alignItems="center">
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={formData.priceAproved || false}
-                                        name="priceAproved"
-                                        disabled={currentUser.ProjectCardRole !== 'Admin' && currentUser.ProjectCardRole !== 'Commercial' }
-                                        onChange={handleChangeSwitch}
-                                    />
-                                }
-                                label={
-                                    <Typography variant="body1" color="textPrimary">
-                                        Цена согласована
-                                    </Typography>
-                                }
-                                labelPlacement="start" 
-                            />
-                            <Grid item>
-                                <Typography variant="caption" color="textSecondary">
-                                    В случае нулевой стоимости проект будет стартован как инвестиционный
+                                    fullWidth
+                                    margin="dense"
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <TextField
+                                    label="Email"
+                                    name="CustomerContactEmail"
+                                    value={formData.CustomerContactEmail}
+                                    onChange={handleChange}
+                                    fullWidth
+                                    margin="dense"
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <TextField
+                                    label="Телефон"
+                                    name="CustomerContactTel"
+                                    value={formData.CustomerContactTel}
+                                    onChange={handleChange}
+                                    fullWidth
+                                    margin="dense"
+                                />
+                            </Grid>
+
+                            <Grid item xs={12}>
+                                <Typography variant="h6" gutterBottom>
+                                    Данные о проекте
                                 </Typography>
                             </Grid>
-                        </Grid>
-                        <Grid item xs={6} md={3}>
-                            <TextField
-                                label="Себестоимость"
-                                name="Cost"
-                                value={formatCurrency(formData.Cost)}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                                aria-describedby="Cost-helper-text"
-                                InputProps={{
-                                    endAdornment: <InputAdornment position="end">₽</InputAdornment>,
-                                    readOnly: true,
-                                }}
-                            />
-                            <FormHelperText id="Cost-helper-text">
-                                {CostPerHour}
-                            </FormHelperText>
-                        </Grid>
-                        <Grid item xs={6} md={3}>
-                            <TextField
-                                label="Себестоимость с накладными"
-                                name="TotalCost"
-                                value={formatCurrency(totoalCost)}
-                                fullWidth
-                                margin="dense"
-                                aria-describedby="TotalCost-helper-text"
-                                InputProps={{
-                                    endAdornment: <InputAdornment position="end">₽</InputAdornment>,
-                                    readOnly: true,
-                                }}
-                            />
-                            <FormHelperText id="TotalCost-helper-text">
-                                {totoalCostPerHour}
-                            </FormHelperText>
-                        </Grid>
-                        <Grid item xs={12} md={8}>
-                            <Grid container spacing={2}>
-                                <Grid item xs={12}>
-                                    <Typography variant="h6" gutterBottom>
-                                        Накладные расходы
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6} md={3}>
-                                    <TextField
-                                        label="Стоимость билетов"
-                                        name="tiketsCost"
-                                        value={formatCurrency(formData.tiketsCost)}
-                                        onChange={handleChange}
-                                        size="small"
-                                        fullWidth
+
+                            <Grid item xs={12} md={4}>
+                                <FormControl fullWidth margin="dense" error={!!errors.Department}>
+                                    <InputLabel id="Department-label">Отдел исполнителей</InputLabel>
+                                    <Select
+                                        labelId="Department-label"
+                                        id="Department"
+                                        name="Department"
+                                        value={formData.Department ? formData.Department.id : ''}
+                                        label="Отдел исполнителей"
+                                        onChange={handleDepartmentChange}
                                         margin="dense"
-                                    />
-                                </Grid>
-                                <Grid item xs={6} md={9}>
-                                    <TextField
-                                        label="Описание"
-                                        placeholder="Самолет, поезд, автобус"
-                                        name="tiketsCostDescription"
-                                        value={formData.tiketsCostDescription}
-                                        onChange={handleChange}
-                                        size="small"
-                                        fullWidth
-                                        margin="dense"
-                                    />
-                                </Grid>
-                                <Grid item xs={6} md={3}>
-                                    <TextField
-                                        label="Стоимость отелей"
-                                        name="HotelCost"
-                                        value={formatCurrency(formData.HotelCost)}
-                                        onChange={handleChange}
-                                        size="small"
-                                        fullWidth
-                                        margin="dense"
-                                    />
-                                </Grid>
-                                <Grid item xs={6} md={9}>
-                                    <TextField
-                                        label="Описание"
-                                        placeholder="Пример: 2 ночи"
-                                        name="HotelCostDescription"
-                                        value={formData.HotelCostDescription}
-                                        onChange={handleChange}
-                                        size="small"
-                                        fullWidth
-                                        margin="dense"
-                                    />
-                                </Grid>
-                                <Grid item xs={6} md={3}>
-                                    <TextField
-                                        label="Суточные расходы"
-                                        name="dailyCost"
-                                        value={formatCurrency(formData.dailyCost)}
-                                        onChange={handleChange}
-                                        size="small"
-                                        fullWidth
-                                        margin="dense"
-                                    />
-                                </Grid>
-                                <Grid item xs={6} md={9}>
-                                    <TextField
-                                        label="Описание"
-                                        placeholder="Пример: 3 дня"
-                                        name="dailyCostDescription"
-                                        value={formData.dailyCostDescription}
-                                        onChange={handleChange}
-                                        size="small"
-                                        fullWidth
-                                        margin="dense"
-                                    />
-                                </Grid>
-                                <Grid item xs={6} md={3}>
-                                    <TextField
-                                        label="Прочие платежи"
-                                        name="otherPayments"
-                                        value={formatCurrency(formData.otherPayments)}
-                                        onChange={handleChange}
-                                        size="small"
-                                        fullWidth
-                                        margin="dense"
-                                    />
-                                </Grid>
-                                <Grid item xs={6} md={9}>
-                                    <TextField
-                                        label="Описание"
-                                        placeholder="Такси, бензин и другое"
-                                        name="otherPaymentsDescription"
-                                        value={formData.otherPaymentsDescription}
-                                        onChange={handleChange}
-                                        size="small"
-                                        fullWidth
-                                        margin="dense"
-                                    />
-                                </Grid>
+                                    >
+                                        {departament.map(item => (
+                                            <MenuItem key={item.id} value={item.id}>
+                                                {item.Department}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                    {errors.Department && <FormHelperText>{errors.Department}</FormHelperText>}
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Typography
+                                    variant="body1"
+                                    color="textSecondary"
+                                    style={{
+                                        marginTop: '12px',
+                                        marginBottom: '4px',
+                                        fontSize: '0.9rem'
+                                    }}
+                                >
+                                    Описание проекта
+                                </Typography>
+                                <CKEditor
+                                    id="CKEditor-label"
+                                    editor={ClassicEditor}
+                                    data={formData.Description || ''}
+                                    name="Description"
+                                    onChange={(event, editor) => handleDescriptionChange(editor, 'Description')}
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <TextField
+                                    label="Особые пожелания заказчика или инициатора"
+                                    name="ProjectScope"
+                                    value={formData.ProjectScope}
+                                    onChange={handleChange}
+                                    fullWidth
+                                    multiline
+                                    margin="dense"
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                            <Box mt={1}>
+                                <Typography variant="h6" gutterBottom>
+                                    Файлы
+                                </Typography>
+                                <FileUpload
+                                    files={fileInfo}
+                                    onUpload={handleFileUpload}
+                                    onDelete={handleFileDelete}
+                                />
+                                </Box>
                             </Grid>
                         </Grid>
-                        <Grid item xs={12}>
-                            <Typography variant="h6" gutterBottom>
-                                Данные для старта проекта
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={6} md={2}>
-                            <FormControl fullWidth margin="dense">
-                                <InputLabel id="company-label">Компания</InputLabel>
-                                <Select
-                                    labelId="company-label"
-                                    id="company"
-                                    name="company"
-                                    value={formData.company}
-                                    label="Компания"
+                    </TabPanel>
+                    <TabPanel value={tabIndex} index={1}>
+                        <Grid container spacing={1}>
+                            <Grid item xs={12}>
+                                <CustomTable
+                                    depatmentid={formData.Department?.id || -1}
+                                    jobDescriptions={formData.JobDescription}
+                                    handleJobChange={handleJobChange}
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <TextField
+                                    label="Комментарии к оценке работ"
+                                    name="CommentJob"
+                                    value={formData.CommentJob || ''}
                                     onChange={handleChange}
+                                    fullWidth
+                                    multiline
+                                    margin="dense"
+                                />
+                            </Grid>
+                            <Grid container item xs={12} md={6} justifyContent="flex-end" alignItems="center">
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={formData.jobCalculated || false}
+                                            name="jobCalculated"
+                                            onChange={handleChangeSwitch}
+                                            disabled={currentUser.ProjectCardRole !== 'Admin' && currentUser.ProjectCardRole !== 'Technical' }
+                                        />
+                                    }
+                                    label={
+                                        <Typography variant="body1" color="textPrimary">
+                                            Расчет трудозатрат произведен
+                                        </Typography>
+                                    }
+                                    labelPlacement="start" 
+                                />
+                            </Grid>
+                            <Grid item xs={3} md={3}>
+                                <TextField
+                                    label="Ресурсная оценка (Трудозатраты)"
+                                    name="resourceSumm"
+                                    value={formData.resourceSumm || 0}
+                                    onChange={handleChange}
+                                    size="small"
+                                    fullWidth
+                                    margin="dense"
+                                />
+                            </Grid>
+                            <Grid item xs={3} md={3}>
+                                <TextField
+                                    label="Рамочная оценка (Длительность)"
+                                    name="frameSumm"
+                                    value={formData.frameSumm || 0}
+                                    onChange={handleChange}
+                                    size="small"
+                                    fullWidth
+                                    margin="dense"
+                                />
+                            </Grid>
+                            <Grid container item xs={12} md={6}>
+                            </Grid>
+                            <Grid item xs={3} md={3}>
+                                <TextField
+                                    label="Стоимость подрядчика"
+                                    name="HiredCost"
+                                    value={formatCurrency(formData.HiredCost) || 0}
+                                    onChange={handleChange}
+                                    size="small"
+                                    fullWidth
+                                    margin="dense"
+                                />
+                            </Grid>
+                            <Grid item xs={3} md={3}>
+                                <TextField
+                                    label="Трудозатраты подрядчика"
+                                    name="Hired"
+                                    value={formData.Hired || 0}
+                                    onChange={handleChange}
+                                    size="small"
+                                    fullWidth
+                                    margin="dense"
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <TableJobOnTrip
+                                    data={formData.JobOnTripTable || []}
+                                    handleChange={handleJobOnTripChange}
+                                />
+                            </Grid>
+                            <Grid item xs={6} md={4}>
+                                <FormControl fullWidth margin="dense">
+                                    <InputLabel id="OpenProject-template">Шаблон проекта</InputLabel>
+                                    <Select
+                                        labelId="OpenProject-template-label"
+                                        id="OpenProject-template"
+                                        name="OpenProject_Template_id"
+                                        value={formData.OpenProject_Template_id || 0}
+                                        label="Шаблон проекта"
+                                        onChange={handleChange}
+                                    >
+                                        {projectTemplateOptions.map(item => (
+                                                <MenuItem key={item.value} value={item.value}>
+                                                    {item.name}
+                                                </MenuItem>
+                                            ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <TextField
+                                    label="Ограничения со стороны исполнителей"
+                                    name="Limitations"
+                                    value={formData.Limitations || ''}
+                                    onChange={handleChange}
+                                    onFocus={handleFocus}
+                                    fullWidth
+                                    multiline
+                                    margin="dense"
+                                    ref={textFieldRef}
+                                />
+                                <Popper
+                                    open={Boolean(anchorEl)}
+                                    anchorEl={textFieldRef.current}
+                                    placement="top-start"
+                                    style={{ zIndex: 1300 }} 
+         
                                 >
-                                    <MenuItem value={'Астерит'}>Астерит</MenuItem>
-                                    <MenuItem value={'Профинтег'}>Профинтег</MenuItem>
-                                </Select>
-                            </FormControl>
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={formData.Project_created || false}
-                                        name="Project_created"
-                                        onChange={handleChangeSwitch}
-                                    />
-                                }
-                                label={
-                                    <Typography variant="body1" color="textPrimary">
-                                        проект стартован
-                                    </Typography>
-                                }
-                                labelPlacement="start"
-                            />
+                                    <ClickAwayListener onClickAway={handleFocusOut}>
+                                        <List style={{ backgroundColor: 'white', border: '1px solid #ccc', padding: '8px', width: textFieldRef.current?.offsetWidth || 300 }}>
+                                            {limitation.map((template) => (
+                                                <ListItem key={template.name} dense>
+                                                    <Checkbox
+                                                        edge="start"
+                                                        checked={checkedTemplates.indexOf(template.name) !== -1}
+                                                        tabIndex={-1}
+                                                        disableRipple
+                                                        onChange={() => handleCheckboxToggle(template.name)}
+                                                    />
+                                                    <ListItemText primary={template.name} />
+                                                </ListItem>
+                                            ))}
+                                        </List>
+                                    </ClickAwayListener>
+                                </Popper>
+                            </Grid>
                         </Grid>
-                        <Grid item xs={6} md={4}>
-                            <TextField
-                                label="Реквизиты договора"
-                                placeholder="№1 от 01.01.2020"
-                                name="contract"
-                                value={formData.contract}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                            />
+                    </TabPanel>
+                    <TabPanel value={tabIndex} index={2}>
+                        <Grid container spacing={2} style={{ padding: '0 16px' }}>
+                            <Grid item xs={6} md={3}>
+                                <TextField
+                                    label="Цена"
+                                    name="Price"
+                                    value={formatCurrency(formData.Price)}
+                                    onChange={handleChange}
+                                    fullWidth
+                                    margin="dense"
+                                    aria-describedby="Sum-helper-text"
+                                    InputProps={{
+                                        endAdornment: <InputAdornment position="end">₽</InputAdornment>,
+                                    }}
+                                />
+                                <FormHelperText id="Sum-helper-text">
+                                    {SummPerHour}
+                                </FormHelperText>
+                            </Grid>
+                            <Grid item xs={12} md={3} container alignItems="center">
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={formData.priceAproved || false}
+                                            name="priceAproved"
+                                            disabled={currentUser.ProjectCardRole !== 'Admin' && currentUser.ProjectCardRole !== 'Commercial' }
+                                            onChange={handleChangeSwitch}
+                                        />
+                                    }
+                                    label={
+                                        <Typography variant="body1" color="textPrimary">
+                                            Цена согласована
+                                        </Typography>
+                                    }
+                                    labelPlacement="start" 
+                                />
+
+                            </Grid>
+                            <Grid item xs={6} md={3}>
+                                <TextField
+                                    label="Себестоимость"
+                                    name="Cost"
+                                    value={formatCurrency(formData.Cost)}
+                                    onChange={handleChange}
+                                    fullWidth
+                                    margin="dense"
+                                    aria-describedby="Cost-helper-text"
+                                    InputProps={{
+                                        endAdornment: <InputAdornment position="end">₽</InputAdornment>,
+                                        readOnly: true,
+                                    }}
+                                />
+                                <FormHelperText id="Cost-helper-text">
+                                    {CostPerHour}
+                                </FormHelperText>
+                            </Grid>
+                            <Grid item xs={6} md={3}>
+                                <TextField
+                                    label="Себестоимость с накладными"
+                                    name="TotalCost"
+                                    value={formatCurrency(totoalCost)}
+                                    fullWidth
+                                    margin="dense"
+                                    aria-describedby="TotalCost-helper-text"
+                                    InputProps={{
+                                        endAdornment: <InputAdornment position="end">₽</InputAdornment>,
+                                        readOnly: true,
+                                    }}
+                                />
+                                <FormHelperText id="TotalCost-helper-text">
+                                    {totoalCostPerHour}
+                                </FormHelperText>
+                            </Grid>
+                            <Grid item xs={12} md={8}>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12}>
+                                        <Typography variant="h6" gutterBottom>
+                                            Накладные расходы
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={6} md={3}>
+                                        <TextField
+                                            label="Стоимость билетов"
+                                            name="tiketsCost"
+                                            value={formatCurrency(formData.tiketsCost)}
+                                            onChange={handleChange}
+                                            size="small"
+                                            fullWidth
+                                            margin="dense"
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6} md={9}>
+                                        <TextField
+                                            label="Описание"
+                                            placeholder="Самолет, поезд, автобус"
+                                            name="tiketsCostDescription"
+                                            value={formData.tiketsCostDescription}
+                                            onChange={handleChange}
+                                            size="small"
+                                            fullWidth
+                                            margin="dense"
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6} md={3}>
+                                        <TextField
+                                            label="Стоимость отелей"
+                                            name="HotelCost"
+                                            value={formatCurrency(formData.HotelCost)}
+                                            onChange={handleChange}
+                                            size="small"
+                                            fullWidth
+                                            margin="dense"
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6} md={9}>
+                                        <TextField
+                                            label="Описание"
+                                            placeholder="Пример: 2 ночи"
+                                            name="HotelCostDescription"
+                                            value={formData.HotelCostDescription}
+                                            onChange={handleChange}
+                                            size="small"
+                                            fullWidth
+                                            margin="dense"
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6} md={3}>
+                                        <TextField
+                                            label="Суточные расходы"
+                                            name="dailyCost"
+                                            value={formatCurrency(formData.dailyCost)}
+                                            onChange={handleChange}
+                                            size="small"
+                                            fullWidth
+                                            margin="dense"
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6} md={9}>
+                                        <TextField
+                                            label="Описание"
+                                            placeholder="Пример: 3 дня"
+                                            name="dailyCostDescription"
+                                            value={formData.dailyCostDescription}
+                                            onChange={handleChange}
+                                            size="small"
+                                            fullWidth
+                                            margin="dense"
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6} md={3}>
+                                        <TextField
+                                            label="Прочие платежи"
+                                            name="otherPayments"
+                                            value={formatCurrency(formData.otherPayments)}
+                                            onChange={handleChange}
+                                            size="small"
+                                            fullWidth
+                                            margin="dense"
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6} md={9}>
+                                        <TextField
+                                            label="Описание"
+                                            placeholder="Такси, бензин и другое"
+                                            name="otherPaymentsDescription"
+                                            value={formData.otherPaymentsDescription}
+                                            onChange={handleChange}
+                                            size="small"
+                                            fullWidth
+                                            margin="dense"
+                                        />
+                                    </Grid>
+                                </Grid>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Typography variant="h6" gutterBottom>
+                                    Данные для старта проекта
+                                </Typography>
+                            </Grid>
+                            <Grid item xs={6} md={2}>
+                                <FormControl fullWidth margin="dense">
+                                    <InputLabel id="company-label">Компания</InputLabel>
+                                    <Select
+                                        labelId="company-label"
+                                        id="company"
+                                        name="company"
+                                        value={formData.company}
+                                        label="Компания"
+                                        onChange={handleChange}
+                                    >
+                                        <MenuItem value={'Астерит'}>Астерит</MenuItem>
+                                        <MenuItem value={'Профинтег'}>Профинтег</MenuItem>
+                                    </Select>
+                                </FormControl>
+                                {(currentUser.email === 'puzin.m.v@asterit.ru') && (
+                                    <FormControlLabel
+                                        control={
+                                            <Switch
+                                                checked={formData.Project_created || false}
+                                                name="Project_created"
+                                                onChange={handleChangeSwitch}
+                                            />
+                                        }
+                                        label={
+                                            <Typography variant="body1" color="textPrimary">
+                                                проект стартован
+                                            </Typography>
+                                        }
+                                        labelPlacement="start"
+                                    />)}
+                            </Grid>
+                            <Grid item xs={6} md={4}>
+                                <TextField
+                                    label="Реквизиты договора"
+                                    placeholder="№1 от 01.01.2020"
+                                    name="contract"
+                                    value={formData.contract}
+                                    onChange={handleChange}
+                                    fullWidth
+                                    margin="dense"
+                                />
+                            </Grid>
+                            <Grid item xs={6} md={3}>
+                                <TextField
+                                    label="Дата начала"
+                                    name="dateStart"
+                                    type="date"
+                                    value={formData.dateStart}
+                                    onChange={handleChange}
+                                    fullWidth
+                                    margin="dense"
+                                    InputLabelProps={{
+                                        shrink: true,
+                                    }}
+                                />
+                            </Grid>
+                            <Grid item xs={6} md={3}>
+                                <TextField
+                                    label="Крайний срок"
+                                    name="deadline"
+                                    type="date"
+                                    value={formData.deadline}
+                                    onChange={handleChange}
+                                    fullWidth
+                                    margin="dense"
+                                    helperText="заполить только в случае жестких ограничений срока проведения работ"
+                                    InputLabelProps={{
+                                        shrink: true,
+                                    }}
+                                />
+                            </Grid>
                         </Grid>
-                        <Grid item xs={6} md={3}>
-                            <TextField
-                                label="Дата начала"
-                                name="dateStart"
-                                type="date"
-                                value={formData.dateStart}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                                InputLabelProps={{
-                                    shrink: true,
-                                }}
-                            />
-                        </Grid>
-                        <Grid item xs={6} md={3}>
-                            <TextField
-                                label="Крайний срок"
-                                name="deadline"
-                                type="date"
-                                value={formData.deadline}
-                                onChange={handleChange}
-                                fullWidth
-                                margin="dense"
-                                InputLabelProps={{
-                                    shrink: true,
-                                }}
-                            />
-                        </Grid>
-                    </Grid>
-                </TabPanel>
+                    </TabPanel>
+                </Box>
                 <Box mt={1} display="flex" justifyContent="flex-end" alignItems="center">
                     {(formData.status === 'Экономика согласована') && (
                         <Button variant="contained" sx={{ bgcolor: 'green', mr: 1 }} onClick={handleCreateProject}>
@@ -1054,11 +1060,11 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                         </Button>
                     )}
                     <Box>
+                        <Button variant="contained" color="secondary" onClick={handleCancel} sx={{ mr: 1 }}>
+                            Отмена
+                        </Button>
                         <Button variant="contained" color="primary" onClick={handleSave} sx={{ mr: 1 }}>
                             Сохранить
-                        </Button>
-                        <Button variant="contained" color="secondary" onClick={handleCancel}>
-                            Отмена
                         </Button>
                     </Box>
 

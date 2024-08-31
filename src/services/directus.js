@@ -1,5 +1,5 @@
 import {
-    createDirectus, authentication,  rest, withToken,
+    createDirectus, authentication,  rest,
     readItems, readUsers, updateItem, readMe, readFile,
     uploadFiles, deleteFile, createItem
 } from "@directus/sdk";
@@ -276,7 +276,8 @@ export const uploadFilesDirectus = async (files) => {
 
 export const deleteFileDirectus = async (fileId) => {
     try {
-        await directus.request(withToken(deleteFile(fileId)));
+        console.log(fileId);
+        await directus.request(deleteFile(fileId));
     } catch (error) {
         console.error('Ошибка при удалении файла:', error);
         throw error;

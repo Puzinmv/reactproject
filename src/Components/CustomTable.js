@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -21,39 +21,25 @@ import TemplatePanel from './TemplatePanel';
 
 export default function CustomTable({ depatmentid, jobDescriptions, handleJobChange }) {
     const [rows, setRows] = useState(jobDescriptions || []);
-    const [selected, setSelected] = useState([]);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [openSnackbar, setOpenSnackbar] = useState(false);
 
-    const handleClick = (event, id) => {
-        const selectedIndex = selected.indexOf(id);
-        let newSelected = [];
-
-        if (selectedIndex === -1) {
-            newSelected = newSelected.concat(selected, id);
-        } else if (selectedIndex === 0) {
-            newSelected = newSelected.concat(selected.slice(1));
-        } else if (selectedIndex === selected.length - 1) {
-            newSelected = newSelected.concat(selected.slice(0, -1));
-        } else if (selectedIndex > 0) {
-            newSelected = newSelected.concat(
-                selected.slice(0, selectedIndex),
-                selected.slice(selectedIndex + 1)
-            );
-        }
-        setSelected(newSelected);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect( () => { handleJobChange(rows) } , [rows]);
-
     const handleAddRow = () => {
-        const newRow = { id: rows.length + 1, jobName: '', resourceDay: 0, frameDay: 0 };
-        setRows([...rows, newRow]);
+        const newRow = [...rows, { id: rows.length + 1, jobName: '', resourceDay: 0, frameDay: 0 }];
+        setRows(newRow);
+        handleJobChange(newRow)
     };
 
-    const handleDeleteRow = (id) => {
-        setRows(rows.filter((row) => row.id !== id));
-        setSelected(selected.filter((selectedId) => selectedId !== id));
+    const handleDeleteRow = (index) => {
+        if (index < rows.length) {
+            for (let i = index + 1; i < rows.length; i++) {
+                console.log(i, rows[i])
+                rows[i].id = i
+            }
+        }
+        const newRow = rows.filter((_, i) => i !== index)
+        setRows(newRow);
+        handleJobChange(newRow)
     };
 
     const handleAddFromTemplate = (templateRows) => {
@@ -68,14 +54,15 @@ export default function CustomTable({ depatmentid, jobDescriptions, handleJobCha
                 id: maxId,
             };
         });
-        setRows([...rows, ...newRows]);
+        const row = [...rows, ...newRows]
+        setRows(row);
+        handleJobChange(row)
     };
     const handleCellEdit = (id, key, value) => {
-        setRows(rows.map(row => (row.id === id ? { ...row, [key]: value } : row)));
-        
+        const newRows = rows.map(row => (row.id === id ? { ...row, [key]: value } : row))
+        setRows(newRows);
+        handleJobChange(newRows)       
     };
-
-    const isSelected = (id) => selected.indexOf(id) !== -1;
 
     const handleCopyToClipboard = () => {
         const rowsForCopy = rows.map(row => {
@@ -96,10 +83,6 @@ export default function CustomTable({ depatmentid, jobDescriptions, handleJobCha
                     sx={{
                         pl: { sm: 2 },
                         pr: { xs: 1, sm: 1 },
-                        ...(selected.length > 0 && {
-                            bgcolor: (theme) =>
-                                theme.palette.action.activatedOpacity,
-                        }),
                     }}
                 >
                     <Typography
@@ -144,18 +127,12 @@ export default function CustomTable({ depatmentid, jobDescriptions, handleJobCha
                         </TableHead>
                         <TableBody>
                             {rows.map((row, index) => {
-                                const isItemSelected = isSelected(row.id);
-                                const labelId = `custom-table-checkbox-${index}`;
-
                                 return (
                                     <TableRow
                                         hover
-                                        onClick={(event) => handleClick(event, row.id)}
                                         role="checkbox"
-                                        aria-checked={isItemSelected}
                                         tabIndex={-1}
-                                        key={row.id}
-                                        selected={isItemSelected}
+                                        key={index}
                                         sx={{ cursor: 'pointer' }}
                                     >
                                         <TableCell
@@ -169,7 +146,6 @@ export default function CustomTable({ depatmentid, jobDescriptions, handleJobCha
                                         <TableCell
                                             sx={{ width: '90%', whiteSpace: 'pre-line' }}
                                             component="th"
-                                            id={labelId}
                                             scope="row"
                                             padding="none"
                                             contentEditable
@@ -198,7 +174,7 @@ export default function CustomTable({ depatmentid, jobDescriptions, handleJobCha
                                         </TableCell>
                                         <TableCell align="right">
                                             <Tooltip title="Удалить">
-                                                <IconButton onClick={() => handleDeleteRow(row.id)}>
+                                                <IconButton onClick={() => handleDeleteRow(index)}>
                                                     <DeleteIcon />
                                                 </IconButton>
                                             </Tooltip>

@@ -93,7 +93,7 @@ export const CreateProject = (formData) => {
         },
         "customField29": formData.resourceSumm,
         "customField30": formData.frameSumm,
-        "customField31": `http://10.0.0.224/?id=${formData.id}`,
+        "customField31": `http://projectcard.asterit.ru/?id=${formData.id}`,
         "customField33": {
             "format": "markdown",
             "raw": generateTableOnTrip(formData.JobOnTripTable),

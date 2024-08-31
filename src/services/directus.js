@@ -5,7 +5,7 @@ import {
 } from "@directus/sdk";
 
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
-    .with(authentication('session', { credentials: 'include', autoRefresh: true }))
+    .with(authentication('cookie', { credentials: 'include', autoRefresh: true }))
     .with(rest({ credentials: 'include' }))
     ;
 
@@ -22,15 +22,15 @@ export const loginEmail = async (email, password) => {
 export const loginAD = async (login, password) => {
     try {
         //const user = await directus.login(email, password);
-        console.log('sdsdd')
         const response = await fetch(process.env.REACT_APP_API_URL +'/auth/login/ldap', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json;charset=utf-8'
+                'Content-Type': 'application/json',
             },
             credentials: 'include',
             body: JSON.stringify({
                 identifier: login,
+                mode: "cookie",
                 password: password,
                 mode: "session"
             })

@@ -35,6 +35,8 @@ const LoginForm = ({ onLogin }) => {
 
     return (
         <Container maxWidth="xs" sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '80vh' }}>
+            <a href="http://projectcard.asterit.ru:8055/admin/auth/login/ldap?redirect=http://projectcard.asterit.ru">Login</a>
+            
             {isADLogin ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <Typography component="h1" variant="h5" sx={{ mb: 2 }}>

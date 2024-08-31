@@ -28,17 +28,19 @@ export const loginAD = async (login, password) => {
             headers: {
                 'Content-Type': 'application/json;charset=utf-8'
             },
+            credentials: 'include',
             body: JSON.stringify({
                 identifier: login,
                 password: password,
-                mode: "cookie"
+                mode: "session"
             })
         });
         if (response.ok) {
             const result = await response.json();
-            console.log(result.data.access_token)
-            directus.setToken(result.data.access_token); 
-            return response;
+            const token = await getToken()
+            console.log(result.data.access_token, token)
+            //directus.setToken(result.data.access_token); 
+            return token;
         } else {
             return null;
         }
@@ -52,8 +54,19 @@ export const loginAD = async (login, password) => {
 
 export const getToken = async () => {
     try {
-        const token = await directus.refresh();
-        console.log(token)
+        const token = await fetch(process.env.REACT_APP_API_URL+'/auth/refresh', {
+            method: 'POST',
+            credentials: 'include', // this is required in order to send the refresh/session token cookie
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'session' }) // using 'session' mode, but can also be 'cookie' or 'json'
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                console.log(data)
+                return data
+            })
+        //const token = await directus.refresh();
+        //console.log(token)
         return token;
     } catch (e) {
         console.error(e)

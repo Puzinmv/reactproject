@@ -7,7 +7,7 @@ import ColumnVisibilityModal from './Components/ColumnVisibilityModal.js';
 import LoginForm from './Components/LoginForm.js';
 import CreateForm from './Components/CreateForm.js';
 import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
-import { loginEmail, loginAD, logout, fetchData, getToken } from './services/directus';
+import { loginEmail, loginAD, logout, fetchData, /*getToken*/ } from './services/directus';
 import getNewCardData from './constants/index.js';
 
 const theme = createTheme({
@@ -29,20 +29,20 @@ function App() {
     const location = useLocation();
 
 
-    useEffect(() => {
-        try {
-            const token = async () => await getToken();
-            token().then((token) => {
-                console.log(token)
-                if (token) {
-                    fetchTableData()
-                }
-            })
+    //useEffect(() => {
+    //    try {
+    //        const token = async () => await getToken();
+    //        token().then((token) => {
+    //            console.log(token)
+    //            if (token) {
+    //                fetchTableData()
+    //            }
+    //        })
 
-        } catch (e) {
-            setCurrentUser({});
-        }
-    }, []);
+    //    } catch (e) {
+    //        setCurrentUser({});
+    //    }
+    //}, []);
 
     useEffect(() => {
         const searchParams = new URLSearchParams(location.search);

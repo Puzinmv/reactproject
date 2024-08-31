@@ -244,8 +244,8 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
                 <Table
                     aria-label="table with sticky header"
                     sx={{
-                        "& .MuiTableRow-root:hover": {
-                            bgcolor: "#cfe2f3",
+                        ".MuiTableRow-root:hover": {
+                            backgroundColor: "#cfe2f3",
                         }
                     }}
                     stickyHeader
@@ -358,7 +358,7 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
                                 onClick={() => handleRowClick(row)}
                                 style={{
                                     cursor: 'pointer',
-                                    transition: 'background-color 0.3s',
+                                   // transition: 'background-color 0.3s',
                                 }}
                             >
                                 {columns.map((column) => (

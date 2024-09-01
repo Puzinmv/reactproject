@@ -138,9 +138,9 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                 priceAproved: false,
             }));
             prevPriceRef.current = formData.Price;
-            settotoalCost(calculateTotalCost(formData));
+            //settotoalCost(calculateTotalCost({ ...formData,
+            //    }));
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formData.Price, formData.Cost]);
 
     useEffect(() => {

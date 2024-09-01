@@ -3,8 +3,9 @@ import {
     Modal, Box, Tabs, Tab, TextField, Button, Typography, Autocomplete,
     InputLabel, Select, MenuItem, FormControl, FormHelperText,
     Switch, Grid, InputAdornment, FormControlLabel, ListItemText,
-    ClickAwayListener, Popper, Checkbox, List, ListItem, Snackbar, Alert
+    ClickAwayListener, Popper, Checkbox, List, ListItem, Snackbar, Alert,
 } from '@mui/material';
+
 //import InputAdornment from '@mui/material/InputAdornment';
 import {
     fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus,
@@ -17,6 +18,7 @@ import FileUpload from './FileUpload';
 import CustomTable from './CustomTable'; 
 import TableJobOnTrip from './TableJobOnTrip'; 
 
+const WORNING_TEXT = 'Измения может вносить только отдел исполнителей';
 
 const TabPanel = ({ children, value, index }) => {
     return (
@@ -49,7 +51,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const [autofill, setAutofill] = useState(false);
     const [anchorEl, setAnchorEl] = useState(null);
     const [checkedTemplates, setCheckedTemplates] = useState([]);
-    const [openSnackbar, setOpenSnackbar] = useState(false);
+    const [snackbarState, setSnackbarState] = useState({ open: false, message: '', severity: 'info' });
     const [totoalCost, settotoalCost] = useState(calculateTotalCost(formData));
     const [totoalCostPerHour, settotoalCostPerHour] = useState(0);
     const [CostPerHour, setCostPerHour] = useState(0);
@@ -206,6 +208,11 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         onClose();
     };
 
+    const triggerSnackbar = (message, severity) => {
+        setSnackbarState({ open: true, message, severity });
+    };
+
+
     const handleChange = (e) => {
 
         const { name, value } = e.target;
@@ -213,7 +220,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
             currentUser.ProjectCardRole !== 'Admin' &&
             currentUser.ProjectCardRole !== 'Technical')
         {
-            setOpenSnackbar(true)
+            triggerSnackbar('Измения может вносить только отдел исполнителей', "warning")
             return
         }
         let newValue = value;
@@ -270,7 +277,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const handleCheckboxToggle = (template) => {
         if (currentUser.ProjectCardRole !== 'Admin' &&
             currentUser.ProjectCardRole !== 'Technical') {
-            setOpenSnackbar(true)
+            triggerSnackbar(WORNING_TEXT, "warning")
             return
         }
         const currentIndex = checkedTemplates.indexOf(template);
@@ -404,7 +411,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const handleJobChange = (jobDescriptions) => {
         if (currentUser.ProjectCardRole !== 'Admin' &&
             currentUser.ProjectCardRole !== 'Technical') {
-            setOpenSnackbar(true)
+            triggerSnackbar(WORNING_TEXT, "warning")
             return false
         }
         const frame = jobDescriptions.reduce((sum, key) => {
@@ -422,25 +429,29 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const handleJobOnTripChange = (data) => {
         if (currentUser.ProjectCardRole !== 'Admin' &&
             currentUser.ProjectCardRole !== 'Technical') {
-            setOpenSnackbar(true)
+            triggerSnackbar(WORNING_TEXT, "warning")
             return false
         }
         setFormData({ ...formData, JobOnTripTable: data });
         return true
     };
-    const handleCreateProject = () => {
-        const response = CreateProject(formData);
+    const handleCreateProject = async () => {
+        triggerSnackbar("Старт проекта", "info")
+        const response = await CreateProject(formData);
+        console.log(response)
         if (response) {
-            const newdata = { ...formData, Project_created: true, status: 'Проект стартован'  }
+            const newdata = { ...formData, Project_created: true, status: 'Проект стартован' }
             setFormData(newdata);
             handleSave(newdata);
+        } else {
+            triggerSnackbar("Ошибка при создании проекта", "error")
         }
     }
     const handleCloseSnackbar = (event, reason) => {
         if (reason === 'clickaway') {
             return;
         }
-        setOpenSnackbar(false);
+        setSnackbarState({ ...snackbarState, open: false });
     };
 
     return (
@@ -1133,14 +1144,14 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                     </Box>
                 </Box>
                 <Snackbar
-                    open={openSnackbar}
+                    open={snackbarState.open}
                     autoHideDuration={3000}
                     onClose={handleCloseSnackbar}
                     anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
                     style={{ position: 'absolute', top: 50, right: 50 }}
                 >
-                    <Alert severity="warning" sx={{ width: '100%' }}>
-                        Измения может вносить только отдел исполнителей
+                    <Alert severity={snackbarState.severity} sx={{ width: '100%' }}>
+                        {snackbarState.message}
                     </Alert>
                 </Snackbar>
             </div>  

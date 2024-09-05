@@ -79,7 +79,7 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
         }
         const SetSelect = localStorage.getItem('ShowMyCard');
         if (SetSelect) setShowMyCards(JSON.parse(SetSelect))
-        setinitiatorOptions(['---', ...new Set(data.map(item => item.initiator.first_name
+        setinitiatorOptions(['---', ...new Set(data.map(item => item?.initiator?.first_name || ''
             //+ ' ' + item.initiator.last_name || ''
         ))]);
         setdepartmentOptions(['---', ...new Set(data.map(item => item.Department.Department))]);

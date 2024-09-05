@@ -63,7 +63,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     useEffect(() => {
         const fetchCustomerOptions = async () => {
             try {
-                const response = await fetchCustomer(formData.initiator.first_name);
+                const response = await fetchCustomer(formData.initiator?.first_name || '');
                 const customers = response.map(item => ({
                     name: item.shortName,
                     id: item.id,
@@ -98,7 +98,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         });
 
         GetProjectTemtplate().then((data) => setProjectTemplateOptions(data))
-    }, [formData.Customer, formData.Files, formData.initiator.first_name]);
+    }, [formData.Customer, formData.Files, formData.initiator?.first_name]);
 
     useEffect(() => {
         settotoalCostPerHour(`${Math.round(totoalCost*100 / (formData.resourceSumm * 8))/100} ₽/час`);
@@ -332,7 +332,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         if (newValue) setFormData({
             ...formData, initiator: {
                 id: newValue.id,
-                first_name: newValue.first_name,
+                first_name: newValue.first_name || '',
                 last_name: newValue.last_name || '',
             }
         });
@@ -482,7 +482,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                 <Grid item xs={12} md={3}>
                                     <Autocomplete
                                         options={InitiatorOptions}
-                                        getOptionLabel={(option) => `${option.first_name} ${option.last_name || ''}`}
+                                        getOptionLabel={(option) => `${option?.first_name || ''} ${option?.last_name || ''}`}
                                         value={selectedInitiator}
                                         onChange={handleInitiatorChange}
                                         renderInput={(params) => (

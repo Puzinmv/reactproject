@@ -34,7 +34,6 @@ const calculateTotalCost = (data) => {
         data.HotelCost || 0,
         data.dailyCost || 0,
         data.otherPayments || 0,
-        data.HiredCost || 0
     ].reduce((sum, value) => sum + value, 0);
 };
 
@@ -138,21 +137,21 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                 priceAproved: false,
             }));
             prevPriceRef.current = formData.Price;
-            //settotoalCost(calculateTotalCost({ ...formData,
-            //    }));
         }
     }, [formData.Price, formData.Cost]);
 
     useEffect(() => {
-        const value = formData.resourceSumm * 8 * formData.Department.CostHour;
+        const value = formData.resourceSumm * 8 * formData.Department.CostHour + formData.HiredCost;
         setFormData(prevData => {
             if (prevData.Cost !== value) {
+                console.log(prevData, value)
+                settotoalCost(calculateTotalCost({ ...prevData, Cost: value }))
                 return { ...prevData, Cost: value };
             }
             return prevData;
         });
 
-    }, [formData.Department.CostHour, formData.resourceSumm]);
+    }, [formData.Department.CostHour, formData.HiredCost, formData.resourceSumm]);
 
     useEffect(() => {
         let newStatus = 'Новая карта';
@@ -233,9 +232,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
             const minDate = new Date();
             minDate.setDate(today.getDate() + 14);
             const selectedDateObj = new Date(value);
-            console.log(today, minDate, selectedDateObj, value)
             if (selectedDateObj < minDate) {
-                console.log("today, minDate, selectedDateObj, value")
                 setStartDateHelperText('На подготовку менее 14 дней. Согласуйте страт проекта с исполнителями');
             } else {
                 setStartDateHelperText('');
@@ -245,7 +242,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
 
         setFormData({ ...formData, [name]: newValue });
 
-        if (['Cost', 'tiketsCost', 'HotelCost', 'dailyCost', 'otherPayments', 'HiredCost'].indexOf(name) > -1) {
+        if (['Cost', 'tiketsCost', 'dailyCost', 'otherPayments'].indexOf(name) > -1) {
             settotoalCost(calculateTotalCost({ ...formData, [name]: newValue }));
         }
 

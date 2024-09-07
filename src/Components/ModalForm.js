@@ -97,12 +97,19 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         });
 
         GetProjectTemtplate().then((data) => setProjectTemplateOptions(data))
-    }, [formData.Customer, formData.Files, formData.initiator?.first_name]);
+        
+
+
+    }, [formData.Customer, formData.Files, formData.initiator?.first_name, limitation]);
 
     useEffect(() => {
         settotoalCostPerHour(`${Math.round(totoalCost*100 / (formData.resourceSumm * 8))/100} ₽/час`);
     }, [totoalCost, formData.resourceSumm]);
 
+    useEffect(() => {
+        const newCheckedTemplates = limitation.filter((template) => formData.Limitations?.includes(template.name.trim())).map((template) => template.name);
+        setCheckedTemplates(newCheckedTemplates);
+    }, [formData.Limitations, limitation]);
 
     const prevResourceSummRef = useRef(formData.resourceSumm);
 
@@ -247,8 +254,9 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
 
         // Проверка соответствия с шаблонами ограничения от исполнителей
         if (name === 'Limitations') {
-            const newCheckedTemplates = limitation.filter((template) => value.includes(template));
+            const newCheckedTemplates = limitation.filter((template) => value.includes(template.name.trim())).map((template) => template.name );
             setCheckedTemplates(newCheckedTemplates);
+            console.log(checkedTemplates)
         }
         
     };

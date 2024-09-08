@@ -32,7 +32,6 @@ export default function CustomTable({ depatmentid, jobDescriptions, projectCardR
     const handleDeleteRow = (index) => {
         if (index < rows.length) {
             for (let i = index + 1; i < rows.length; i++) {
-                console.log(i, rows[i])
                 rows[i].id = i
             }
         }

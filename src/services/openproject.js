@@ -1,70 +1,28 @@
 import axios from 'axios';
 
-function generateTableOnTrip(data) {
-    let tableHtml = `
-    <figure class="table op-uc-figure_align-center op-uc-figure">
-    <table border="1" cellpadding="5" cellspacing="0">
-      <thead>
-        <tr>
-          <th>№</th>
-          <th>Адрес проведения работ</th>
-          <th>Количество дней</th>
-          <th>Какие работы проводятся по указанным адресам</th>
-        </tr>
-      </thead>
-      <tbody>
-  `;
 
+ const LINKS ={
+    CARD: 'https://projectcard.asterit.ru/?id=',
+    PROJECT: 'https://openproject.asterit.ru/api/v3/projects/'
+ }
+ const API_KEY = 'YXBpa2V5Ojk3ODVkODhlOWZlZDc2MzAyMmIyM2Y2MDJlMTE5Yzc4YWI5N2MxZDU3NmYxNzM0N2M2ZmFlMjRmYzZmYmZmMmY='
+ 
+function generateTableOnTrip(data) {
+    let tableMarkdown = `| Адрес проведения работ    | Количество дней | Какие работы проводятся по указанным адресам |
+    | -------- | ------- | ------- |`;
     data.forEach((item, index) => {
-        tableHtml += `
-      <tr>
-        <td>${index}</td>
-        <td>${item.Address}</td>
-        <td>${item.DayOnTrip}</td>
-        <td>${item.JobDecription}</td>
-      </tr>
-    `;
+        tableMarkdown += `|${item.Address}|${item.DayOnTrip}|${item.JobDecription}|`;
     });
 
-    tableHtml += `
-      </tbody>
-    </table>
-    </figure>
-  `;
-
-    return tableHtml;
+    return tableMarkdown;
 }
 function generateTableJob(data) {
-    let tableHtml = `
-    <figure class="table op-uc-figure_align-center op-uc-figure">
-    <table border="1" cellpadding="5" cellspacing="0">
-      <thead>
-        <tr>
-          <th>№</th>
-          <th>Наименование работ</th>
-          <th>Ресурсная</th>
-          <th>Рамочная</th>
-        </tr>
-      </thead>
-      <tbody>
-  `;
+    let tableHtml = `|№|Наименование работ|Ресурсная|Рамочная|
+        | ---- | -------- | ------- | ------- |`;
 
     data.forEach((item, index) => {
-        tableHtml += `
-      <tr>
-        <td>${index}</td>
-        <td>${item.jobName}</td>
-        <td>${item.resourceDay}</td>
-        <td>${item.frameDay}</td>
-      </tr>
-    `;
+        tableHtml += `|${index}|${item.jobName}|${item.resourceDay}|${item.frameDay}|`;
     });
-
-    tableHtml += `
-      </tbody>
-    </table>
-    </figure>
-  `;
 
     return tableHtml;
 }
@@ -76,9 +34,11 @@ export const CreateProject = (formData) => {
             "raw": formData.Description
         },
         "public": false,
-        //"statusExplanation": {
-        //    "raw": "описание статуса проекта"
-        //},
+        "statusExplanation": {
+          "format": "markdown",
+          "raw": `[Ссылка на проект № карты ${formData.id}](${LINKS.CARD}${formData.id})`,
+          "html": `[Ссылка на проект № карты ${formData.id}](${LINKS.CARD}${formData.id})`
+        },
         //"customField32": "цель проекта",
         "customField20": formData.Customer,
         "customField23": formData.CustomerCRMID,
@@ -93,7 +53,7 @@ export const CreateProject = (formData) => {
         },
         "customField29": formData.resourceSumm,
         "customField30": formData.frameSumm,
-        "customField31": `http://projectcard.asterit.ru/?id=${formData.id}`,
+        "customField31": `${LINKS.CARD}${formData.id}`,
         "customField33": {
             "format": "markdown",
             "raw": generateTableOnTrip(formData.JobOnTripTable),
@@ -129,16 +89,19 @@ export const CreateProject = (formData) => {
             },
             "customField1": {
                 "href": "/api/v3/users/22"
-            }
+            },
+            // "members": formData.projectMembers.map(userId => ({
+            //     "href": `/api/v3/users/${userId}`
+            // }))
         }
     };
 
     const config = {
         method: 'post',
-        url: `https://openproject.asterit.ru/api/v3/projects/${formData.OpenProject_Template_id}/copy`,
+        url: `${LINKS.PROJECT}${formData.OpenProject_Template_id}/copy`,
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Basic YXBpa2V5Ojk3ODVkODhlOWZlZDc2MzAyMmIyM2Y2MDJlMTE5Yzc4YWI5N2MxZDU3NmYxNzM0N2M2ZmFlMjRmYzZmYmZmMmY='
+            'Authorization': 'Basic ' + API_KEY
         },
         data: JSON.stringify(data)
     };
@@ -157,10 +120,10 @@ export const CreateProject = (formData) => {
 export const GetProjectTemtplate = async () => {
     const config = {
         method: 'get',
-        url: `https://openproject.asterit.ru/api/v3/projects?filters=[{"templated":{"operator":"=","values":["t"]}}]`,
+        url: `${LINKS.PROJECT}?filters=[{"templated":{"operator":"=","values":["t"]}}]`,
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Basic YXBpa2V5Ojk3ODVkODhlOWZlZDc2MzAyMmIyM2Y2MDJlMTE5Yzc4YWI5N2MxZDU3NmYxNzM0N2M2ZmFlMjRmYzZmYmZmMmY='
+            'Authorization': 'Basic ' + API_KEY
         },
         data: JSON.stringify({})
     };

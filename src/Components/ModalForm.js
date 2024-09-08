@@ -18,7 +18,47 @@ import FileUpload from './FileUpload';
 import CustomTable from './CustomTable'; 
 import TableJobOnTrip from './TableJobOnTrip'; 
 
-const WORNING_TEXT = 'Измения может вносить только отдел исполнителей';
+// Константы для ролей
+const ROLES = {
+  ADMIN: 'Admin',
+  TECHNICAL: 'Technical',
+  COMMERCIAL: 'Commercial'
+};
+
+// Константы для статусов
+const STATUS = {
+  NEW_CARD: 'Новая карта',
+  LABOR_COSTS_ESTIMATED: 'Оценка трудозатрат проведена',
+  ECONOMICS_AGREED: 'Экономика согласована',
+  PROJECT_STARTED: 'Проект стартован'
+};
+
+// Константы для компаний
+const COMPANIES = {
+  ASTERIT: 'Астерит',
+  PROFINTEG: 'Профинтег'
+};
+
+// Константы для email адресов
+const EMAILS = {
+  ADMIN: 'puzin.m.v@asterit.ru'
+};
+
+// Константы для предупреждений
+const WARNING_MESSAGES = {
+  ONLY_EXECUTORS: 'Измения может вносить только отдел исполнителей',
+  START_PROJECT_SOON: 'На подготовку менее 14 дней. Согласуйте страт проекта с исполнителями'
+};
+
+// Константы для полей формы
+const FORM_FIELDS = {
+  COMMENT_JOB: 'CommentJob',
+  HIRED_COST: 'HiredCost',
+  HIRED: 'Hired',
+  OPEN_PROJECT_TEMPLATE_ID: 'OpenProject_Template_id',
+  LIMITATIONS: 'Limitations',
+
+};
 
 const TabPanel = ({ children, value, index }) => {
     return (
@@ -52,8 +92,8 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const [checkedTemplates, setCheckedTemplates] = useState([]);
     const [snackbarState, setSnackbarState] = useState({ open: false, message: '', severity: 'info' });
     const [totoalCost, settotoalCost] = useState(calculateTotalCost(formData));
-    const [totoalCostPerHour, settotoalCostPerHour] = useState(0);
-    const [CostPerHour, setCostPerHour] = useState(0);
+    const [totoalCostPerHour, settotoalCostPerHour] = useState('');
+    const [CostPerHour, setCostPerHour] = useState('');
     const [SummPerHour, setSummPerHour] = useState(0);
     const [startDateHelperText, setStartDateHelperText] = useState('');
     const textFieldRef = useRef(null);
@@ -96,14 +136,20 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                 console.error('Error fetching file info:', error);
         });
 
-        GetProjectTemtplate().then((data) => setProjectTemplateOptions(data))
+        GetProjectTemtplate()
+            .then((data) => setProjectTemplateOptions(data))
+            .catch((error) => {
+                console.error('Ошибка при загрузке шаблонов проекта:', error);
+                setProjectTemplateOptions([]);  
+            });
         
 
 
     }, [formData.Customer, formData.Files, formData.initiator?.first_name, limitation]);
 
     useEffect(() => {
-        settotoalCostPerHour(`${Math.round(totoalCost*100 / (formData.resourceSumm * 8))/100} ₽/час`);
+        if (totoalCost && formData?.resourceSumm) settotoalCostPerHour(`${Math.round(totoalCost * 100 / (formData.resourceSumm * 8)) / 100} ₽/час`)
+        else settotoalCostPerHour('')
     }, [totoalCost, formData.resourceSumm]);
 
     useEffect(() => {
@@ -114,7 +160,8 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const prevResourceSummRef = useRef(formData.resourceSumm);
 
     useEffect(() => {
-        setCostPerHour(`${Math.round(formData.Cost * 100 / (formData.resourceSumm * 8)) / 100} ₽/час`);
+        if (formData?.Cost && formData?.resourceSumm) setCostPerHour(`${Math.round(formData.Cost * 100 / (formData.resourceSumm * 8)) / 100} ₽/час`)
+        else setCostPerHour('')
         if (prevResourceSummRef.current !== formData.resourceSumm) {
             setFormData(prevFormData => ({
                 ...prevFormData,
@@ -125,7 +172,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     }, [formData.Cost, formData.resourceSumm]);
 
     useEffect(() => {
-        if (formData.Price) {
+        if (formData.Price && formData.frameSumm) {
             setSummPerHour(`${Math.round(formData.Price * 100 / (formData.frameSumm * 8)) / 100} ₽/час по длительности`);
         } else {
             setSummPerHour('В случае нулевой стоимости проект будет стартован как инвестиционный');
@@ -148,7 +195,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     }, [formData.Price, formData.Cost]);
 
     useEffect(() => {
-        const value = formData.resourceSumm * 8 * formData.Department.CostHour + formData.HiredCost;
+        const value = (formData?.resourceSumm * 8 * formData?.Department?.CostHour || 0) + (formData?.HiredCost || 0);
         setFormData(prevData => {
             if (prevData.Cost !== value) {
                 settotoalCost(calculateTotalCost({ ...prevData, Cost: value }))
@@ -156,17 +203,16 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
             }
             return prevData;
         });
-
     }, [formData.Department.CostHour, formData.HiredCost, formData.resourceSumm]);
 
     useEffect(() => {
-        let newStatus = 'Новая карта';
+        let newStatus = STATUS.NEW_CARD;
         if (formData.jobCalculated && !formData.priceAproved) {
-            newStatus = 'Оценка трудозатрат проведена';
+            newStatus = STATUS.LABOR_COSTS_ESTIMATED;
         } else if (formData.jobCalculated && formData.priceAproved) {
-            newStatus = 'Экономика согласована';
+            newStatus = STATUS.ECONOMICS_AGREED;
         }
-        if (formData.Project_created) newStatus = 'Проект стартован'
+        if (formData.Project_created) newStatus = STATUS.PROJECT_STARTED
 
         setFormData(prevData => {
             if (prevData.status !== newStatus) {
@@ -221,16 +267,16 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const handleChange = (e) => {
 
         const { name, value } = e.target;
-        if (['CommentJob', 'HiredCost', 'Hired', 'OpenProject_Template_id', 'Limitations'].indexOf(name) > -1 &&
-            currentUser.ProjectCardRole !== 'Admin' &&
-            currentUser.ProjectCardRole !== 'Technical')
+        if ([FORM_FIELDS.COMMENT_JOB, FORM_FIELDS.HIRED_COST, FORM_FIELDS.HIRED, FORM_FIELDS.OPEN_PROJECT_TEMPLATE_ID, FORM_FIELDS.LIMITATIONS].indexOf(name) > -1 &&
+            currentUser.ProjectCardRole !== ROLES.ADMIN &&
+            currentUser.ProjectCardRole !== ROLES.TECHNICAL)
         {
-            triggerSnackbar('Измения может вносить только отдел исполнителей', "warning")
+            triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning")
             return
         }
         let newValue = value;
         // для чисел
-        if (['Hired','HiredCost','Cost', 'tiketsCost', 'HotelCost', 'dailyCost', 'otherPayments', 'Price', 'resourceSumm', 'frameSumm'].indexOf(name) > -1) {
+        if (['Hired','HiredCost','tiketsCost', 'HotelCost', 'dailyCost', 'otherPayments', 'Price'].indexOf(name) > -1) {
             newValue = parseCurrency(value);
         }
         if (name ==='dateStart') {
@@ -239,11 +285,10 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
             minDate.setDate(today.getDate() + 14);
             const selectedDateObj = new Date(value);
             if (selectedDateObj < minDate) {
-                setStartDateHelperText('На подготовку менее 14 дней. Согласуйте страт проекта с исполнителями');
+                setStartDateHelperText(WARNING_MESSAGES.START_PROJECT_SOON);
             } else {
                 setStartDateHelperText('');
             }
-            
         }
 
         setFormData({ ...formData, [name]: newValue });
@@ -253,12 +298,20 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         }
 
         // Проверка соответствия с шаблонами ограничения от исполнителей
-        if (name === 'Limitations') {
+        if (name === FORM_FIELDS.LIMITATIONS) {
             const newCheckedTemplates = limitation.filter((template) => value.includes(template.name.trim())).map((template) => template.name );
             setCheckedTemplates(newCheckedTemplates);
-            console.log(checkedTemplates)
         }
         
+    };
+
+    const handleChangeCost = (e) => {
+        const { name, value } = e.target;
+        let newValue = parseCurrency(value);
+        setFormData({ ...formData, [name]: newValue });
+        settotoalCost(calculateTotalCost({ ...formData, [name]: newValue }));
+        console.log(formData[name])
+
     };
 
     const handleChangeSwitch = (e) => {
@@ -279,9 +332,9 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     };
 
     const handleCheckboxToggle = (template) => {
-        if (currentUser.ProjectCardRole !== 'Admin' &&
-            currentUser.ProjectCardRole !== 'Technical') {
-            triggerSnackbar(WORNING_TEXT, "warning")
+        if (currentUser.ProjectCardRole !== ROLES.ADMIN &&
+            currentUser.ProjectCardRole !== ROLES.TECHNICAL) {
+            triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning")
             return
         }
         const currentIndex = checkedTemplates.indexOf(template);
@@ -413,9 +466,9 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     };
 
     const handleJobChange = (jobDescriptions) => {
-        if (currentUser.ProjectCardRole !== 'Admin' &&
-            currentUser.ProjectCardRole !== 'Technical') {
-            triggerSnackbar(WORNING_TEXT, "warning")
+        if (currentUser.ProjectCardRole !== ROLES.ADMIN &&
+            currentUser.ProjectCardRole !== ROLES.TECHNICAL) {
+            triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning")
             return false
         }
         const frame = jobDescriptions.reduce((sum, key) => {
@@ -431,9 +484,9 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     };
 
     const handleJobOnTripChange = (data) => {
-        if (currentUser.ProjectCardRole !== 'Admin' &&
-            currentUser.ProjectCardRole !== 'Technical') {
-            triggerSnackbar(WORNING_TEXT, "warning")
+        if (currentUser.ProjectCardRole !== ROLES.ADMIN &&
+            currentUser.ProjectCardRole !== ROLES.TECHNICAL) {
+            triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning")
             return false
         }
         setFormData({ ...formData, JobOnTripTable: data });
@@ -444,7 +497,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         const response = await CreateProject(formData);
         console.log(response)
         if (response) {
-            const newdata = { ...formData, Project_created: true, status: 'Проект стартован' }
+            const newdata = { ...formData, Project_created: true, status: STATUS.PROJECT_STARTED }
             setFormData(newdata);
             handleSave(newdata);
         } else {
@@ -699,15 +752,15 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
-                                <Box mt={1}>
-                                    <Typography variant="h6" gutterBottom>
-                                        Файлы
-                                    </Typography>
-                                    <FileUpload
-                                        files={fileInfo}
-                                        onUpload={handleFileUpload}
-                                        onDelete={handleFileDelete}
-                                    />
+                                    <Box mt={1}>
+                                        <Typography variant="h6" gutterBottom>
+                                            Файлы
+                                        </Typography>
+                                        <FileUpload
+                                            files={fileInfo}
+                                            onUpload={handleFileUpload}
+                                            onDelete={handleFileDelete}
+                                        />
                                     </Box>
                                 </Grid>
                             </Grid>
@@ -740,7 +793,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                                 checked={formData.jobCalculated || false}
                                                 name="jobCalculated"
                                                 onChange={handleChangeSwitch}
-                                                disabled={currentUser.ProjectCardRole !== 'Admin' && currentUser.ProjectCardRole !== 'Technical' }
+                                                disabled={currentUser.ProjectCardRole !== ROLES.ADMIN && currentUser.ProjectCardRole !== ROLES.TECHNICAL }
                                             />
                                         }
                                         label={
@@ -820,15 +873,19 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                             labelId="OpenProject-template-label"
                                             id="OpenProject-template"
                                             name="OpenProject_Template_id"
-                                            value={formData.OpenProject_Template_id || 0}
+                                            value={formData.OpenProject_Template_id || ''}
                                             label="Шаблон проекта"
                                             onChange={handleChange}
                                         >
-                                            {projectTemplateOptions.map(item => (
+                                            {projectTemplateOptions.length > 0 ? (
+                                                projectTemplateOptions.map(item => (
                                                     <MenuItem key={item.value} value={item.value}>
                                                         {item.name}
                                                     </MenuItem>
-                                                ))}
+                                                ))
+                                            ) : (
+                                                <MenuItem value="">Нет доступных шаблонов</MenuItem>
+                                            )}
                                         </Select>
                                     </FormControl>
                                 </Grid>
@@ -872,7 +929,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                             </Grid>
                         </TabPanel>
                         <TabPanel value={tabIndex} index={2}>
-                            <Grid container spacing={2} style={{ padding: '0 16px' }}>
+                            <Grid container spacing={2} alignItems="flex-start" >
                                 <Grid item xs={6} md={3}>
                                     <TextField
                                         label="Цена"
@@ -890,33 +947,34 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                         {SummPerHour}
                                     </FormHelperText>
                                 </Grid>
-                                <Grid item xs={12} md={3} container alignItems="center">
-                                    <FormControlLabel
-                                        control={
-                                            <Switch
-                                                checked={formData.priceAproved || false}
-                                                name="priceAproved"
-                                                disabled={currentUser.ProjectCardRole !== 'Admin' &&
-                                                    currentUser.ProjectCardRole !== 'Commercial' &&
-                                                    formData?.initiator?.Head !== currentUser?.id }
-                                                onChange={handleChangeSwitch}
-                                            />
-                                        }
-                                        label={
-                                            <Typography variant="body1" color="textPrimary">
-                                                Цена согласована
-                                            </Typography>
-                                        }
-                                        labelPlacement="start" 
-                                    />
-
+                                <Grid item xs={6} md={3} container alignItems="center" style={{ padding: '24px 0' }}>
+                                    <Box height="56px" display="flex" alignItems="center">
+                                        <FormControlLabel
+                                            control={
+                                                <Switch
+                                                    checked={formData.priceAproved || false}
+                                                    name="priceAproved"
+                                                    disabled={currentUser.ProjectCardRole !== ROLES.ADMIN &&
+                                                        currentUser.ProjectCardRole !== ROLES.COMMERCIAL &&
+                                                        formData?.initiator?.Head !== currentUser?.id }
+                                                    onChange={handleChangeSwitch}
+                                                />
+                                            }
+                                            label={
+                                                <Typography variant="body1" color="textPrimary">
+                                                    Цена согласована
+                                                </Typography>
+                                            }
+                                            labelPlacement="start" 
+                                        />
+                                    </Box>
                                 </Grid>
                                 <Grid item xs={6} md={3}>
                                     <TextField
                                         label="Себестоимость"
                                         name="Cost"
                                         value={formatCurrency(formData.Cost)}
-                                        onChange={handleChange}
+                                        onChange={handleChangeCost}
                                         fullWidth
                                         margin="dense"
                                         aria-describedby="Cost-helper-text"
@@ -1063,11 +1121,11 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                             label="Компания"
                                             onChange={handleChange}
                                         >
-                                            <MenuItem value={'Астерит'}>Астерит</MenuItem>
-                                            <MenuItem value={'Профинтег'}>Профинтег</MenuItem>
+                                            <MenuItem value={COMPANIES.ASTERIT}>{COMPANIES.ASTERIT}</MenuItem>
+                                            <MenuItem value={COMPANIES.PROFINTEG}>{COMPANIES.PROFINTEG}</MenuItem>
                                         </Select>
                                     </FormControl>
-                                    {(currentUser.email === 'puzin.m.v@asterit.ru') && (
+                                    {(currentUser.email === EMAILS.ADMIN) && (
                                         <FormControlLabel
                                             control={
                                                 <Switch
@@ -1100,7 +1158,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                         label="Дата начала"
                                         name="dateStart"
                                         type="date"
-                                        value={formData.dateStart}
+                                        value={formData.dateStart ||''}
                                         onChange={handleChange}
                                         fullWidth
                                         margin="dense"
@@ -1118,7 +1176,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                         label="Крайний срок"
                                         name="deadline"
                                         type="date"
-                                        value={formData.deadline}
+                                        value={formData.deadline || ''}
                                         onChange={handleChange}
                                         fullWidth
                                         margin="dense"
@@ -1132,7 +1190,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                         </TabPanel>
                     </Box>
                     <Box mt={1} display="flex" justifyContent="flex-end" alignItems="center">
-                        {(formData.status === 'Экономика согласована') && (
+                        {(formData.status === STATUS.ECONOMICS_AGREED) && (
                             <Button variant="contained" sx={{ bgcolor: 'green', mr: 1 }} onClick={handleCreateProject}>
                                 Создать проект
                             </Button>

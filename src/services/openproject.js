@@ -111,9 +111,9 @@ export const CreateProject = async (formData) => {
             method: 'post',
             url: `${LINKS.PROJECT}${formData.OpenProject_Template_id}/copy`,
             maxRedirects: 0, 
-            validateStatus: function (status) {
-                return status === 302; 
-            },
+            //validateStatus: function (status) {
+            //    return status >= 200 && status < 303;
+            //},
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'Basic ' + API_KEY

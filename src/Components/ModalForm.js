@@ -492,9 +492,9 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         setFormData({ ...formData, JobOnTripTable: data });
         return true
     };
-    const handleCreateProject = async () => {
+    const handleCreateProject = () => {
         triggerSnackbar("Старт проекта", "info")
-        const response = await CreateProject(formData);
+        const response = CreateProject(formData);
         console.log(response)
         if (response) {
             const newdata = { ...formData, Project_created: true, status: STATUS.PROJECT_STARTED }

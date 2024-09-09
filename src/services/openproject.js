@@ -27,94 +27,112 @@ function generateTableJob(data) {
     return tableHtml;
 }
 
-export const CreateProject = (formData) => {
-    const data = {
-        "name": formData.title,
-        "description": {
-            "raw": formData.Description
-        },
-        "public": false,
-        "statusExplanation": {
-          "format": "markdown",
-          "raw": `[Ссылка на проект № карты ${formData.id}](${LINKS.CARD}${formData.id})`,
-          "html": `[Ссылка на проект № карты ${formData.id}](${LINKS.CARD}${formData.id})`
-        },
-        //"customField32": "цель проекта",
-        "customField20": formData.Customer,
-        "customField23": formData.CustomerCRMID,
-        "customField24": formData.CustomerContact,
-        "customField25": {
-            "raw": formData.CustomerContactJobTitle + ' '+ formData.CustomerContactEmail + ' ' + formData.CustomerContactTel
-        },
-        "customField28": {
-            "format": "markdown",
-            "raw": generateTableJob(formData.JobDescription),
-            "html": generateTableJob(formData.JobDescription)
-        },
-        "customField29": formData.resourceSumm,
-        "customField30": formData.frameSumm,
-        "customField31": `${LINKS.CARD}${formData.id}`,
-        "customField33": {
-            "format": "markdown",
-            "raw": generateTableOnTrip(formData.JobOnTripTable),
-            "html": generateTableOnTrip(formData.JobOnTripTable)
-        },
-        "customField34": {
-            "raw": formData.Limitations,
-        },
+export const CreateProject = async (formData) => {
+    try {
+        const data = {
+            "name": formData.title,
+            "description": {
+                "raw": formData.Description
+            },
+            "public": false,
+            "statusExplanation": {
+              "format": "markdown",
+              "raw": `[Ссылка на проект № карты ${formData.id}](${LINKS.CARD}${formData.id})`,
+              "html": `[Ссылка на проект № карты ${formData.id}](${LINKS.CARD}${formData.id})`
+            },
+            //"customField32": "цель проекта",
+            "customField20": formData.Customer,
+            "customField23": formData.CustomerCRMID,
+            "customField24": formData.CustomerContact,
+            "customField25": {
+                "raw": formData.CustomerContactJobTitle + ' '+ formData.CustomerContactEmail + ' ' + formData.CustomerContactTel
+            },
+            "customField28": {
+                "format": "markdown",
+                "raw": generateTableJob(formData.JobDescription),
+                "html": generateTableJob(formData.JobDescription)
+            },
+            "customField29": formData.resourceSumm,
+            "customField30": formData.frameSumm,
+            "customField31": `${LINKS.CARD}${formData.id}`,
+            "customField33": {
+                "format": "markdown",
+                "raw": generateTableOnTrip(formData.JobOnTripTable),
+                "html": generateTableOnTrip(formData.JobOnTripTable)
+            },
+            "customField34": {
+                "raw": formData.Limitations,
+            },
 
-        "_meta": {
-            "copyMembers": true,
-            "copyVersions": true,
-            "copyCategories": true,
-            "copyWorkPackages": true,
-            "copyWorkPackageAttachments": true,
-            "copyWiki": true,
-            "copyWikiPageAttachments": true,
-            "copyForums": true,
-            "copyQueries": true,
-            "copyBoards": true,
-            "copyOverview": true,
-            "copyStorages": true,
-            "copyStorageProjectFolders": true,
-            "copyFileLinks": true,
-            "sendNotifications": true
-        },
-        "_links": {
-            "status": {
-                "href": "/api/v3/project_statuses/not_started"
+            "_meta": {
+                "copyMembers": true,
+                "copyVersions": true,
+                "copyCategories": true,
+                "copyWorkPackages": true,
+                "copyWorkPackageAttachments": true,
+                "copyWiki": true,
+                "copyWikiPageAttachments": true,
+                "copyForums": true,
+                "copyQueries": true,
+                "copyBoards": true,
+                "copyOverview": true,
+                "copyStorages": true,
+                "copyStorageProjectFolders": true,
+                "copyFileLinks": true,
+                "sendNotifications": true
             },
-            "parent": {
-                "href": null
+            "_links": {
+                "status": {
+                    "href": "/api/v3/project_statuses/not_started"
+                },
+                "parent": {
+                    "href": null
+                },
+                "customField1": {
+                    "href": "/api/v3/users/22"
+                },
+                // "members": formData.projectMembers.map(userId => ({
+                //     "href": `/api/v3/users/${userId}`
+                // }))
+            }
+        };
+
+        const config = {
+            method: 'post',
+            url: `${LINKS.PROJECT}${formData.OpenProject_Template_id}/copy`,
+            validateStatus: function (status) {
+                return status === 302; 
             },
-            "customField1": {
-                "href": "/api/v3/users/22"
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Basic ' + API_KEY
             },
-            // "members": formData.projectMembers.map(userId => ({
-            //     "href": `/api/v3/users/${userId}`
-            // }))
+            data: JSON.stringify(data)
+        };
+
+        const response = axios.request(config)
+        const location = response.headers.location;
+        if (!location) {
+            throw new Error('Не удалось получить Location из ответа');
         }
-    };
 
-    const config = {
-        method: 'post',
-        url: `${LINKS.PROJECT}${formData.OpenProject_Template_id}/copy`,
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic ' + API_KEY
-        },
-        data: JSON.stringify(data)
-    };
-
-    return axios.request(config)
-        .then((response) => {
-            return response.data
-        })
-        .catch((error) => {
-            console.log(error);
-            return null
+        const projectResponse = await axios.request({
+            method: 'get',
+            url: location
         });
 
+        if (projectResponse.status === 200) {
+            const projectLink = projectResponse.data;
+            console.log('Ссылка на скопированный проект:', projectLink);
+            return projectLink;
+        } else {
+            console.log('Копирование проекта еще не завершено.');
+            return false;
+        }
+    } catch (error) {
+        console.error('Ошибка при копировании проекта:', error);
+        return false;
+    }
 };
 
 export const GetProjectTemtplate = async () => {

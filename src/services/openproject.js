@@ -5,14 +5,13 @@ const RETRY_DELAY = 5000; // 5 секунд
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const LINKS ={
-    CARD: 'https://projectcard.asterit.ru/?id=',
+    CARD: 'http://projectcard.asterit.ru/?id=',
     PROJECT: 'https://openproject.asterit.ru/api/v3/projects/'
  }
  const API_KEY = 'YXBpa2V5Ojk3ODVkODhlOWZlZDc2MzAyMmIyM2Y2MDJlMTE5Yzc4YWI5N2MxZDU3NmYxNzM0N2M2ZmFlMjRmYzZmYmZmMmY='
  
 function generateTableOnTrip(data) {
     let tableMarkdown = `| Адрес проведения работ | Количество дней | Какие работы проводятся по указанным адресам |\n| --- | --- | --- |\n`;
-    console.log(data);
     if (Array.isArray(data)) {
         data.forEach((item) => {
             tableMarkdown += `| ${item.Address.replace(/\n/g, ' ')} | ${item.DayOnTrip} | ${item.JobDecription.replace(/\n/g, ' ')} |\n`;
@@ -24,7 +23,6 @@ function generateTableOnTrip(data) {
 
 function generateTableJob(data) {
     let tableMarkdown = `| № | Наименование работ | Ресурсная | Рамочная |\n| --- | --- | --- | --- |\n`;
-    console.log(data);
     if (Array.isArray(data)) {
         data.forEach((item, index) => {
             let jobName = item.jobName.replace(/\n/g, '<br>');
@@ -136,10 +134,13 @@ export const CreateProject = async (formData) => {
                     'Authorization': 'Basic ' + API_KEY
                 }
             });
+            console.log(jobStatusResponse);
 
             if (jobStatusResponse.data.status === 'success') {
+                console.log(jobStatusResponse.data);
                 const projectLink = jobStatusResponse.data?._links?.project?.href;
                 if (!projectLink) {
+                    console.log('Не удалось получить ссылку на проект из ответа');
                     throw new Error('Не удалось получить ссылку на проект из ответа');
                 }
                 console.log('Ссылка на скопированный проект:', projectLink);

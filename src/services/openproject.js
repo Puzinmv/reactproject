@@ -1,34 +1,42 @@
 import axios from 'axios';
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 5000; // 5 секунд
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
- const LINKS ={
+const LINKS ={
     CARD: 'https://projectcard.asterit.ru/?id=',
     PROJECT: 'https://openproject.asterit.ru/api/v3/projects/'
  }
  const API_KEY = 'YXBpa2V5Ojk3ODVkODhlOWZlZDc2MzAyMmIyM2Y2MDJlMTE5Yzc4YWI5N2MxZDU3NmYxNzM0N2M2ZmFlMjRmYzZmYmZmMmY='
  
 function generateTableOnTrip(data) {
-    let tableMarkdown = `| Адрес проведения работ | Количество дней | Какие работы проводятся по указанным адресам |\n| -------- | ------- | ------- |\n`;
-    console.log(data)
+    let tableMarkdown = `| Адрес проведения работ | Количество дней | Какие работы проводятся по указанным адресам |\n| --- | --- | --- |\n`;
+    console.log(data);
     if (Array.isArray(data)) {
-        data.forEach((item, index) => {
-            tableMarkdown += `|${item.Address.replace(/\n/g, '')}|${item.DayOnTrip}|${item.JobDecription.replace(/\n/g, '') }|\n`;
+        data.forEach((item) => {
+            tableMarkdown += `| ${item.Address.replace(/\n/g, ' ')} | ${item.DayOnTrip} | ${item.JobDecription.replace(/\n/g, ' ')} |\n`;
         });
     }
 
     return tableMarkdown;
 }
+
 function generateTableJob(data) {
-    let tableHtml = `|№|Наименование работ|Ресурсная|Рамочная|\n| ---- | -------- | ------- | ------- |\n`;
-    console.log(data)
+    let tableMarkdown = `| № | Наименование работ | Ресурсная | Рамочная |\n| --- | --- | --- | --- |\n`;
+    console.log(data);
     if (Array.isArray(data)) {
         data.forEach((item, index) => {
-            tableHtml += `|${index}|${item.jobName.replace(/\n/g, '')}|${item.resourceDay}|${item.frameDay}|\n`;
+            let jobName = item.jobName.replace(/\n/g, '<br>');
+            // Заменяем маркеры списка на HTML-эквиваленты
+            jobName = jobName.replace(/^- /gm, '• ');
+            jobName = jobName.replace(/^ {2}- /gm, '  ◦ ');
+            jobName = jobName.replace(/^ {4}- /gm, '    ▪ ');
+            tableMarkdown += `| ${index + 1} | ${jobName} | ${item.resourceDay} | ${item.frameDay} |\n`;
         });
     }
 
-
-    return tableHtml;
+    return tableMarkdown;
 }
 
 export const CreateProject = async (formData) => {
@@ -104,6 +112,7 @@ export const CreateProject = async (formData) => {
         const config = {
             method: 'post',
             url: `${LINKS.PROJECT}${formData.OpenProject_Template_id}/copy`,
+            maxRedirects: 0, 
             validateStatus: function (status) {
                 return status === 302; 
             },
@@ -114,28 +123,40 @@ export const CreateProject = async (formData) => {
             data: JSON.stringify(data)
         };
 
-        const response = axios.request(config)
-        const location = response.headers.location;
+        const response = await axios.request(config)
+        const location = response.headers?.location;
         if (!location) {
             throw new Error('Не удалось получить Location из ответа');
         }
 
-        const projectResponse = await axios.request({
-            method: 'get',
-            url: location
-        });
+        let retries = 0;
+        while (retries < MAX_RETRIES) {
+            const jobStatusResponse = await axios.get(location, {
+                headers: {
+                    'Authorization': 'Basic ' + API_KEY
+                }
+            });
 
-        if (projectResponse.status === 200) {
-            const projectLink = projectResponse.data;
-            console.log('Ссылка на скопированный проект:', projectLink);
-            return projectLink;
-        } else {
-            console.log('Копирование проекта еще не завершено.');
-            return false;
+            if (jobStatusResponse.data.status === 'success') {
+                const projectLink = jobStatusResponse.data?._links?.project?.href;
+                if (!projectLink) {
+                    throw new Error('Не удалось получить ссылку на проект из ответа');
+                }
+                console.log('Ссылка на скопированный проект:', projectLink);
+                return projectLink;
+            } else if (jobStatusResponse.data.status === 'in_queue' || jobStatusResponse.data.status === 'in_process') {
+                console.log(`Копирование проекта еще не завершено. Попытка ${retries + 1} из ${MAX_RETRIES}`);
+                await sleep(RETRY_DELAY);
+                retries++;
+            } else {
+                throw new Error('Ошибка при копировании проекта: ' + jobStatusResponse.data.status);
+            }
         }
+
+        throw new Error(`Превышено максимальное количество попыток (${MAX_RETRIES}). Копирование проекта не завершено.`);
     } catch (error) {
         console.error('Ошибка при копировании проекта:', error);
-        return false;
+        throw error;
     }
 };
 

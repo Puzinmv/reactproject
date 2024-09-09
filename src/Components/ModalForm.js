@@ -4,6 +4,7 @@ import {
     InputLabel, Select, MenuItem, FormControl, FormHelperText,
     Switch, Grid, InputAdornment, FormControlLabel, ListItemText,
     ClickAwayListener, Popper, Checkbox, List, ListItem, Snackbar, Alert,
+    CircularProgress,
 } from '@mui/material';
 
 //import InputAdornment from '@mui/material/InputAdornment';
@@ -96,6 +97,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const [CostPerHour, setCostPerHour] = useState('');
     const [SummPerHour, setSummPerHour] = useState(0);
     const [startDateHelperText, setStartDateHelperText] = useState('');
+    const [isCreatingProject, setIsCreatingProject] = useState(false); // анимация кнопки при создании проекта
     const textFieldRef = useRef(null);
 
 
@@ -492,18 +494,26 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         setFormData({ ...formData, JobOnTripTable: data });
         return true
     };
-    const handleCreateProject = () => {
+    const handleCreateProject = async () => {
         triggerSnackbar("Старт проекта", "info")
-        const response = CreateProject(formData);
-        console.log(response)
-        if (response) {
-            const newdata = { ...formData, Project_created: true, status: STATUS.PROJECT_STARTED }
-            setFormData(newdata);
-            handleSave(newdata);
-        } else {
+        setIsCreatingProject(true);
+        try {
+            const response = await CreateProject(formData);
+            console.log('Проект успешно создан:', response)
+            if (response) {
+                const newdata = { ...formData, Project_created: true, status: STATUS.PROJECT_STARTED }
+                setFormData(newdata);
+                handleSave(newdata);
+            } else {
+                triggerSnackbar("Ошибка при создании проекта", "error")
+            }
+        } catch (error) {
             triggerSnackbar("Ошибка при создании проекта", "error")
+        } finally {
+            setIsCreatingProject(false);
         }
     }
+
     const handleCloseSnackbar = (event, reason) => {
         if (reason === 'clickaway') {
             return;
@@ -1191,8 +1201,32 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                     </Box>
                     <Box mt={1} display="flex" justifyContent="flex-end" alignItems="center">
                         {(formData.status === STATUS.ECONOMICS_AGREED) && (
-                            <Button variant="contained" sx={{ bgcolor: 'green', mr: 1 }} onClick={handleCreateProject}>
+                            <Button
+                                variant="contained"
+                                sx={{
+                                    bgcolor: 'green',
+                                    mr: 1,
+                                    position: 'relative',
+                                    '&:disabled': {
+                                        bgcolor: 'rgba(0, 128, 0, 0.5)',
+                                    }
+                                }}
+                                onClick={handleCreateProject}
+                                disabled={isCreatingProject}
+                            >
                                 Создать проект
+                                {isCreatingProject && (
+                                    <CircularProgress
+                                        size={24}
+                                        sx={{
+                                            position: 'absolute',
+                                            top: '50%',
+                                            left: '50%',
+                                            marginTop: '-12px',
+                                            marginLeft: '-12px',
+                                        }}
+                                    />
+                                )}
                             </Button>
                         )}
                         <Box>

@@ -8,24 +8,22 @@ import axios from 'axios';
  const API_KEY = 'YXBpa2V5Ojk3ODVkODhlOWZlZDc2MzAyMmIyM2Y2MDJlMTE5Yzc4YWI5N2MxZDU3NmYxNzM0N2M2ZmFlMjRmYzZmYmZmMmY='
  
 function generateTableOnTrip(data) {
-    let tableMarkdown = `| Адрес проведения работ    | Количество дней | Какие работы проводятся по указанным адресам |
-    | -------- | ------- | ------- |`;
+    let tableMarkdown = `| Адрес проведения работ | Количество дней | Какие работы проводятся по указанным адресам |\n| -------- | ------- | ------- |\n`;
     console.log(data)
     if (Array.isArray(data)) {
         data.forEach((item, index) => {
-            tableMarkdown += `|${item.Address}|${item.DayOnTrip}|${item.JobDecription}|`;
+            tableMarkdown += `|${item.Address.replace(/\n/g, '')}|${item.DayOnTrip.replace(/\n/g, '') }|${item.JobDecription.replace(/\n/g, '') }|\n`;
         });
     }
 
     return tableMarkdown;
 }
 function generateTableJob(data) {
-    let tableHtml = `|№|Наименование работ|Ресурсная|Рамочная|
-        | ---- | -------- | ------- | ------- |`;
+    let tableHtml = `|№|Наименование работ|Ресурсная|Рамочная|\n| ---- | -------- | ------- | ------- |\n`;
     console.log(data)
     if (Array.isArray(data)) {
         data.forEach((item, index) => {
-            tableHtml += `|${index}|${item.jobName}|${item.resourceDay}|${item.frameDay}|`;
+            tableHtml += `|${index}|${item.jobName.replace(/\n/g, '')}|${item.resourceDay.replace(/\n/g, '')}|${item.frameDay.replace(/\n/g, '') }|\n`;
         });
     }
 

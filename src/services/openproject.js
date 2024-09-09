@@ -12,7 +12,7 @@ function generateTableOnTrip(data) {
     console.log(data)
     if (Array.isArray(data)) {
         data.forEach((item, index) => {
-            tableMarkdown += `|${item.Address.replace(/\n/g, '')}|${item.DayOnTrip.replace(/\n/g, '') }|${item.JobDecription.replace(/\n/g, '') }|\n`;
+            tableMarkdown += `|${item.Address.replace(/\n/g, '')}|${item.DayOnTrip}|${item.JobDecription.replace(/\n/g, '') }|\n`;
         });
     }
 
@@ -23,7 +23,7 @@ function generateTableJob(data) {
     console.log(data)
     if (Array.isArray(data)) {
         data.forEach((item, index) => {
-            tableHtml += `|${index}|${item.jobName.replace(/\n/g, '')}|${item.resourceDay.replace(/\n/g, '')}|${item.frameDay.replace(/\n/g, '') }|\n`;
+            tableHtml += `|${index}|${item.jobName.replace(/\n/g, '')}|${item.resourceDay}|${item.frameDay}|\n`;
         });
     }
 

@@ -122,13 +122,16 @@ export const CreateProject = async (formData) => {
         };
 
         const response = await axios.request(config)
+        console.log(response);
         const location = response.headers?.location;
+        console.log(location);
         if (!location) {
             throw new Error('Не удалось получить Location из ответа');
         }
 
         let retries = 0;
         while (retries < MAX_RETRIES) {
+            console.log(retries);
             const jobStatusResponse = await axios.get(location, {
                 headers: {
                     'Authorization': 'Basic ' + API_KEY

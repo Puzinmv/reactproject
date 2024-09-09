@@ -10,19 +10,25 @@ import axios from 'axios';
 function generateTableOnTrip(data) {
     let tableMarkdown = `| Адрес проведения работ    | Количество дней | Какие работы проводятся по указанным адресам |
     | -------- | ------- | ------- |`;
-    data.forEach((item, index) => {
-        tableMarkdown += `|${item.Address}|${item.DayOnTrip}|${item.JobDecription}|`;
-    });
+    console.log(data)
+    if (Array.isArray(data)) {
+        data.forEach((item, index) => {
+            tableMarkdown += `|${item.Address}|${item.DayOnTrip}|${item.JobDecription}|`;
+        });
+    }
 
     return tableMarkdown;
 }
 function generateTableJob(data) {
     let tableHtml = `|№|Наименование работ|Ресурсная|Рамочная|
         | ---- | -------- | ------- | ------- |`;
+    console.log(data)
+    if (Array.isArray(data)) {
+        data.forEach((item, index) => {
+            tableHtml += `|${index}|${item.jobName}|${item.resourceDay}|${item.frameDay}|`;
+        });
+    }
 
-    data.forEach((item, index) => {
-        tableHtml += `|${index}|${item.jobName}|${item.resourceDay}|${item.frameDay}|`;
-    });
 
     return tableHtml;
 }

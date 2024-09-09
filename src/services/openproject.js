@@ -153,6 +153,7 @@ export const CreateProject = async (formData) => {
                 await sleep(RETRY_DELAY);
                 retries++;
             } else {
+                console.log(jobStatusResponse);
                 throw new Error('Ошибка при копировании проекта: ' + jobStatusResponse.data.status);
             }
         }

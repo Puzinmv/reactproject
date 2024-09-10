@@ -22,8 +22,9 @@ function generateTableOnTrip(data) {
 }
 
 function generateTableJob(data) {
-    let tableMarkdown = `| № | Наименование работ | Ресурсная | Рамочная |\n| --- | --- | --- | --- |\n`;
+    let tableMarkdown = '';
     if (Array.isArray(data)) {
+        tableMarkdown += `| № | Наименование работ | Ресурсная | Рамочная |\n| --- | --- | --- | --- |\n`;
         data.forEach((item, index) => {
             let jobName = item.jobName.replace(/\n/g, '<br>');
             // Заменяем маркеры списка на HTML-эквиваленты

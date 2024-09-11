@@ -142,16 +142,19 @@ export const CreateProject = async (formData) => {
                 }
             );
             console.log(jobStatusResponse);
-
             if (jobStatusResponse.data.status === 'success') {
                 console.log(jobStatusResponse.data);
-                const projectLink = jobStatusResponse.data?._links?.project?.href;
+                const projectLink = jobStatusResponse.data?.payload?._links?.project?.href;
+                const projectRedirect = jobStatusResponse.data?.payload?.redirect
                 if (!projectLink) {
                     console.log('Не удалось получить ссылку на проект из ответа');
                     throw new Error('Не удалось получить ссылку на проект из ответа');
                 }
-                console.log('Ссылка на скопированный проект:', projectLink);
-                return projectLink;
+                console.log('Ссылка на скопированный проект:', projectLink, projectRedirect);
+                return {
+                        projectLink: projectLink,
+                        projectRedirect: projectRedirect
+                    };
             } else if (jobStatusResponse.data.status === 'in_queue' || jobStatusResponse.data.status === 'in_process') {
                 console.log(`Копирование проекта еще не завершено. Попытка ${retries + 1} из ${MAX_RETRIES}`);
                 await sleep(RETRY_DELAY);

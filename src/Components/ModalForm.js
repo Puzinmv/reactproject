@@ -501,7 +501,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
             const response = await CreateProject(formData);
             console.log('Проект успешно создан:', response)
             if (response) {
-                const newdata = { ...formData, Project_created: true, status: STATUS.PROJECT_STARTED }
+                const newdata = { ...formData, ...response, Project_created: true, status: STATUS.PROJECT_STARTED }
                 setFormData(newdata);
                 handleSave(newdata);
             } else {

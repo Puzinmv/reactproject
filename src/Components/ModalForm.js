@@ -4,9 +4,12 @@ import {
     InputLabel, Select, MenuItem, FormControl, FormHelperText,
     Switch, Grid, InputAdornment, FormControlLabel, ListItemText,
     ClickAwayListener, Popper, Checkbox, List, ListItem, Snackbar, Alert,
-    CircularProgress,
+    CircularProgress, Chip, Card, Link
 } from '@mui/material';
-
+import { 
+    STATUS, STATUS_COLORS, ROLES, WARNING_MESSAGES, FORM_FIELDS, 
+    COMPANIES, EMAILS
+} from '../constants/index.js';
 //import InputAdornment from '@mui/material/InputAdornment';
 import {
     fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus,
@@ -19,47 +22,6 @@ import FileUpload from './FileUpload';
 import CustomTable from './CustomTable'; 
 import TableJobOnTrip from './TableJobOnTrip'; 
 
-// Константы для ролей
-const ROLES = {
-  ADMIN: 'Admin',
-  TECHNICAL: 'Technical',
-  COMMERCIAL: 'Commercial'
-};
-
-// Константы для статусов
-const STATUS = {
-  NEW_CARD: 'Новая карта',
-  LABOR_COSTS_ESTIMATED: 'Оценка трудозатрат проведена',
-  ECONOMICS_AGREED: 'Экономика согласована',
-  PROJECT_STARTED: 'Проект стартован'
-};
-
-// Константы для компаний
-const COMPANIES = {
-  ASTERIT: 'Астерит',
-  PROFINTEG: 'Профинтег'
-};
-
-// Константы для email адресов
-const EMAILS = {
-  ADMIN: 'puzin.m.v@asterit.ru'
-};
-
-// Константы для предупреждений
-const WARNING_MESSAGES = {
-  ONLY_EXECUTORS: 'Измения может вносить только отдел исполнителей',
-  START_PROJECT_SOON: 'На подготовку менее 14 дней. Согласуйте страт проекта с исполнителями'
-};
-
-// Константы для полей формы
-const FORM_FIELDS = {
-  COMMENT_JOB: 'CommentJob',
-  HIRED_COST: 'HiredCost',
-  HIRED: 'Hired',
-  OPEN_PROJECT_TEMPLATE_ID: 'OpenProject_Template_id',
-  LIMITATIONS: 'Limitations',
-
-};
 
 const TabPanel = ({ children, value, index }) => {
     return (
@@ -77,6 +39,9 @@ const calculateTotalCost = (data) => {
         data.otherPayments || 0,
     ].reduce((sum, value) => sum + value, 0);
 };
+
+// Функция для определения цвета статуса
+const getStatusColor = (status) => STATUS_COLORS[status] || '#e0e0e0';
 
 const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limitation }) => {
     const [tabIndex, setTabIndex] = useState(0);
@@ -535,11 +500,39 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                     mr: '5rem',
                     maxHeight: '90vh',
                 }}>
-                    <Tabs value={tabIndex} onChange={handleTabChange} aria-label="form tabs" sx={{ flexShrink: 0 }} >
-                        <Tab label="Общая информация" />
-                        <Tab label="Объем работ" />
-                        <Tab label="Коммерческая часть" />
-                    </Tabs>
+                    <Box sx={{ borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Tabs value={tabIndex} onChange={handleTabChange} aria-label="form tabs" sx={{ flexShrink: 0 }} >
+                            <Tab label="Общая информация" />
+                            <Tab label="Объем работ" />
+                            <Tab label="Коммерческая часть" />
+                        </Tabs>
+                        <Card
+                            variant="solid"
+                            invertedColors
+                            color="primary"
+                        >
+                            <Chip
+                                label={
+                                    (formData?.Project_created || false) ? (
+                                        <Link
+                                            href={formData?.projectRedirect || '#'} 
+                                            underline="always"
+                                            variant="plain"
+                                            sx={{ bgcolor: getStatusColor(formData.status), color: 'white' }}
+                                            onClick={(e) => {
+                                                e.stopPropagation(); 
+                                            }}
+                                        >
+                                            {formData.status}
+                                        </Link>
+                                    ) : (
+                                        formData.status
+                                    )
+                                    }
+                                sx={{ bgcolor: getStatusColor(formData.status), color: 'white' }}
+                            />
+                        </Card>
+                    </Box>
                     <Box sx={{
                         maxHeight: 'calc(90vh - 128px)',
                         overflowY: 'auto'

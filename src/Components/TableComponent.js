@@ -8,7 +8,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddIcon from '@mui/icons-material/Add'; 
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import { FIELD_NAMES } from '../constants/index.js';
+import { FIELD_NAMES, STATUS, STATUS_COLORS} from '../constants/index.js';
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
@@ -16,12 +16,10 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('ru-RU', options);
 };
 
-const statusStyles = {
-    'Новая карта': { color: 'primary.main' },
-    'Оценка трудозатрат проведена': { color: 'warning.main' },
-    'Экономика согласована': { color: 'success.main' },
-    'Проект стартован': { color: 'secondary.main' },
-};
+const statusStyles =  Object.entries(STATUS).reduce((acc, [key, value]) => {
+    acc[value] = { color: STATUS_COLORS[value] };
+    return acc;
+  }, {});
 
 const formatField = (field, value) => {
     if (field === 'status') {

@@ -1,3 +1,52 @@
+
+// Константы для ролей
+export const ROLES = {
+    ADMIN: 'Admin',
+    TECHNICAL: 'Technical',
+    COMMERCIAL: 'Commercial'
+  };
+  
+  // Константы для компаний
+  export const COMPANIES = {
+    ASTERIT: 'Астерит',
+    PROFINTEG: 'Профинтег'
+  };
+  
+  // Константы для email адресов
+  export const EMAILS = {
+    ADMIN: 'puzin.m.v@asterit.ru'
+  };
+  
+  // Константы для предупреждений
+  export const WARNING_MESSAGES = {
+    ONLY_EXECUTORS: 'Измения может вносить только отдел исполнителей',
+    START_PROJECT_SOON: 'На подготовку менее 14 дней. Согласуйте страт проекта с исполнителями'
+  };
+  
+  // Константы для полей формы
+  export const FORM_FIELDS = {
+    COMMENT_JOB: 'CommentJob',
+    HIRED_COST: 'HiredCost',
+    HIRED: 'Hired',
+    OPEN_PROJECT_TEMPLATE_ID: 'OpenProject_Template_id',
+    LIMITATIONS: 'Limitations',
+  
+  };
+  
+// Статусы карточки 
+export const STATUS = {
+    NEW_CARD: 'Новая карта',
+    LABOR_COSTS_ESTIMATED: 'Оценка трудозатрат проведена',
+    ECONOMICS_AGREED: 'Экономика согласована',
+    PROJECT_STARTED: 'Проект выполняется'
+  };
+export const STATUS_COLORS = {
+    [STATUS.NEW_CARD]: 'primary.main',
+    [STATUS.LABOR_COSTS_ESTIMATED]: 'warning.main',
+    [STATUS.ECONOMICS_AGREED]: 'secondary.main',
+    [STATUS.PROJECT_STARTED]: 'success.main',
+};
+  
 export const getNewCardData = (CurrentUser) => {
     return {
         "status": "Новая карта",

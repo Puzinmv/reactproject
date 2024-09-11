@@ -134,13 +134,12 @@ export const CreateProject = async (formData) => {
         let retries = 0;
         while (retries < MAX_RETRIES) {
             console.log(retries);
-            const jobStatusResponse = await axios.get(location, response
-
-                //{
-                //    headers: {
-                //        'Authorization': 'Basic ' + API_KEY
-                //    }
-                //}
+            const jobStatusResponse = await axios.get(location, 
+                {
+                    headers: {
+                        'Authorization': 'Basic ' + API_KEY
+                    }
+                }
             );
             console.log(jobStatusResponse);
 

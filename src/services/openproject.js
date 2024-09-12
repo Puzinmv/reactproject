@@ -65,7 +65,7 @@ export const CreateProject = async (formData) => {
             },
             "customField29": formData.resourceSumm,
             "customField30": formData.frameSumm,
-            "customField31": `${LINKS.CARD}${formData.id}`,
+            "customField31": `${formData.id}`,
             "customField33": {
                 "format": "markdown",
                 "raw": generateTableOnTrip(formData.JobOnTripTable),

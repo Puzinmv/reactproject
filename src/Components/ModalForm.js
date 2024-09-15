@@ -4,7 +4,7 @@ import {
     InputLabel, Select, MenuItem, FormControl, FormHelperText,
     Switch, Grid, InputAdornment, FormControlLabel, ListItemText,
     ClickAwayListener, Popper, Checkbox, List, ListItem, Snackbar, Alert,
-    CircularProgress, Chip, Card, Link
+    CircularProgress, Chip, Card, Link, Divider
 } from '@mui/material';
 import { 
     STATUS, STATUS_COLORS, ROLES, WARNING_MESSAGES, FORM_FIELDS, 
@@ -56,7 +56,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const [autofill, setAutofill] = useState(false);
     const [anchorEl, setAnchorEl] = useState(null);
     const [checkedTemplates, setCheckedTemplates] = useState([]);
-    const [snackbarState, setSnackbarState] = useState({ open: false, message: '', severity: 'info' });
+    const [snackbarState, setSnackbarState] = useState({ open: false, message: '', severity: 'info', multiline: false });
     const [totoalCost, settotoalCost] = useState(calculateTotalCost(formData));
     const [totoalCostPerHour, settotoalCostPerHour] = useState('');
     const [CostPerHour, setCostPerHour] = useState('');
@@ -64,6 +64,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const [startDateHelperText, setStartDateHelperText] = useState('');
     const [isCreatingProject, setIsCreatingProject] = useState(false); // анимация кнопки при создании проекта
     const textFieldRef = useRef(null);
+    const [fieldErrors, setFieldErrors] = useState({});
 
 
     useEffect(() => {
@@ -226,8 +227,8 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         onClose();
     };
 
-    const triggerSnackbar = (message, severity) => {
-        setSnackbarState({ open: true, message, severity });
+    const triggerSnackbar = (message, severity, options = {}) => {
+        setSnackbarState({ open: true, message, severity, ...options });
     };
 
 
@@ -460,6 +461,30 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         return true
     };
     const handleCreateProject = async () => {
+        // Проверка обязательных полей
+        const newFieldErrors = {};
+        if (!formData.company) {
+            newFieldErrors.company = 'Выберите компанию';
+        }
+        if (!formData.contract) {
+            newFieldErrors.contract = 'Введите реквизиты договора';
+        }
+
+        // Если есть ошибки, обновляем состояние и прерываем создание проекта
+        if (Object.keys(newFieldErrors).length > 0) {
+            setFieldErrors(newFieldErrors);
+            triggerSnackbar(
+                `Для старта проекта заполните обязательные поля, если номера договора еще нет, то введите значение 'Будет позже'.
+                Не забудьте внести актуальное значение когда номер будет известен.`,
+                "error",
+                { multiline: true }
+            );
+            return;
+        }
+
+        // Если ошибок нет, сбрасываем состояние ошибок
+        setFieldErrors({});
+
         triggerSnackbar("Старт проекта", "info")
         setIsCreatingProject(true);
         try {
@@ -508,29 +533,29 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                         </Tabs>
                         <Card
                             variant="solid"
-                            invertedColors
                             color="primary"
+                            sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
                         >
                             <Chip
-                                label={
-                                    (formData?.Project_created || false) ? (
-                                        <Link
-                                            href={formData?.projectRedirect || '#'} 
-                                            underline="always"
-                                            variant="plain"
-                                            sx={{ bgcolor: getStatusColor(formData.status), color: 'white' }}
-                                            onClick={(e) => {
-                                                e.stopPropagation(); 
-                                            }}
-                                        >
-                                            {formData.status}
-                                        </Link>
-                                    ) : (
-                                        formData.status
-                                    )
-                                    }
+                                label={formData.status}
                                 sx={{ bgcolor: getStatusColor(formData.status), color: 'white' }}
                             />
+                            {(formData?.Project_created && formData?.projectRedirect) && (
+                                <Typography variant="caption" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
+                                    <Link
+                                        href={formData?.projectRedirect || '#'} 
+                                        underline="always"
+                                        variant="plain"
+                                        onClick={(e) => {
+                                            e.stopPropagation(); 
+                                        }}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        Ссылка на проект
+                                    </Link>
+                                </Typography>
+                            )}
                         </Card>
                     </Box>
                     <Box sx={{
@@ -709,7 +734,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                             labelId="Department-label"
                                             id="Department"
                                             name="Department"
-                                            value={formData.Department ? formData.Department.id : ''}
+                                            value={formData.Department?.id || ''}
                                             label="Отдел исполнителей"
                                             onChange={handleDepartmentChange}
                                             margin="dense"
@@ -950,26 +975,44 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                         {SummPerHour}
                                     </FormHelperText>
                                 </Grid>
-                                <Grid item xs={6} md={3} container alignItems="center" style={{ padding: '24px 0' }}>
-                                    <Box height="56px" display="flex" alignItems="center">
-                                        <FormControlLabel
-                                            control={
-                                                <Switch
-                                                    checked={formData.priceAproved || false}
-                                                    name="priceAproved"
-                                                    disabled={currentUser.ProjectCardRole !== ROLES.ADMIN &&
-                                                        currentUser.ProjectCardRole !== ROLES.COMMERCIAL &&
-                                                        formData?.initiator?.Head !== currentUser?.id }
-                                                    onChange={handleChangeSwitch}
-                                                />
-                                            }
-                                            label={
-                                                <Typography variant="body1" color="textPrimary">
-                                                    Цена согласована
-                                                </Typography>
-                                            }
-                                            labelPlacement="start" 
-                                        />
+                                <Grid item xs={6} md={3} container alignItems="center">
+                                    <Box height="56px" display="flex" alignItems="center" mt={2}>
+                                        {(currentUser?.ProjectCardRole === ROLES.ADMIN ||
+                                        currentUser?.ProjectCardRole === ROLES.COMMERCIAL ||
+                                        formData?.initiator?.Head === currentUser?.id) ? (
+                                            <FormControlLabel
+                                                control={
+                                                    <Switch
+                                                        checked={formData.priceAproved || false}
+                                                        name="priceAproved"
+                                                        onChange={handleChangeSwitch}
+                                                    />
+                                                }
+                                                label={
+                                                    <Typography 
+                                                        variant="body1" 
+                                                        sx={{
+                                                            color: formData.priceAproved ? 'green' : 'red',
+                                                            fontWeight: 'bold'
+                                                        }}
+                                                    >
+                                                        {formData.priceAproved ? 'Цена согласована' : 'Цена не согласована'}
+                                                    </Typography>
+                                                }
+                                                labelPlacement="end" 
+                                            />
+                                        ) : (
+                                            <Typography 
+                                                variant="body1" 
+                                                sx={{
+                                                    color: formData.priceAproved ? 'green' : 'red',
+                                                    fontWeight: 'bold',
+
+                                                }}
+                                            >
+                                                {formData.priceAproved ? 'Цена согласована' : 'Цена не согласована'}
+                                            </Typography>
+                                        )}
                                     </Box>
                                 </Grid>
                                 <Grid item xs={6} md={3}>
@@ -1114,7 +1157,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                     </Typography>
                                 </Grid>
                                 <Grid item xs={6} md={2}>
-                                    <FormControl fullWidth margin="dense">
+                                <FormControl fullWidth margin="dense" error={!!fieldErrors.company}>
                                         <InputLabel id="company-label">Компания</InputLabel>
                                         <Select
                                             labelId="company-label"
@@ -1127,6 +1170,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                             <MenuItem value={COMPANIES.ASTERIT}>{COMPANIES.ASTERIT}</MenuItem>
                                             <MenuItem value={COMPANIES.PROFINTEG}>{COMPANIES.PROFINTEG}</MenuItem>
                                         </Select>
+                                        {fieldErrors.company && <FormHelperText>{fieldErrors.company}</FormHelperText>}
                                     </FormControl>
                                     {(currentUser.email === EMAILS.ADMIN) && (
                                         <FormControlLabel
@@ -1154,6 +1198,8 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                         onChange={handleChange}
                                         fullWidth
                                         margin="dense"
+                                        error={!!fieldErrors.contract}
+                                        helperText={fieldErrors.contract}
                                     />
                                 </Grid>
                                 <Grid item xs={6} md={3}>
@@ -1189,44 +1235,47 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                         }}
                                     />
                                 </Grid>
+                                {(formData.status === STATUS.ECONOMICS_AGREED) && (
+                                    <Box mb={2} width="100%" display="flex" justifyContent="flex-end" gap={2} alignItems="center">
+                                        <Typography variant="body2" color="textSecondary">
+                                            Убедитесь, что все данные верны перед созданием проекта
+                                        </Typography>
+                                        <Button
+                                            variant="contained"
+                                            sx={{
+                                                bgcolor: 'green',
+                                                color: 'white',
+                                                '&:hover': {
+                                                    bgcolor: 'darkgreen',
+                                                },
+                                                '&:disabled': {
+                                                    bgcolor: 'rgba(0, 128, 0, 0.5)',
+                                                },
+                                                px: 3,
+                                                py: 1,
+                                            }}
+                                            onClick={handleCreateProject}
+                                            disabled={isCreatingProject}
+                                        >
+                                            {isCreatingProject ? (
+                                                <CircularProgress size={24} color="inherit" />
+                                            ) : (
+                                                'Создать проект'
+                                            )}
+                                        </Button>
+                                    </Box>
+                                )}
                             </Grid>
                         </TabPanel>
                     </Box>
-                    <Box mt={1} display="flex" justifyContent="flex-end" alignItems="center">
-                        {(formData.status === STATUS.ECONOMICS_AGREED) && (
-                            <Button
-                                variant="contained"
-                                sx={{
-                                    bgcolor: 'green',
-                                    mr: 1,
-                                    position: 'relative',
-                                    '&:disabled': {
-                                        bgcolor: 'rgba(0, 128, 0, 0.5)',
-                                    }
-                                }}
-                                onClick={handleCreateProject}
-                                disabled={isCreatingProject}
-                            >
-                                Создать проект
-                                {isCreatingProject && (
-                                    <CircularProgress
-                                        size={24}
-                                        sx={{
-                                            position: 'absolute',
-                                            top: '50%',
-                                            left: '50%',
-                                            marginTop: '-12px',
-                                            marginLeft: '-12px',
-                                        }}
-                                    />
-                                )}
-                            </Button>
-                        )}
+                    <Box mt={2} display="flex" flexDirection="column" alignItems="flex-end">
+
+                        <Divider sx={{ width: '100%', mb: 2 }} />
                         <Box>
-                            <Button variant="contained" color="secondary" onClick={handleCancel} sx={{ mr: 1 }}>
+                            <Button variant="outlined" onClick={handleCancel} sx={{ mr: 2 }}>
                                 Отмена
                             </Button>
-                            <Button variant="contained" color="primary" onClick={handleSave} sx={{ mr: 1 }}>
+                            <Button variant="contained" color="primary" onClick={handleSave}>
                                 Сохранить
                             </Button>
                         </Box>
@@ -1234,12 +1283,22 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                 </Box>
                 <Snackbar
                     open={snackbarState.open}
-                    autoHideDuration={3000}
+                    autoHideDuration={6000}
                     onClose={handleCloseSnackbar}
                     anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                    style={{ position: 'absolute', top: 50, right: 50 }}
                 >
-                    <Alert severity={snackbarState.severity} sx={{ width: '100%' }}>
+                    <Alert 
+                        onClose={handleCloseSnackbar} 
+                        severity={snackbarState.severity} 
+                        sx={{ 
+                            width: '100%',
+                            ...(snackbarState.multiline && {
+                                '& .MuiAlert-message': {
+                                    whiteSpace: 'pre-wrap',
+                                },
+                            }),
+                        }}
+                    >
                         {snackbarState.message}
                     </Alert>
                 </Snackbar>

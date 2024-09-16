@@ -61,10 +61,12 @@ export default function CustomTable({ depatmentid, jobDescriptions, projectCardR
     };
 
     const handleCopyToClipboard = () => {
+        
         const rowsForCopy = rows.map(row => {
             const formattedJobName = `"${row.jobName.replace(/"/g, '""')}"`; // Оборачиваем в кавычки и экранируем кавычки внутри текста
             return [row.id, formattedJobName, row.resourceDay, row.frameDay].join('\t');
         }).join('\n');
+        console.log(rows, rowsForCopy)
         navigator.clipboard.writeText(rowsForCopy).then(() => {
             setOpenSnackbar(true);  
         }).catch(err => {

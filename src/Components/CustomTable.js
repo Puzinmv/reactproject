@@ -61,17 +61,32 @@ export default function CustomTable({ depatmentid, jobDescriptions, projectCardR
     };
 
     const handleCopyToClipboard = () => {
-        
         const rowsForCopy = rows.map(row => {
-            const formattedJobName = `"${row.jobName.replace(/"/g, '""')}"`; // Оборачиваем в кавычки и экранируем кавычки внутри текста
+            const formattedJobName = `"${row.jobName.replace(/"/g, '""')}"`;
             return [row.id, formattedJobName, row.resourceDay, row.frameDay].join('\t');
         }).join('\n');
-        console.log(rows, rowsForCopy)
-        navigator.clipboard.writeText(rowsForCopy).then(() => {
-            setOpenSnackbar(true);  
-        }).catch(err => {
-            console.log(err) 
-        });
+
+        // Проверка на поддержку Clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(rowsForCopy)
+                .then(() => setOpenSnackbar(true))
+                .catch(err => console.log(err));
+        } else {
+            // Fallback для HTTP или устаревших браузеров
+            const textarea = document.createElement('textarea');
+            textarea.value = rowsForCopy;
+            textarea.style.position = 'fixed'; // чтобы избежать прокрутки страницы
+            textarea.style.left = '-9999px';  // скрываем элемент
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');  // копируем текст
+                setOpenSnackbar(true);
+            } catch (err) {
+                console.log('Fallback: Could not copy text', err);
+            }
+            document.body.removeChild(textarea);  // удаляем временный элемент
+        }
     };
 
     return (

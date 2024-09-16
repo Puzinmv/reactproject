@@ -66,6 +66,11 @@ export default function CustomTable({ depatmentid, jobDescriptions, projectCardR
             return [row.id, formattedJobName, row.resourceDay, row.frameDay].join('\t');
         }).join('\n');
         console.log(rowsForCopy)
+        // Проверка, что rowsForCopy является строкой
+        if (typeof rowsForCopy !== 'string' || rowsForCopy.trim() === '') {
+            console.log('Ничего для копирования нет.');
+            return;
+        }
         // Проверка на поддержку Clipboard API
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(rowsForCopy)
@@ -75,18 +80,28 @@ export default function CustomTable({ depatmentid, jobDescriptions, projectCardR
             // Fallback для HTTP или устаревших браузеров
             const textarea = document.createElement('textarea');
             textarea.value = rowsForCopy;
-            textarea.style.position = 'fixed'; // чтобы избежать прокрутки страницы
-            textarea.style.left = '-9999px';  // скрываем элемент
             document.body.appendChild(textarea);
-            textarea.select();
-            console.log(textarea)
+
+            // Скрываем textarea с помощью CSS
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+
+            textarea.select(); // Выбираем текст в textarea
+            textarea.setSelectionRange(0, textarea.value.length); // Для надёжности выбираем весь текст
+
             try {
-                document.execCommand('copy');  // копируем текст
-                setOpenSnackbar(true);
+                const successful = document.execCommand('copy'); // Копируем текст
+                if (successful) {
+                    setOpenSnackbar(true);
+                    console.log('Текст успешно скопирован');
+                } else {
+                    console.log('Не удалось скопировать текст');
+                }
             } catch (err) {
-                console.log('Fallback: Could not copy text', err);
+                console.log('Ошибка при копировании', err);
             }
-            document.body.removeChild(textarea);  // удаляем временный элемент
+
+            document.body.removeChild(textarea); // Удаляем textarea
         }
     };
 

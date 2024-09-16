@@ -65,7 +65,7 @@ export default function CustomTable({ depatmentid, jobDescriptions, projectCardR
             const formattedJobName = `"${row.jobName.replace(/"/g, '""')}"`;
             return [row.id, formattedJobName, row.resourceDay, row.frameDay].join('\t');
         }).join('\n');
-
+        console.log(rowsForCopy)
         // Проверка на поддержку Clipboard API
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(rowsForCopy)
@@ -79,6 +79,7 @@ export default function CustomTable({ depatmentid, jobDescriptions, projectCardR
             textarea.style.left = '-9999px';  // скрываем элемент
             document.body.appendChild(textarea);
             textarea.select();
+            console.log(textarea)
             try {
                 document.execCommand('copy');  // копируем текст
                 setOpenSnackbar(true);

@@ -175,7 +175,15 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
 
 
     return (
-        <Modal open={true} onClose={onClose}>
+        <Modal 
+            open={true} 
+            onClose={(event, reason) => {
+                if (reason !== 'backdropClick') {
+                    onClose();
+                }
+            }}
+            disableEscapeKeyDown
+        >
             <Box sx={{
                 width: 'calc(100% - 13rem)',
                 bgcolor: 'background.paper',

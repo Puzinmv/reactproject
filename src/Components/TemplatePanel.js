@@ -39,7 +39,7 @@ function TemplatePanel({ depatmentid, onClose, onAdd }) {
 
     const handleSelectAllClick = (event) => {
         if (event.target.checked) {
-            const newSelected = rows.map((row) => row.id);
+            const newSelected = filteredRows.map((row) => row.id);
             setSelected(newSelected);
             return;
         }

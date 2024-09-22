@@ -512,7 +512,15 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     };
 
     return (
-        <Modal open={true} onClose={onClose}>
+        <Modal 
+            open={true} 
+            onClose={(event, reason) => {
+                if (reason !== 'backdropClick') {
+                    onClose();
+                }
+            }}
+            disableEscapeKeyDown
+        >
             <div>  
                 <Box sx={{
                     width: 'calc(100% - 10rem)',

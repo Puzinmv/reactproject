@@ -176,11 +176,14 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
 
         const columnMatches = Object.keys(columnSearch).every(columnId => {
             if (columnId === 'initiator' && showMyCards) {
+                if (CurrentUser?.email === row?.Department?.Email) return  formatValue(row[columnId]).toLowerCase().includes(columnSearch[columnId].toLowerCase());
                 return row[columnId] && formatValue(row[columnId]).toLowerCase().includes(CurrentUser.first_name.toLowerCase());
             }
             return formatValue(row[columnId]).toLowerCase().includes(columnSearch[columnId].toLowerCase());
         });
-        const showMyCadrMatches = !showMyCards || formatValue(row?.initiator).toLowerCase().includes(CurrentUser.first_name.toLowerCase());
+        let showMyCadrMatches = !showMyCards || formatValue(row?.initiator).toLowerCase().includes(CurrentUser.first_name.toLowerCase());
+        
+        showMyCadrMatches = !showMyCards || CurrentUser?.email === row?.Department?.Email
         return globalMatch && columnMatches && showMyCadrMatches;
     });
 

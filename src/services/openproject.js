@@ -5,7 +5,7 @@ const RETRY_DELAY = 5000; // 5 секунд
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const LINKS ={
-    CARD: 'http://projectcard.asterit.ru/?id=',
+    CARD: 'https://projectcard.asterit.ru/?id=',
     PROJECT: 'https://openproject.asterit.ru/api/v3/projects/'
  }
  const API_KEY = 'YXBpa2V5Ojk3ODVkODhlOWZlZDc2MzAyMmIyM2Y2MDJlMTE5Yzc4YWI5N2MxZDU3NmYxNzM0N2M2ZmFlMjRmYzZmYmZmMmY='

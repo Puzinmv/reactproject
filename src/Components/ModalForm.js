@@ -6,6 +6,7 @@ import {
     ClickAwayListener, Popper, Checkbox, List, ListItem, Snackbar, Alert,
     CircularProgress, Chip, Card, Link, Divider
 } from '@mui/material';
+import { styled } from '@mui/system';
 import { 
     STATUS, STATUS_COLORS, ROLES, WARNING_MESSAGES, FORM_FIELDS, 
     COMPANIES, EMAILS
@@ -21,6 +22,7 @@ import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
 import CustomTable from './CustomTable'; 
 import TableJobOnTrip from './TableJobOnTrip'; 
+import './ModalForm.css';
 
 
 const TabPanel = ({ children, value, index }) => {
@@ -42,6 +44,19 @@ const calculateTotalCost = (data) => {
 
 // Функция для определения цвета статуса
 const getStatusColor = (status) => STATUS_COLORS[status] || '#e0e0e0';
+
+// стили для switch с ошибкой
+const RedSwitch = styled(Switch)(({ theme, error }) => ({
+    '& .MuiSwitch-switchBase': {
+        //color: error ? 'red' : theme.palette.primary.main,
+    },
+    '& .Mui-checked': {
+        color: error ? 'red' : theme.palette.primary.main,
+    },
+    '& .MuiSwitch-track': {
+        //backgroundColor: error ? 'red' : theme.palette.primary.main,
+    },
+}));
 
 const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limitation }) => {
     const [tabIndex, setTabIndex] = useState(0);
@@ -65,7 +80,18 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const [isCreatingProject, setIsCreatingProject] = useState(false); // анимация кнопки при создании проекта
     const textFieldRef = useRef(null);
     const [fieldErrors, setFieldErrors] = useState({});
+    const selectRef = useRef(null);
+    const switchRef = useRef(null);
 
+
+    useEffect(() => {
+        // Обновляем formData при изменении row
+        if (row) {
+            setFormData({
+                ...row,
+            });
+        }
+    }, [row]); 
 
     useEffect(() => {
         const fetchCustomerOptions = async () => {
@@ -231,6 +257,19 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         setSnackbarState({ open: true, message, severity, ...options });
     };
 
+    const triggerShakeAnimation = () => {
+        if (switchRef.current) {
+            console.log(switchRef.current)
+            switchRef.current.classList.add('shake'); 
+            setTimeout(() => {
+                try {
+                    switchRef.current.classList.remove('shake'); // Убираем класс через 500мс
+                } catch (error) {
+                }
+            }, 5000);
+        }
+    };
+
 
     const handleChange = (e) => {
 
@@ -261,6 +300,10 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
 
         setFormData({ ...formData, [name]: newValue });
 
+        if (name === 'OpenProject_Template_id' && newValue) {
+            setErrors({...errors, OpenProject_Template_id: ''});
+        }
+
         if (['Cost', 'tiketsCost', 'dailyCost', 'otherPayments'].indexOf(name) > -1) {
             settotoalCost(calculateTotalCost({ ...formData, [name]: newValue }));
         }
@@ -285,6 +328,21 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const handleChangeSwitch = (e) => {
         const { name, checked } = e.target;
         setFormData({ ...formData, [name]: checked });
+
+        if (!formData.OpenProject_Template_id && name === 'jobCalculated' && checked) {
+            setErrors({...errors, OpenProject_Template_id: 'Выберите шаблон проекта'});
+            if (selectRef.current) {
+                selectRef.current.focus();
+                selectRef.current.scrollIntoView({ behavior: 'smooth' });
+            }
+            triggerShakeAnimation();
+            setTimeout(() => {
+                setFormData({ ...formData, jobCalculated: false });
+            }, 500);
+            return;
+        }
+
+        setErrors({...errors, OpenProject_Template_id: ''});
     }
 
 
@@ -823,12 +881,15 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                     />
                                 </Grid>
                                 <Grid container item xs={12} md={6} justifyContent="flex-end" alignItems="center">
-                                    <FormControlLabel
+                                    <FormControlLabel 
+                                        ref={switchRef}
                                         control={
-                                            <Switch
+                                            <RedSwitch
                                                 checked={formData.jobCalculated || false}
                                                 name="jobCalculated"
                                                 onChange={handleChangeSwitch}
+                                                color="primary"
+                                                error={!!errors.OpenProject_Template_id}
                                                 disabled={currentUser.ProjectCardRole !== ROLES.ADMIN && currentUser.ProjectCardRole !== ROLES.TECHNICAL }
                                             />
                                         }
@@ -912,6 +973,8 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                             value={formData.OpenProject_Template_id || ''}
                                             label="Шаблон проекта"
                                             onChange={handleChange}
+                                            error={!!errors?.OpenProject_Template_id}
+                                            ref={selectRef}
                                         >
                                             {projectTemplateOptions.length > 0 ? (
                                                 projectTemplateOptions.map(item => (
@@ -920,9 +983,13 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                                                     </MenuItem>
                                                 ))
                                             ) : (
-                                                <MenuItem value="">Нет доступных шаблонов</MenuItem>
+                                                <MenuItem key={999} value="">Нет доступных шаблонов</MenuItem>
                                             )}
                                         </Select>
+                                        {errors.OpenProject_Template_id && 
+                                            <FormHelperText sx={{color: 'red'}}>
+                                                {errors.OpenProject_Template_id}
+                                            </FormHelperText>}
                                     </FormControl>
                                 </Grid>
                                 <Grid item xs={12}>

@@ -44,7 +44,6 @@ function App() {
         try {
             const token = async () => await getToken();
             token().then((token) => {
-                console.log(token)
                 if (token) {
                     fetchTableData()
                 }
@@ -92,6 +91,7 @@ function App() {
         setSelectedRow(row);
         setIsModalOpen(true);
         navigate(`?id=${row.id}`);
+        fetchTableData();
     };
 
     const handleCreate = () => {

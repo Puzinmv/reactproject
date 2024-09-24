@@ -181,9 +181,7 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
             }
             return formatValue(row[columnId]).toLowerCase().includes(columnSearch[columnId].toLowerCase());
         });
-        let showMyCadrMatches = !showMyCards || formatValue(row?.initiator).toLowerCase().includes(CurrentUser.first_name.toLowerCase());
-        
-        showMyCadrMatches = !showMyCards || CurrentUser?.email === row?.Department?.Email
+        const showMyCadrMatches = !showMyCards || formatValue(row?.initiator).toLowerCase().includes(CurrentUser.first_name.toLowerCase()) || CurrentUser?.email === row?.Department?.Email;
         return globalMatch && columnMatches && showMyCadrMatches;
     });
 

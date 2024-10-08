@@ -2,7 +2,7 @@ import axios from 'axios';
 import Fuse from 'fuse.js';
 
 const LINKS ={
-    MAIN: 'http://1c-srv.asterit.ru/ut_11_5_asterit/odata/standard.odata/',
+    MAIN: process.env.ONEC_APP_API_URL,
     USER: 'Catalog_Пользователи'
  }
 const API_KEY = '0J/Rg9C30LjQvSDQnC7Qki46QmxvdW1pbmUhMQ=='

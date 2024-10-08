@@ -7,8 +7,9 @@ import ColumnVisibilityModal from './Components/ColumnVisibilityModal.js';
 import LoginForm from './Components/LoginForm.js';
 import CreateForm from './Components/CreateForm.js';
 import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
-import { loginEmail, loginAD, logout, fetchData, getToken } from './services/directus';
+import { loginEmail, loginAD, logout, fetchData, getToken, Update1CField } from './services/directus';
 import getNewCardData from './constants/index.js';
+import { GetUser1C } from './services/1c';
 
 const theme = createTheme({
     typography: {
@@ -77,6 +78,12 @@ function App() {
             setCurrentUser(user);
             setdepartament(departament)
             setLimitation(limitationTemplate)
+            if (user?.first_name) {
+                const user1C = await GetUser1C(user.first_name)
+                if (user1C) {
+                    Update1CField(user1C)
+                }
+            }
         } catch (error) {
             console.error(error);
         }

@@ -99,9 +99,9 @@ export const CreateProject = async (formData) => {
                 "parent": {
                     "href": null
                 },
-                "customField1": {
-                    "href": "/api/v3/users/22"
-                },
+                //"customField1": {
+                //    "href": "/api/v3/users/22"
+                //},
                 // "members": formData.projectMembers.map(userId => ({
                 //     "href": `/api/v3/users/${userId}`
                 // }))

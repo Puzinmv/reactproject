@@ -1,7 +1,7 @@
 import {
     createDirectus, authentication,  rest,
     readItems, readUsers, updateItem, readMe, readFile,
-    uploadFiles, deleteFile, createItem
+    uploadFiles, deleteFile, createItem, updateMe
 } from "@directus/sdk";
 
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
@@ -38,7 +38,7 @@ export const loginAD = async (login, password) => {
             const result = await response.json();
             const token = await getToken()
             console.log(result.data.access_token, token)
-            //directus.setToken(result.data.access_token); 
+            directus.setToken(result.data.access_token); 
             return token;
         } else {
             return null;
@@ -227,6 +227,18 @@ export const UpdateData = async (data) => {
         return req;
     } catch (error) {
         console.error("Error updating data:", error);
+        throw error;
+    }
+};
+
+export const Update1CField = async(refKey) => {
+    try {
+        const req = await directus.request(updateMe({
+            RefKey_1C: refKey,
+        }));
+        return req;
+    } catch (error) {
+        console.error("Error updating user 1C_RefKey:", error);
         throw error;
     }
 };

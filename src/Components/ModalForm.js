@@ -25,6 +25,7 @@ import TableJobOnTrip from './TableJobOnTrip';
 import './ModalForm.css';
 
 
+
 const TabPanel = ({ children, value, index }) => {
     return (
         <div role="tabpanel" hidden={value !== index}>
@@ -136,8 +137,6 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                 console.error('Ошибка при загрузке шаблонов проекта:', error);
                 setProjectTemplateOptions([]);  
             });
-        
-
 
     }, [formData.Customer, formData.Files, formData.initiator?.first_name, limitation]);
 
@@ -259,7 +258,6 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
 
     const triggerShakeAnimation = () => {
         if (switchRef.current) {
-            console.log(switchRef.current)
             switchRef.current.classList.add('shake'); 
             setTimeout(() => {
                 try {

@@ -81,7 +81,10 @@ function App() {
             if (user?.first_name) {
                 const user1C = await GetUser1C(user.first_name)
                 if (user1C) {
-                    Update1CField(user1C)
+                    const upduser = await Update1CField(user1C)
+                    if (upduser) {
+                        setCurrentUser(upduser)
+                    }
                 }
             }
         } catch (error) {
@@ -172,6 +175,7 @@ function App() {
                     <CreateForm
                         row={selectedRow}
                         departament={departament}
+                        currentUser={CurrentUser}
                         onClose={handleCloseModal}
                         onDataSaved={handleDataSaved}
                     />

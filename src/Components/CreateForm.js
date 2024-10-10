@@ -11,17 +11,20 @@ import {
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
+import { fetchCustomer1C, fetchCustomerContact1C } from '../services/1c';
 
 
 
-const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
+const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => {
 
     const [formData, setFormData] = useState(row);
     const [customerOptions, setCustomerOptions] = useState([]);
+    const [customerOptions1C, setCustomerOptions1C] = useState([]);
     const [customerContactOptions, setCustomerContactOptions] = useState([]);
     const [InitiatorOptions, setInitiatorOptions] = useState([]);
     const [errors, setErrors] = useState({});
     const [autofill, setAutofill] = useState(false);
+    const [autofill1С, setAutofill1С] = useState(false);
     const [customer, setCustomer] = useState(null);
 
     useEffect(() => {
@@ -39,6 +42,21 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
                 console.error('Error fetching customer options:', error);
             }
         };
+        const fetchCustomerOptions1C = async () => {
+            try {
+                const response = await fetchCustomer1C(formData.initiator.RefKey_1C || currentUser.RefKey_1C);
+                console.log(response)
+                setCustomerOptions1C(response.map(item => ({
+                    name: item.Description,
+                    id: item.Ref_Key,
+                    fullName: item['НаименованиеПолное'],
+                    CRMID: item.Code,
+                    options: item.Description,
+                })))
+            } catch (error) {
+                console.error('Error fetching customer 1c options:', error);
+            }
+        };
         const fetchUserOptions = async () => {
             try {
                 const response = await fetchUser();
@@ -49,7 +67,8 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
         };
         fetchUserOptions();
         fetchCustomerOptions()
-    }, [formData.initiator.first_name]);
+        fetchCustomerOptions1C()
+    }, [currentUser.RefKey_1C, formData.initiator.RefKey_1C, formData.initiator.first_name]);
 
 
     const validateFields = () => {
@@ -113,6 +132,33 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
             })))
         } catch (error) {
             console.error('Error fetching customer сontact options:', error);
+        }
+
+    };
+    const handleCustomerChange1c = async (event, value) => {
+        setFormData({
+            ...formData,
+            Customer: value ? value?.name : '',
+            CustomerCRMID: value ? value?.CRMID : ''
+        });
+        setCustomer(value);
+        try {
+            const response = await fetchCustomerContact1C(value.id);
+            setCustomerContactOptions(response.map(item => ({
+                name: item.Description,
+                id: item.Ref_Key,
+                email: item['КонтактнаяИнформация']
+                    .filter(contact => contact['Тип'] === 'АдресЭлектроннойПочты')
+                    .map(contact => contact['АдресЭП'])
+                    .join(';'), 
+                jobTitle: item['ДолжностьПоВизитке'],
+                tel: item.КонтактнаяИнформация
+                    .filter(contact => contact['Тип'] === 'Телефон')
+                    .map(contact => contact['Представление'])
+                    .join(';')
+            })))
+        } catch (error) {
+            console.error('Error fetching 1c customer сontact options:', error);
         }
 
     };
@@ -258,35 +304,76 @@ const CreateForm = ({ row, departament, onClose, onDataSaved }) => {
                                     }
                                     labelPlacement="end"
                                 />
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={autofill1С || false}
+                                            name="autofill1С"
+                                            onChange={(e) => {
+                                                setCustomerContactOptions([])
+                                                setAutofill1С(e.target.checked)
+                                            }}
+                                        />
+                                    }
+                                    label={
+                                        <Typography variant="body1" color="textPrimary">
+                                            данные из 1С (экспериментально)
+                                        </Typography>
+                                    }
+                                    labelPlacement="end"
+                                />
                             </Grid>
                         <Grid item xs={12} md={8}>
-                            {autofill ? (
-                                <TextField
-                                    label="Заказчик"
-                                    name="Customer"
-                                    value={formData.Customer}
-                                    onChange={handleChange}
+                            {autofill1С ? (
+                                <Autocomplete
+                                    options={customerOptions1C}
+                                    getOptionLabel={(option) => option.name}
+                                    value={customer}
+                                    onChange={handleCustomerChange1c}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Заказчик"
+                                            margin="dense"
+                                            InputProps={params.InputProps}
+                                        />
+                                    )}
                                     fullWidth
-                                    margin="dense"
+                                    disableClearable
                                 />
                             ) : (
-                                    <Autocomplete
-                                        options={customerOptions}
-                                        getOptionLabel={(option) => option.name}
-                                        value={customer}
-                                        onChange={handleCustomerChange}
-                                        renderInput={(params) => (
+                                    <>
+                                        {autofill ? (
                                             <TextField
-                                                {...params}
                                                 label="Заказчик"
+                                                name="Customer"
+                                                value={formData.Customer}
+                                                onChange={handleChange}
+                                                fullWidth
                                                 margin="dense"
-                                                InputProps={params.InputProps}
+                                            />
+                                        ) : (
+                                            <Autocomplete
+                                                options={customerOptions}
+                                                getOptionLabel={(option) => option.name}
+                                                value={customer}
+                                                onChange={handleCustomerChange}
+                                                renderInput={(params) => (
+                                                    <TextField
+                                                        {...params}
+                                                        label="Заказчик"
+                                                        margin="dense"
+                                                        InputProps={params.InputProps}
+                                                    />
+                                                )}
+                                                fullWidth
+                                                disableClearable
                                             />
                                         )}
-                                        fullWidth
-                                        disableClearable
-                                    />
+                                    </>
                             )}
+
+
                         </Grid>
                         <Grid item xs={12} md={4}>
                             <TextField

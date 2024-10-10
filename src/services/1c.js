@@ -23,7 +23,6 @@ export const GetUser1C = async (first_name) => {
         const response = await axios.request(config);
 
         if (response.status === 200) {
-            // Здесь выполняется действие, если статус 200
             console.log("Запрос успешно выполнен", response.data.value);
             const fuse = new Fuse(response.data.value, {
                 keys: ['Description'],
@@ -50,6 +49,53 @@ export const GetUser1C = async (first_name) => {
     }
 };
 
+export const fetchCustomer1C = async (RefKey_1C) => {
+    try {
+        const config = {
+            method: 'get',
+            url: `${LINKS.MAIN}Catalog_Партнеры?$format=json&$select=Description,Code,НаименованиеПолное,Ref_Key&$filter=ОсновнойМенеджер_Key%20eq%20guid%27${RefKey_1C}%27`,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Basic ' + API_KEY
+            },
+        };
+        const response = await axios.request(config);
+        if (response.status === 200) {
+            console.log("Запрос успешно выполнен", response.data.value);
+            return response.data.value
+        } else {
+            console.error('Непредвиденный статус ответа:', response.status);
+        }
 
+    } catch (error) {
+        console.error('Ошибка загрузки клиентов из 1С:', error);
+        return null;
+        //throw error;
+    }
+};
+export const fetchCustomerContact1C = async (RefKey_1C) => {
+    try {
+        const config = {
+            method: 'get',
+            url: `${LINKS.MAIN}Catalog_КонтактныеЛицаПартнеров?$format=json&$filter=Owner_Key%20eq%20guid%27${RefKey_1C}%27&$select=Description,ДолжностьПоВизитке,КонтактнаяИнформация,Ref_Key`,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Basic ' + API_KEY
+            },
+        };
+        const response = await axios.request(config);
+        if (response.status === 200) {
+            console.log("Запрос успешно выполнен", response.data.value);
+            return response.data.value
+        } else {
+            console.error('Непредвиденный статус ответа:', response.status);
+        }
+
+    } catch (error) {
+        console.error('Ошибка загрузки клиентов из 1С:', error);
+        return null;
+        //throw error;
+    }
+};
 
 export default GetUser1C;

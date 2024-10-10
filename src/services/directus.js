@@ -35,10 +35,10 @@ export const loginAD = async (login, password) => {
             })
         });
         if (response.ok) {
-            const result = await response.json();
+            //const result = await response.json();
             const token = await getToken()
-            console.log(result.data.access_token, token)
-            directus.setToken(result.data.access_token); 
+            //console.log(result.data.access_token, token)
+            //directus.setToken(result.data.access_token); 
             return token;
         } else {
             return null;
@@ -95,7 +95,7 @@ export const fetchData = async (token) => {
                         user_updated: ['id', 'first_name', 'last_name']
                     },
                     {
-                        initiator: ['id', 'first_name', 'last_name', 'Head']
+                        initiator: ['id', 'first_name', 'last_name', 'Head', 'RefKey_1C']
                     },
                     {
                         Department: ['*']
@@ -239,7 +239,7 @@ export const Update1CField = async(refKey) => {
         return req;
     } catch (error) {
         console.error("Error updating user 1C_RefKey:", error);
-        throw error;
+        return null;
     }
 };
 

@@ -80,7 +80,7 @@ function App() {
             setLimitation(limitationTemplate)
             if (user?.first_name) {
                 const user1C = await GetUser1C(user.first_name)
-                if (user1C) {
+                if (user1C && user1C !== user?.RefKey_1C) {
                     const upduser = await Update1CField(user1C)
                     if (upduser) {
                         setCurrentUser(upduser)

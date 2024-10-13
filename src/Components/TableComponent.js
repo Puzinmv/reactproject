@@ -52,6 +52,15 @@ const formatField = (field, value) => {
     return value;
 };
 
+const searchInObject = (obj, searchTerm) => {
+    if (typeof obj !== 'object' || obj === null) {
+        return String(obj).toLowerCase().includes(searchTerm);
+    }
+
+    return Object.values(obj).some(value => searchInObject(value, searchTerm));
+};
+
+
 const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
     const [columns, setColumns] = useState([]);
     const [order, setOrder] = useState('desc');
@@ -170,9 +179,7 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
     };
 
     const filteredData = data.filter(row => {
-        const globalMatch = Object.keys(row).some(key =>
-            formatValue(row[key]).includes(globalSearch.toLowerCase())
-        );
+        const globalMatch = searchInObject(row, globalSearch.toLowerCase());
 
         const columnMatches = Object.keys(columnSearch).every(columnId => {
             if (columnId === 'initiator' && showMyCards) {

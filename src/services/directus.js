@@ -1,6 +1,6 @@
 import {
     createDirectus, authentication,  rest,
-    readItems, readUsers, updateItem, readMe, readFile,
+    readItems, readUsers, updateItem, readMe, readFile, readItem,
     uploadFiles, deleteFile, createItem, updateMe
 } from "@directus/sdk";
 
@@ -212,8 +212,29 @@ export const fetchUser = async () => {
     }
 };
 
+const isEqual = (value1, value2) => { // глубокое сравнение объектов
+    if (value1 === value2) return true; 
+    if (typeof value1 !== 'object' || typeof value2 !== 'object' || value1 == null || value2 == null) {
+        return false; 
+    }
+
+    const keys1 = Object.keys(value1);
+    const keys2 = Object.keys(value2);
+
+    if (keys1.length !== keys2.length) return false; 
+
+    for (let key of keys1) {
+        if (!keys2.includes(key) || !isEqual(value1[key], value2[key])) {
+            return false; 
+        }
+    }
+
+    return true;
+};
+
 export const UpdateData = async (data) => {
     try {
+        const item = await directus.request(readItem('Project_Card', data.id));
         const id = data.id;
         const savedata = {
             ...data,
@@ -221,10 +242,25 @@ export const UpdateData = async (data) => {
             Department: data.Department.id || data.Department
         };
         ['id', 'user_created', 'date_created', 'user_updated', 'date_updated', 'sort'].forEach(key => delete savedata[key]);
-        if (!savedata?.dateStart) savedata.dateStart = null;// обнуляем если дата пустая
-        if (!savedata?.deadline) savedata.deadline = null;; // обнуляем если дата пустая
-        const req = await directus.request(updateItem('Project_Card', id, savedata));
-        return req;
+        
+        Object.keys(savedata).forEach(key => {
+            if (isEqual(savedata[key], item[key])) {
+                delete savedata[key];
+            }
+        });
+
+        if ('dateStart' in savedata && !savedata.dateStart) {
+            savedata.dateStart = null; // обнуляем, если дата пустая
+        }
+        if ('deadline' in savedata && !savedata.deadline) {
+            savedata.deadline = null; // обнуляем, если дата пустая
+        }
+        if (Object.keys(savedata).length > 0) {
+            const req = await directus.request(updateItem('Project_Card', id, savedata));
+            return req;
+        } else {
+            return null;
+        }
     } catch (error) {
         console.error("Error updating data:", error);
         throw error;

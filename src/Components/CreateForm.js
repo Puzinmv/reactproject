@@ -24,7 +24,7 @@ const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => 
     const [InitiatorOptions, setInitiatorOptions] = useState([]);
     const [errors, setErrors] = useState({});
     const [autofill, setAutofill] = useState(false);
-    const [autofill1С, setAutofill1С] = useState(false);
+    const [autofill1С, setAutofill1С] = useState(true);
     const [customer, setCustomer] = useState(null);
 
     useEffect(() => {

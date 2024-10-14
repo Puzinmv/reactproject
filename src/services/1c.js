@@ -23,7 +23,7 @@ export const GetUser1C = async (first_name) => {
         const response = await axios.request(config);
 
         if (response.status === 200) {
-            console.log("Запрос успешно выполнен", response.data.value);
+            // console.log("Запрос успешно выполнен", response.data.value);
             const fuse = new Fuse(response.data.value, {
                 keys: ['Description'],
                 includeScore: true,

@@ -241,7 +241,7 @@ export const UpdateData = async (data) => {
             initiator: data.initiator.id || data.initiator,
             Department: data.Department.id || data.Department
         };
-        ['id', 'user_created', 'date_created', 'user_updated', 'date_updated', 'sort'].forEach(key => delete savedata[key]);
+        ['id', 'user_created', 'date_created', 'user_updated', 'date_updated', 'sort', 'Files'].forEach(key => delete savedata[key]);
         
         Object.keys(savedata).forEach(key => {
             if (isEqual(savedata[key], item[key])) {

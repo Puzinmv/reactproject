@@ -63,8 +63,8 @@ export const CreateProject = async (formData) => {
                 "raw": generateTableJob(formData.JobDescription),
                 "html": generateTableJob(formData.JobDescription)
             },
-            "customField29": formData.resourceSumm,
-            "customField30": formData.frameSumm,
+            "customField38": formData.resourceSumm,
+            "customField39": formData.frameSumm,
             "customField31": `${formData.id}`,
             "customField33": {
                 "format": "markdown",

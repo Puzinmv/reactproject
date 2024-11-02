@@ -14,7 +14,7 @@ import {
 //import InputAdornment from '@mui/material/InputAdornment';
 import {
     fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus,
-    deleteFileDirectus, fetchCustomer, fetchCustomerContact
+    deleteFileDirectus, fetchCustomer, fetchCustomerContact, GetFilesStartId
 } from '../services/directus';
 import {CreateProject, GetProjectTemtplate} from '../services/openproject';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
@@ -443,19 +443,22 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
         : '';
 
     const handleFileUpload = async (files) => {
-            const updateFilesArray = (currentFiles, uploadedFiles, projectCardId) => {
-                const maxId = currentFiles.reduce((max, file) => Math.max(max, file.id), 0);
+            const updateFilesArray = async (currentFiles, uploadedFiles, projectCardId) => {
+                const maxDbId = await GetFilesStartId();
+                const maxId = currentFiles.reduce((max, file) => Math.max(max, file.id, maxDbId), 0);
+                console.log(maxId, maxDbId, currentFiles, uploadedFiles,projectCardId);
                 const newFiles = uploadedFiles.map((file, index) => ({
                     id: maxId + index + 1,
                     Project_Card_id: projectCardId,
                     directus_files_id: file.id
                 }));
+                console.log([...currentFiles, ...newFiles]);
                 return [...currentFiles, ...newFiles];
             };
         try {
             const filesArray = Array.from(files);
             const uploadedFiles = await uploadFilesDirectus(filesArray);
-            const newformData = { ...formData, Files: updateFilesArray(formData.Files, uploadedFiles, formData.id) };
+            const newformData = { ...formData, Files: await updateFilesArray(formData.Files, uploadedFiles, formData.id) };
             await UpdateData(newformData);
             setFormData(newformData);
             GetfilesInfo(newformData.Files).then((fileInfo) => {

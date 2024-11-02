@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import {
     fetchUser, uploadFilesDirectus, CreateItemDirectus, UpdateData,
-    fetchCustomer, fetchCustomerContact
+    fetchCustomer, fetchCustomerContact, GetFilesStartId
 } from '../services/directus';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
@@ -86,12 +86,13 @@ const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => 
             return;
         }
         try {
+            const startId = await GetFilesStartId();
             const files = Array.from(formData.Files.map((file)=>file.file));
             const item = await CreateItemDirectus({ ...formData, Files: [] });
             if (files.length > 0) {
                 const uploadedFiles = await uploadFilesDirectus(files);
                 const newFiles = uploadedFiles.map((file, index) => ({
-                    id: index+1,
+                    id: startId + index,
                     Project_Card_id: item.id,
                     directus_files_id: file.id
                 }));

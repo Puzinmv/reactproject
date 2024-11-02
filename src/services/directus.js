@@ -309,6 +309,7 @@ export const logout = async () => {
 
 export const uploadFilesDirectus = async (files) => {
     try {
+        console.log(files);
         const uploadPromises = files.map(async (file) => {
             const formData = new FormData();
             formData.append('file', file);
@@ -322,6 +323,18 @@ export const uploadFilesDirectus = async (files) => {
         throw error;
     }
 };
+
+export const GetFilesStartId = async () => {
+    const existingFiles = await directus.request(
+        readItems('Project_Card_files', {
+            sort: ['-id'],
+            limit: 1
+        })
+    );
+    console.log(existingFiles);
+    
+    return existingFiles.length > 0 ? existingFiles[0].id + 1 : 1;
+}
 
 export const deleteFileDirectus = async (fileId) => {
     try {

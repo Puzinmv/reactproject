@@ -256,6 +256,7 @@ export const UpdateData = async (data) => {
         if ('deadline' in savedata && !savedata.deadline) {
             savedata.deadline = null; // обнуляем, если дата пустая
         }
+        console.log(savedata);
         if (Object.keys(savedata).length > 0) {
             const req = await directus.request(updateItem('Project_Card', id, savedata));
             return req;

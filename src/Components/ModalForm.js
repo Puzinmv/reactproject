@@ -445,7 +445,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     const handleFileUpload = async (files) => {
             const updateFilesArray = async (currentFiles, uploadedFiles, projectCardId) => {
                 const maxDbId = await GetFilesStartId();
-                const maxId = currentFiles.reduce((max, file) => Math.max(max, file.id, maxDbId), 0);
+                const maxId = currentFiles.reduce((max, file) => Math.max(max, file.id, ), maxDbId);
                 console.log(maxId, maxDbId, currentFiles, uploadedFiles,projectCardId);
                 const newFiles = uploadedFiles.map((file, index) => ({
                     id: maxId + index + 1,

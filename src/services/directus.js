@@ -35,10 +35,10 @@ export const loginAD = async (login, password) => {
             })
         });
         if (response.ok) {
-            //const result = await response.json();
+            const result = await response.json();
             const token = await getToken()
-            //console.log(result.data.access_token, token)
-            //directus.setToken(result.data.access_token); 
+            console.log(result.data.access_token, token)
+            directus.setToken(result.data.access_token); 
             return token;
         } else {
             return null;
@@ -82,8 +82,123 @@ export const getCurrentUser = async () => {
     }
 
 };
+export const fetchDatanew = async ({
+    page = 1,
+    limit = 10,
+    sort = '-id',
+    search = '',
+    filters = {},
+    columns = [],
+    currentUser = null
+}) => {
+    try {
+        const fields = [
+            '*',
+            {
+                user_created: ['id', 'first_name', 'last_name']
+            },
+            {
+                user_updated: ['id', 'first_name', 'last_name']
+            },
+            {
+                initiator: ['id', 'first_name', 'last_name', 'Head', 'RefKey_1C']
+            },
+            {
+                Department: ['*']
+            },
+            {
+                Files: ['*']
+            },
+        ]
 
-export const fetchData = async (token) => {
+        // Формируем фильтры
+        let filter = {};
+        
+        // Глобальный поиск
+        if (search) {
+            filter._or = [
+                { 
+                    name: { _contains: search }
+                },
+                { 
+                    Description: { _contains: search }
+                },
+                { 
+                    initiator: {
+                        first_name: { _contains: search }
+                    }
+                },
+                {
+                    Department: {
+                        Department: { _contains: search }
+                    }
+                }
+            ];
+        }
+
+        // Фильтры колонок
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value) {
+                // Проверяем, является ли поле вложенным (содержит точку)
+                if (key.includes('.')) {
+                    const [relation, field] = key.split('.');
+                    filter[relation] = {
+                        [field]: { _contains: value }
+                    };
+                } else {
+                    filter[key] = { _contains: value };
+                }
+            }
+        });
+
+        // Фильтр "Мои карты"
+        if (currentUser) {
+            filter._or = [
+                {
+                    initiator: {
+                        first_name: { _contains: currentUser.first_name }
+                    }
+                },
+                {
+                    Department: {
+                        email: { _eq: currentUser.email }
+                    }
+                }
+            ];
+        }
+
+        const [data, countData] = await Promise.all([
+            directus.request(readItems('Project_Card', {
+                fields,
+                filter,
+                sort: [sort],
+                page,
+                limit
+            })),
+            // Отдельный запрос для получения общего количества с учетом фильтров
+            directus.request(readItems('Project_Card', {
+                aggregate: {
+                    count: '*'
+                },
+                filter
+            }))
+        ]);
+        console.log(data)
+        return {
+            data,
+            meta: {
+                total: countData[0].count,
+                page,
+                limit
+            }
+        };
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};
+
+export const fetchDataold = async (token) => {
     const makeRequest = async (token) => {
         const data = await directus.request(readItems('Project_Card', {
                 fields: [

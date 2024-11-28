@@ -7,7 +7,7 @@ import ColumnVisibilityModal from './Components/ColumnVisibilityModal.js';
 import LoginForm from './Components/LoginForm.js';
 import CreateForm from './Components/CreateForm.js';
 import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
-import { loginEmail, loginAD, logout, fetchData, getToken, Update1CField } from './services/directus';
+import { loginEmail, loginAD, logout, fetchDataold, getToken, Update1CField } from './services/directus';
 import getNewCardData from './constants/index.js';
 import { GetUser1C } from './services/1c';
 
@@ -69,12 +69,13 @@ function App() {
 
     const fetchTableData = async () => {
         try {
-            const [data, departament, limitationTemplate, user] = await fetchData();
+            const [data, departament, limitationTemplate, user] = await fetchDataold();
             console.log('Data', data);
             console.log('departament', departament);
             console.log('user', user);
             console.log('limitationTemplate', limitationTemplate);
-            setTableData(data);
+            //setTableData(data);
+            setTableData([]);
             setCurrentUser(user);
             setdepartament(departament)
             setLimitation(limitationTemplate)
@@ -154,6 +155,7 @@ function App() {
                 {Object.keys(CurrentUser).length ? (
                     <TableComponent
                         data={tableData}
+                        setTableData={setTableData}
                         CurrentUser={CurrentUser}
                         onRowSelect={handleRowSelect}
                         onCreate={handleCreate}

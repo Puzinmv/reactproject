@@ -38,13 +38,15 @@ export const STATUS = {
     NEW_CARD: 'Новая карта',
     LABOR_COSTS_ESTIMATED: 'Оценка трудозатрат проведена',
     ECONOMICS_AGREED: 'Экономика согласована',
-    PROJECT_STARTED: 'Проект выполняется'
+    PROJECT_STARTED: 'Проект выполняется',
+    PROJECT_ENDED: 'Проект завершен'
   };
 export const STATUS_COLORS = {
     [STATUS.NEW_CARD]: 'primary.main',
     [STATUS.LABOR_COSTS_ESTIMATED]: 'warning.main',
     [STATUS.ECONOMICS_AGREED]: 'secondary.main',
     [STATUS.PROJECT_STARTED]: 'success.main',
+    [STATUS.PROJECT_ENDED]: 'success.main',
 };
   
 export const getNewCardData = (CurrentUser) => {

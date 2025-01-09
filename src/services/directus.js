@@ -112,61 +112,72 @@ export const fetchDatanew = async ({
         ]
 
         // Формируем фильтры
-        let filter = {};
+        let filter = {"_and": [{},{},{}]};
         
         // Глобальный поиск
         if (search) {
-            filter._or = [
-                { 
-                    name: { _contains: search }
-                },
-                { 
-                    Description: { _contains: search }
-                },
-                { 
-                    initiator: {
-                        first_name: { _contains: search }
+            filter._and[0] = {
+                "_or": [
+                    { 
+                        title: { _contains: search }
+                    },
+                    { 
+                        Description: { _contains: search }
+                    },
+                    { 
+                        initiator: {
+                            first_name: { _contains: search }
+                        }
+                    },
+                    {
+                        Customer: { _contains: search }
                     }
-                },
-                {
-                    Department: {
-                        Department: { _contains: search }
-                    }
-                }
-            ];
+                ]
+            }
         }
 
         // Фильтры колонок
-        Object.entries(filters).forEach(([key, value]) => {
-            if (value) {
-                // Проверяем, является ли поле вложенным (содержит точку)
-                if (key.includes('.')) {
-                    const [relation, field] = key.split('.');
-                    filter[relation] = {
-                        [field]: { _contains: value }
-                    };
-                } else {
-                    filter[key] = { _contains: value };
+        if (filters) {
+            let fieldFilter =[]
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value) {
+                    if (key === 'initiator') {
+                        fieldFilter.push({
+                            [key]: 
+                                {
+                                    first_name: { _contains: value }
+                                }
+                            });
+                    } else if (key === 'Department') {
+                        fieldFilter.push({
+                            [key]: 
+                                {
+                                    Department: { _contains: value }
+                                }
+                            });
+                    } else {
+                        fieldFilter.push({ [key]: { _contains: value }});
+                    }
                 }
-            }
-        });
-
+            });
+            filter._and[2]._and = fieldFilter
+        }
         // Фильтр "Мои карты"
         if (currentUser) {
-            filter._or = [
-                {
-                    initiator: {
-                        first_name: { _contains: currentUser.first_name }
+            filter._and[3] = {
+                "_or": [
+                    {
+                        initiator: {
+                            first_name: { _contains: currentUser.first_name }
+                        }
+                    },
+                    {
+                        Department: {
+                            email: { _contains: currentUser.email }
+                        }
                     }
-                },
-                {
-                    Department: {
-                        email: { _eq: currentUser.email }
-                    }
-                }
-            ];
+                ]}
         }
-
         const [data, countData] = await Promise.all([
             directus.request(readItems('Project_Card', {
                 fields,
@@ -183,7 +194,7 @@ export const fetchDatanew = async ({
                 filter
             }))
         ]);
-        console.log(data)
+        //console.log(data, countData)
         return {
             data,
             meta: {
@@ -198,47 +209,86 @@ export const fetchDatanew = async ({
     }
 };
 
-export const fetchDataold = async (token) => {
-    const makeRequest = async (token) => {
-        const data = await directus.request(readItems('Project_Card', {
-                fields: [
-                    '*',
-                    {
-                        user_created: ['id', 'first_name', 'last_name']
-                    },
-                    {
-                        user_updated: ['id', 'first_name', 'last_name']
-                    },
-                    {
-                        initiator: ['id', 'first_name', 'last_name', 'Head', 'RefKey_1C']
-                    },
-                    {
-                        Department: ['*']
-                    },
-                    {
-                        Files: ['*']
-                    },
-                ],
+export const fetchInitData = async () => {
+    const [Users, Department, user] = await Promise.all([
+        directus.request(readUsers({fields:['first_name']})),
+        directus.request(readItems('Department', { fields: ['*'] })),
+        directus.request(readMe())
+    ]);
+    return [Users, Department, user]
+}
+// export const fetchDataold = async (token) => {
+//     const makeRequest = async (token) => {
+//         const data = await directus.request(readItems('Project_Card', {
+//                 fields: [
+//                     '*',
+//                     {
+//                         user_created: ['id', 'first_name', 'last_name']
+//                     },
+//                     {
+//                         user_updated: ['id', 'first_name', 'last_name']
+//                     },
+//                     {
+//                         initiator: ['id', 'first_name', 'last_name', 'Head', 'RefKey_1C']
+//                     },
+//                     {
+//                         Department: ['*']
+//                     },
+//                     {
+//                         Files: ['*']
+//                     },
+//                 ],
+//             })
+//         );
+
+//         const departament = await directus.request(
+//              readItems('Department', { fields: ['*'] })
+//         );
+//         const limitationTemplate = await directus.request(
+//             readItems('JobLimitation', { fields: ['name'] })
+//         );
+//         const CurrentUser = await getCurrentUser();
+
+
+//         return [data, departament, limitationTemplate, CurrentUser];
+//     };
+
+//     try {
+//         return await makeRequest(token);
+//     } catch (error) {
+//         console.error(error);
+//         throw error;
+//     }
+// };
+export const fetchCard = async (ID) => {
+    try {
+        const fields = [
+            '*',
+            {
+                user_created: ['id', 'first_name', 'last_name']
+            },
+            {
+                user_updated: ['id', 'first_name', 'last_name']
+            },
+            {
+                initiator: ['id', 'first_name', 'last_name', 'Head', 'RefKey_1C']
+            },
+            {
+                Department: ['*']
+            },
+            {
+                Files: ['*']
+            },
+        ]
+        const data = await directus.request(
+            readItem('Project_Card', ID ,{
+                fields: fields,
             })
         );
-
-        const departament = await directus.request(
-             readItems('Department', { fields: ['*'] })
-        );
-        const limitationTemplate = await directus.request(
-            readItems('JobLimitation', { fields: ['name'] })
-        );
-        const CurrentUser = await getCurrentUser();
-
-
-        return [data, departament, limitationTemplate, CurrentUser];
-    };
-
-    try {
-        return await makeRequest(token);
+        return data;
     } catch (error) {
         console.error(error);
-        throw error;
+        throw error; 
     }
 };
 

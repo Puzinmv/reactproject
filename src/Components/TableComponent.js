@@ -53,16 +53,16 @@ const formatField = (field, value) => {
     return value;
 };
 
-const searchInObject = (obj, searchTerm) => {
-    if (typeof obj !== 'object' || obj === null) {
-        return String(obj).toLowerCase().includes(searchTerm);
-    }
+// const searchInObject = (obj, searchTerm) => {
+//     if (typeof obj !== 'object' || obj === null) {
+//         return String(obj).toLowerCase().includes(searchTerm);
+//     }
 
-    return Object.values(obj).some(value => searchInObject(value, searchTerm));
-};
+//     return Object.values(obj).some(value => searchInObject(value, searchTerm));
+// };
 
 
-const TableComponent = ({ data, setTableData, CurrentUser, onRowSelect, onCreate }) => {
+const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelect, onCreate }) => {
     const [columns, setColumns] = useState([]);
     const [order, setOrder] = useState('desc');
     const [orderBy, setOrderBy] = useState('id');
@@ -94,7 +94,7 @@ const TableComponent = ({ data, setTableData, CurrentUser, onRowSelect, onCreate
             });
 
             setLocalTableData(response.data); // устанавливаем данные в локальное состояние
-            setTableData(response.data);      // обновляем родительское состояние
+            //setTableData(response.data);      // обновляем родительское состояние
             setTotalRows(response.meta.total);
         } catch (error) {
             console.error('Error loading data:', error);
@@ -108,30 +108,30 @@ const TableComponent = ({ data, setTableData, CurrentUser, onRowSelect, onCreate
         loadData();
     }, [loadData]);
 
+    const handleColumnVisibilityChange = useCallback((id) => {
+        setColumns(prevColumns => {
+            const newColumns = prevColumns.map(column => 
+                column.columnId === id ? { ...column, visible: !column.visible } : column
+            );
+            localStorage.setItem('columns', JSON.stringify(newColumns));
+            return newColumns;
+        });
+    }, []);
+
     useEffect(() => {
         let savedColumns = FIELD_NAMES;
         const LocalStorageColumns = JSON.parse(localStorage.getItem('columns'));
-        if (Array.isArray(LocalStorageColumns)) {
-            if (LocalStorageColumns.length > 0) {
-                savedColumns = JSON.parse(localStorage.getItem('columns'));
-            }
+        if (Array.isArray(LocalStorageColumns) && LocalStorageColumns.length > 0) {
+            savedColumns = LocalStorageColumns;
         }
-        const SetSelect = localStorage.getItem('ShowMyCard');
-        if (SetSelect) setShowMyCards(JSON.parse(SetSelect))
-        if (Array.isArray(data)) setinitiatorOptions(['---', ...new Set(data.map(item => item?.initiator?.first_name || ''
-            //+ ' ' + item.initiator.last_name || ''
-        ))]);
-        if (Array.isArray(data)) setdepartmentOptions(['---', ...new Set(data.map(item => item.Department.Department))]);
-        if (Array.isArray(data)) setstatusOptions(['---', ...new Set(data.map(item => item.status))]);
         setColumns(savedColumns);
-    }, [data]);
+    }, []); // Убираем tableData, departamentOption, UserOption из зависимостей
 
     useEffect(() => {
-        if (JSON.stringify(columns) !== JSON.stringify(FIELD_NAMES) && columns.length>0) {
-            localStorage.setItem('columns', JSON.stringify(columns));
-        }
-        
-    }, [columns]);
+        if (Array.isArray(UserOption)) setinitiatorOptions(['---', ...UserOption]);
+        if (Array.isArray(departamentOption)) setdepartmentOptions(['---', ...new Set(departamentOption.map(item => item.Department))]);
+        setstatusOptions(['---', ...Object.values(STATUS)]);
+    }, [departamentOption, UserOption]);
 
     const handleRequestSort = (property) => {
         const isAsc = orderBy === property && order === 'asc';
@@ -152,10 +152,6 @@ const TableComponent = ({ data, setTableData, CurrentUser, onRowSelect, onCreate
         if (onRowSelect) {
             onRowSelect(row);
         }
-    };
-
-    const handleColumnVisibilityChange = (id) => {
-        setColumns(columns.map(column => column.columnId === id ? { ...column, visible: !column.visible } : column));
     };
 
     const handleMenuOpen = (event) => {
@@ -195,24 +191,24 @@ const TableComponent = ({ data, setTableData, CurrentUser, onRowSelect, onCreate
         localStorage.setItem('ShowMyCard', JSON.stringify(event.target.checked));
     };
 
-    const formatValue = (value) => {
-        if (typeof value === 'object' && value !== null && 'first_name' in value && 'last_name' in value) {
-            return value.first_name
-               // + ' ' + value.last_name || '';
-        }
-        if (typeof value === 'object' && value !== null) {
-            return JSON.stringify(value).toLowerCase();
-        } else if (typeof value === 'string') {
-            return value.toLowerCase();
-        } else if (typeof value === 'number') {
-            return value.toString().toLowerCase();
-        } else if (value instanceof Date) {
-            return value.toISOString().toLowerCase();
-        }
-        return '';
-    };
-    const sortedData = data;
-    console.log(sortedData, data);
+    // const formatValue = (value) => {
+    //     if (typeof value === 'object' && value !== null && 'first_name' in value && 'last_name' in value) {
+    //         return value.first_name
+    //            // + ' ' + value.last_name || '';
+    //     }
+    //     if (typeof value === 'object' && value !== null) {
+    //         return JSON.stringify(value).toLowerCase();
+    //     } else if (typeof value === 'string') {
+    //         return value.toLowerCase();
+    //     } else if (typeof value === 'number') {
+    //         return value.toString().toLowerCase();
+    //     } else if (value instanceof Date) {
+    //         return value.toISOString().toLowerCase();
+    //     }
+    //     return '';
+    // };
+    // const sortedData = data;
+    // console.log(sortedData, data);
     // const filteredData = data.filter(row => {
     //     const globalMatch = searchInObject(row, globalSearch.toLowerCase());
 

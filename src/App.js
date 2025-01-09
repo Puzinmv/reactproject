@@ -7,7 +7,7 @@ import ColumnVisibilityModal from './Components/ColumnVisibilityModal.js';
 import LoginForm from './Components/LoginForm.js';
 import CreateForm from './Components/CreateForm.js';
 import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
-import { loginEmail, loginAD, logout, fetchDataold, getToken, Update1CField } from './services/directus';
+import { loginEmail, loginAD, logout, getToken, Update1CField, fetchInitData } from './services/directus';
 import getNewCardData from './constants/index.js';
 import { GetUser1C } from './services/1c';
 
@@ -29,56 +29,40 @@ const theme = createTheme({
 });
 
 function App() {
-    const [selectedRow, setSelectedRow] = useState(null);
+    const [SelectedRowId, setSelectedRowId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
-    const [tableData, setTableData] = useState([]);
+    //const [tableData, setTableData] = useState([]);
     const [CurrentUser, setCurrentUser] = useState({});
+    const [UserOption, setUserOption] = useState({});
     const [departament, setdepartament] = useState([]);
-    const [limitation, setLimitation] = useState([]);
+    //const [limitation, setLimitation] = useState([]);
     const navigate = useNavigate();
     const location = useLocation();
-
-
-    useEffect(() => {
-        try {
-            const token = async () => await getToken();
-            token().then((token) => {
-                if (token) {
-                    fetchTableData()
-                }
-            })
-
-        } catch (e) {
-            setCurrentUser({});
-        }
-    }, []);
 
     useEffect(() => {
         const searchParams = new URLSearchParams(location.search);
         const rowId = searchParams.get('id');
         if (rowId) {
-            const row = tableData.find(item => item.id === parseInt(rowId));
-            if (row) {
-                setSelectedRow(row);
-                setIsModalOpen(true);
-            }
+            setSelectedRowId(rowId);
+            setIsModalOpen(true);
         }
-    }, [location.search, tableData]);
+    }, [location.search]);
 
     const fetchTableData = async () => {
         try {
-            const [data, departament, limitationTemplate, user] = await fetchDataold();
-            console.log('Data', data);
-            console.log('departament', departament);
+            const [Users, Department, user] = await fetchInitData();
+            console.log('Users', Users);
+            console.log('departament', Department);
             console.log('user', user);
-            console.log('limitationTemplate', limitationTemplate);
+            //console.log('limitationTemplate', limitationTemplate);
             //setTableData(data);
-            setTableData([]);
+            //setTableData([]);
             setCurrentUser(user);
-            setdepartament(departament)
-            setLimitation(limitationTemplate)
+            setdepartament(Department)
+            setUserOption(Users.map(item => item.first_name))
+            //setLimitation(limitationTemplate)
             if (user?.first_name) {
                 const user1C = await GetUser1C(user.first_name)
                 if (user1C && user1C !== user?.RefKey_1C) {
@@ -92,6 +76,20 @@ function App() {
             console.error(error);
         }
     };
+    
+    // useEffect(() => {
+    //     try {
+    //         const token = async () => await getToken();
+    //         token().then((token) => {
+    //             if (token) {
+    //                 fetchTableData()
+    //             }
+    //         })
+
+    //     } catch (e) {
+    //         setCurrentUser({});
+    //     }
+    // }, []);
 
     const handleLogout = async () => {
         await logout();
@@ -99,21 +97,21 @@ function App() {
     };
 
     const handleRowSelect = (row) => {
-        setSelectedRow(row);
+        setSelectedRowId(row.id);
         setIsModalOpen(true);
         navigate(`?id=${row.id}`);
         fetchTableData();
     };
 
     const handleCreate = () => {
-        setSelectedRow(getNewCardData(CurrentUser));
+        //setSelectedRow(getNewCardData(CurrentUser));
         setIsCreateOpen(true);
     };
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setIsCreateOpen(false);
-        setSelectedRow(null);
+        setSelectedRowId(null);
         navigate('/');
     };
 
@@ -154,8 +152,10 @@ function App() {
             <div className="App">
                 {Object.keys(CurrentUser).length ? (
                     <TableComponent
-                        data={tableData}
-                        setTableData={setTableData}
+                        //data={tableData}
+                        //setTableData={setTableData}
+                        UserOption={UserOption}
+                        departamentOption={departament}
                         CurrentUser={CurrentUser}
                         onRowSelect={handleRowSelect}
                         onCreate={handleCreate}
@@ -165,17 +165,17 @@ function App() {
                 )}
                 {isModalOpen && (
                     <ModalForm
-                        row={selectedRow}
+                        rowid={SelectedRowId}
                         departament={departament}
                         onClose={handleCloseModal}
                         currentUser={CurrentUser}
                         onDataSaved={handleDataSaved}
-                        limitation={limitation}
+                        //limitation={limitation}
                     />
                 )}
                 {isCreateOpen && (
                     <CreateForm
-                        row={selectedRow}
+                        row={getNewCardData(CurrentUser)}
                         departament={departament}
                         currentUser={CurrentUser}
                         onClose={handleCloseModal}

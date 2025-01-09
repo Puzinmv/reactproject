@@ -13,7 +13,7 @@ import {
 } from '../constants/index.js';
 //import InputAdornment from '@mui/material/InputAdornment';
 import {
-    fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus,
+    fetchCard, fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus,
     deleteFileDirectus, fetchCustomer, fetchCustomerContact, GetFilesStartId
 } from '../services/directus';
 import {CreateProject, GetProjectTemtplate} from '../services/openproject';
@@ -59,9 +59,11 @@ const RedSwitch = styled(Switch)(({ theme, error }) => ({
     },
 }));
 
-const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limitation }) => {
+const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved, 
+    limitation = [] 
+}) => {
     const [tabIndex, setTabIndex] = useState(0);
-    const [formData, setFormData] = useState(row);
+    const [formData, setFormData] = useState({});
     const [customerOptions, setCustomerOptions] = useState([]);
     const [projectTemplateOptions, setProjectTemplateOptions] = useState([]);
     const [customer, setCustomer] = useState(null);
@@ -86,18 +88,31 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
 
 
     useEffect(() => {
-        // Обновляем formData при изменении row
-        if (row) {
-            setFormData({
-                ...row,
-            });
-        }
-    }, [row]); 
+        const loadCard = async () => {
+            try {
+                const row = await fetchCard(rowid);
+                if (row) {
+                    setFormData(row);
+                } else {
+                    onClose();
+                }
+            } catch (error) {
+                console.error('Error fetching card:', error);
+                onClose();
+            }
+        };
+
+        loadCard();
+    }, [rowid, onClose]);
 
     useEffect(() => {
         const fetchCustomerOptions = async () => {
             try {
-                const response = await fetchCustomer(formData.initiator?.first_name || '');
+                if (Object.keys(formData).length === 0) {
+                    setCustomerOptions([]);
+                    return []
+                }
+                const response = await fetchCustomer(formData?.initiator?.first_name || '');
                 const customers = response.map(item => ({
                     name: item.shortName,
                     id: item.id,
@@ -118,9 +133,11 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                 console.error('Error fetching user options:', error);
             }
         };
+        console.log(formData)
+        if (Object.keys(formData).length === 0) return 
         fetchUserOptions();
         fetchCustomerOptions().then((customers) => {
-            const value = customers.find((option) => option.name === formData.Customer) || null;
+            const value = customers?.find((option) => option?.name === formData.Customer) || null;
             setCustomer(value);
             if (!value) setAutofill(true)
         });
@@ -138,7 +155,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
                 setProjectTemplateOptions([]);  
             });
 
-    }, [formData.Customer, formData.Files, formData.initiator?.first_name, limitation]);
+    }, [formData?.Customer, formData?.Files, formData?.initiator?.first_name]);
 
     useEffect(() => {
         if (totoalCost && formData?.resourceSumm) settotoalCostPerHour(`${Math.round(totoalCost * 100 / (formData.resourceSumm * 8)) / 100} ₽/час`)
@@ -196,7 +213,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
             }
             return prevData;
         });
-    }, [formData.Department.CostHour, formData.HiredCost, formData.resourceSumm]);
+    }, [formData?.Department?.CostHour, formData.HiredCost, formData.resourceSumm]);
 
     useEffect(() => {
         let newStatus = STATUS.NEW_CARD;
@@ -248,7 +265,7 @@ const ModalForm = ({ row, departament, onClose, currentUser, onDataSaved, limita
     };
 
     const handleCancel = () => {
-        setFormData(row);
+        //setFormData(row);
         onClose();
     };
 

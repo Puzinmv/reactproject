@@ -5,7 +5,7 @@ const LINKS ={
     MAIN: 'https://1c.asterit.ru/ut_11_5_asterit/odata/standard.odata/',
     USER: 'Catalog_Пользователи'
  }
-const API_KEY = '0J/Rg9C30LjQvSDQnC7Qki46QmxvdW1pbmUhMQ=='
+const API_KEY = '0J7QsdC80LXQvTpuRTZ6YW1hcA=='
 const THRESHOLD = 0.3 // Чем ниже, тем более строгий поиск
 
 

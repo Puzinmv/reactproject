@@ -36,9 +36,11 @@ export const loginAD = async (login, password) => {
         });
         if (response.ok) {
             const result = await response.json();
+            if (window.location.hostname === 'localhost') {
+                directus.setToken(result.data.access_token);
+                console.log('localhost')
+            }
             const token = await getToken()
-            console.log(result.data.access_token, token)
-            directus.setToken(result.data.access_token); 
             return token;
         } else {
             return null;

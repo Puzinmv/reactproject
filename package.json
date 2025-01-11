@@ -17,6 +17,7 @@
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.7.2",
+    "exceljs": "^4.4.0",
     "fuse.js": "^7.0.0",
     "html-react-parser": "^5.1.12",
     "js-cookie": "^3.0.5",
@@ -28,6 +29,7 @@
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4",
     "webpack-dev-server": "^5.0.4",
+    "xlsx": "^0.18.5",
     "zustand": "^4.5.4"
   },
   "scripts": {

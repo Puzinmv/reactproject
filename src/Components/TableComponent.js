@@ -425,7 +425,7 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
                 <TablePagination
                     rowsPerPageOptions={[10, 50, 100, { value: -1, label: 'Все' }]}
                     component="div"
-                    count={totalRows}
+                    count={Number(totalRows)}
                     rowsPerPage={rowsPerPage}
                     page={page}
                     onPageChange={handleChangePage}

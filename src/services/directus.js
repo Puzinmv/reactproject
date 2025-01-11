@@ -280,12 +280,12 @@ export const fetchCard = async (ID) => {
                 Files: ['*']
             },
         ]
-        const data = await directus.request(
-            readItem('Project_Card', ID ,{
-                fields: fields,
-            })
-        );
-        return data;
+        const [data, limitation] = await Promise.all([
+            directus.request(readItem('Project_Card', ID ,{fields: fields})),
+            directus.request(readItems('JobLimitation', { fields: ['name'] }))
+        ]);
+
+        return [data, limitation];
     } catch (error) {
         console.error(error);
         throw error; 

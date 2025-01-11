@@ -14,8 +14,9 @@ import {
 //import InputAdornment from '@mui/material/InputAdornment';
 import {
     fetchCard, fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus,
-    deleteFileDirectus, fetchCustomer, fetchCustomerContact, GetFilesStartId
+    deleteFileDirectus, GetFilesStartId
 } from '../services/directus';
+import { fetchCustomer1C, fetchCustomerContact1C } from '../services/1c';
 import {CreateProject, GetProjectTemtplate} from '../services/openproject';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
@@ -23,7 +24,6 @@ import FileUpload from './FileUpload';
 import CustomTable from './CustomTable'; 
 import TableJobOnTrip from './TableJobOnTrip'; 
 import './ModalForm.css';
-
 
 
 const TabPanel = ({ children, value, index }) => {
@@ -49,19 +49,14 @@ const getStatusColor = (status) => STATUS_COLORS[status] || '#e0e0e0';
 // стили для switch с ошибкой
 const RedSwitch = styled(Switch)(({ theme, error }) => ({
     '& .MuiSwitch-switchBase': {
-        //color: error ? 'red' : theme.palette.primary.main,
+        color: error === 'true' ? 'red' : theme.palette.primary.main,
     },
     '& .Mui-checked': {
-        color: error ? 'red' : theme.palette.primary.main,
-    },
-    '& .MuiSwitch-track': {
-        //backgroundColor: error ? 'red' : theme.palette.primary.main,
+        color: error === 'true' ? 'red' : theme.palette.primary.main,
     },
 }));
 
-const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved, 
-    limitation = [] 
-}) => {
+const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => {
     const [tabIndex, setTabIndex] = useState(0);
     const [formData, setFormData] = useState({});
     const [customerOptions, setCustomerOptions] = useState([]);
@@ -69,6 +64,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
     const [customer, setCustomer] = useState(null);
     const [customerContactOptions, setCustomerContactOptions] = useState([]);
     const [InitiatorOptions, setInitiatorOptions] = useState([]);
+    const [limitation, setLimitation] = useState([]);
     const [errors, setErrors] = useState({});
     const [fileInfo, setfileInfo] = useState([]);
     const [autofill, setAutofill] = useState(false);
@@ -87,12 +83,14 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
     const switchRef = useRef(null);
 
 
+    // Первичная загрузка данных карточки
     useEffect(() => {
         const loadCard = async () => {
             try {
-                const row = await fetchCard(rowid);
+                const [row, limitation] = await fetchCard(rowid);
                 if (row) {
                     setFormData(row);
+                    setLimitation(limitation)
                 } else {
                     onClose();
                 }
@@ -105,57 +103,56 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
         loadCard();
     }, [rowid, onClose]);
 
+    // Загрузка связанных данных после получения formData
     useEffect(() => {
-        const fetchCustomerOptions = async () => {
+        if (!formData?.id) return;
+
+        const loadRelatedData = async () => {
             try {
-                if (Object.keys(formData).length === 0) {
-                    setCustomerOptions([]);
-                    return []
+                // Загрузка пользователей
+                const users = await fetchUser();
+                setInitiatorOptions(users);
+                // Загрузка информации о клиенте
+                if (formData?.initiator?.RefKey_1C || currentUser?.RefKey_1C) {
+                    const response = await fetchCustomer1C(formData?.initiator?.RefKey_1C || currentUser?.RefKey_1C);
+                    const mappedCustomers = response.map(item => ({
+                        name: item.Description,
+                        id: item.Ref_Key,
+                        fullName: item['НаименованиеПолное'],
+                        CRMID: item.Code,
+                        options: item.Description,
+                    }))
+                    setCustomerOptions(mappedCustomers)
+                    const selectedCustomer = mappedCustomers.find(
+                        option => option.name === formData?.Customer
+                    );
+                    setCustomer(selectedCustomer);
+                    if (!selectedCustomer) setAutofill(true);
                 }
-                const response = await fetchCustomer(formData?.initiator?.first_name || '');
-                const customers = response.map(item => ({
-                    name: item.shortName,
-                    id: item.id,
-                    fullName: item.fullName,
-                    CRMID: item.CRMID
-                }))
-                setCustomerOptions(customers)
-                return customers;
+
+                // Загрузка файлов
+                if (formData?.Files) {
+                    const files = await GetfilesInfo(formData?.Files);
+                    setfileInfo(files);
+                }
+
+                // Загрузка шаблонов проектов
+                const templates = await GetProjectTemtplate();
+                setProjectTemplateOptions(templates);
+
             } catch (error) {
-                console.error('Error fetching customer options:', error);
+                console.error('Error loading related data:', error);
             }
         };
-        const fetchUserOptions = async () => {
-            try {
-                const response = await fetchUser();
-                setInitiatorOptions(response);
-            } catch (error) {
-                console.error('Error fetching user options:', error);
-            }
-        };
-        console.log(formData)
-        if (Object.keys(formData).length === 0) return 
-        fetchUserOptions();
-        fetchCustomerOptions().then((customers) => {
-            const value = customers?.find((option) => option?.name === formData.Customer) || null;
-            setCustomer(value);
-            if (!value) setAutofill(true)
-        });
-        
-        GetfilesInfo(formData.Files).then((fileInfo) => {
-            setfileInfo(fileInfo)
-        }).catch((error) => {
-                console.error('Error fetching file info:', error);
-        });
 
-        GetProjectTemtplate()
-            .then((data) => setProjectTemplateOptions(data))
-            .catch((error) => {
-                console.error('Ошибка при загрузке шаблонов проекта:', error);
-                setProjectTemplateOptions([]);  
-            });
-
-    }, [formData?.Customer, formData?.Files, formData?.initiator?.first_name]);
+        loadRelatedData();
+    }, [
+        formData?.id, 
+        formData?.initiator?.RefKey_1C,
+        formData?.Customer,
+        formData?.Files,
+        currentUser?.RefKey_1C
+    ]); 
 
     useEffect(() => {
         if (totoalCost && formData?.resourceSumm) settotoalCostPerHour(`${Math.round(totoalCost * 100 / (formData.resourceSumm * 8)) / 100} ₽/час`)
@@ -225,7 +222,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
         if (formData.Project_created) newStatus = STATUS.PROJECT_STARTED
 
         setFormData(prevData => {
-            if (prevData.status !== newStatus) {
+            if (prevData.status !== newStatus && prevData.status !== STATUS.PROJECT_CANCELED) {
                 return { ...prevData, status: newStatus };
             }
             return prevData;
@@ -402,16 +399,22 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
         });
         setCustomer(value);
         try {
-            const response = await fetchCustomerContact(value.CRMID);
+            const response = await fetchCustomerContact1C(value.id);
             setCustomerContactOptions(response.map(item => ({
-                name: item.Name,
-                id: item.id,
-                email: item.email,
-                jobTitle: item.jobTitle,
-                tel: item.tel
+                name: item.Description,
+                id: item.Ref_Key,
+                email: item['КонтактнаяИнформация']
+                    .filter(contact => contact['Тип'] === 'АдресЭлектроннойПочты')
+                    .map(contact => contact['АдресЭП'])
+                    .join(';'), 
+                jobTitle: item['ДолжностьПоВизитке'],
+                tel: item.КонтактнаяИнформация
+                    .filter(contact => contact['Тип'] === 'Телефон')
+                    .map(contact => contact['Представление'])
+                    .join(';')
             })))
         } catch (error) {
-            console.error('Error fetching customer сontact options:', error);
+            console.error('Error fetching 1c customer сontact options:', error);
         }
 
     };
@@ -586,6 +589,18 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
         }
         setSnackbarState({ ...snackbarState, open: false });
     };
+    console.log("render")
+
+    const handleProjectCancelToggle = async () => {
+        const newStatus = formData.status === STATUS.PROJECT_CANCELED 
+            ? STATUS.NEW_CARD 
+            : STATUS.PROJECT_CANCELED;
+        const newFormData = { ...formData, status: newStatus };
+        await handleSave(newFormData);
+    };
+
+    // Изменим проверку статуса для readonly полей
+    const isReadOnly = formData.status === STATUS.PROJECT_CANCELED;
 
     return (
         <Modal 
@@ -654,16 +669,17 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         getOptionLabel={(option) => `${option?.first_name || ''} ${option?.last_name || ''}`}
                                         value={selectedInitiator}
                                         onChange={handleInitiatorChange}
+                                        disabled={isReadOnly}
                                         renderInput={(params) => (
                                             <TextField
                                                 {...params}
                                                 label="Инициатор"
                                                 margin="dense"
-                                                InputProps={params.InputProps}
-                                                error={!!errors.initiator}
+                                                disabled={isReadOnly}
+                                                error={Boolean(errors.initiator)}
                                                 helperText={errors.initiator}
                                             />
-                                            )}
+                                        )}
                                         fullWidth
                                         disableClearable
                                     />
@@ -672,10 +688,14 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                     <TextField
                                         label="Название проекта"
                                         name="title"
-                                        value={formData.title}
+                                        value={formData.title ?? ''}
                                         onChange={handleChange}
                                         fullWidth
                                         margin="dense"
+                                        disabled={isReadOnly}
+                                        InputLabelProps={{
+                                            shrink: formData.title ? true : undefined
+                                        }}
                                     />
                                 </Grid>
                                 <Grid item xs={12} md={8}>
@@ -708,17 +728,22 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         <TextField
                                             label="Заказчик"
                                             name="Customer"
-                                            value={formData.Customer}
+                                            value={formData.Customer ?? ''}
                                             onChange={handleChange}
                                             fullWidth
                                             margin="dense"
+                                            disabled={isReadOnly}
+                                            InputLabelProps={{
+                                                shrink: formData.Customer ? true : undefined
+                                            }}
                                         />
                                     ) : (
                                         <Autocomplete
                                             options={customerOptions}
                                             getOptionLabel={(option) => option.name}
-                                                value={customer}
+                                            value={customer}
                                             onChange={handleCustomerChange}
+                                            disabled={isReadOnly}
                                             renderInput={(params) => (
                                                 <TextField
                                                     {...params}
@@ -736,10 +761,14 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                     <TextField
                                         label="Заказчик CRMID"
                                         name="CustomerCRMID"
-                                        value={formData.CustomerCRMID}
+                                        value={formData.CustomerCRMID ?? ''}
                                         onChange={handleChange}
                                         fullWidth
                                         margin="dense"
+                                        disabled={isReadOnly}
+                                        InputLabelProps={{
+                                            shrink: formData.CustomerCRMID ? true : undefined
+                                        }}
                                     />
                                 </Grid>
                                 <Grid item xs={12} md={8}>
@@ -764,11 +793,15 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         <TextField
                                             label = "Контакт заказчика ФИО"
                                             name = "CustomerContact"
-                                            value = {formData.CustomerContact}
+                                            value = {formData.CustomerContact ?? ''}
                                             onChange={handleChange}
                                             fullWidth
                                             margin="dense"
-                                    />  )}
+                                            disabled={isReadOnly}
+                                            InputLabelProps={{
+                                                shrink: formData.CustomerContact ? true : undefined
+                                            }}
+                                        />  )}
                                
 
                                 </Grid>
@@ -778,30 +811,42 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                     <TextField
                                         label="Должность"
                                         name="CustomerContactJobTitle"
-                                        value={formData.CustomerContactJobTitle}
+                                        value={formData.CustomerContactJobTitle ?? ''}
                                         onChange={handleChange}
                                         fullWidth
                                         margin="dense"
+                                        disabled={isReadOnly}
+                                        InputLabelProps={{
+                                            shrink: formData.CustomerContactJobTitle ? true : undefined
+                                        }}
                                     />
                                 </Grid>
                                 <Grid item xs={12} md={4}>
                                     <TextField
                                         label="Email"
                                         name="CustomerContactEmail"
-                                        value={formData.CustomerContactEmail}
+                                        value={formData.CustomerContactEmail ?? ''}
                                         onChange={handleChange}
                                         fullWidth
                                         margin="dense"
+                                        disabled={isReadOnly}
+                                        InputLabelProps={{
+                                            shrink: formData.CustomerContactEmail ? true : undefined
+                                        }}
                                     />
                                 </Grid>
                                 <Grid item xs={12} md={4}>
                                     <TextField
                                         label="Телефон"
                                         name="CustomerContactTel"
-                                        value={formData.CustomerContactTel}
+                                        value={formData.CustomerContactTel ?? ''}
                                         onChange={handleChange}
                                         fullWidth
                                         margin="dense"
+                                        disabled={isReadOnly}
+                                        InputLabelProps={{
+                                            shrink: formData.CustomerContactTel ? true : undefined
+                                        }}
                                     />
                                 </Grid>
 
@@ -812,7 +857,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                 </Grid>
 
                                 <Grid item xs={12} md={4}>
-                                    <FormControl fullWidth margin="dense" error={!!errors.Department}>
+                                    <FormControl fullWidth margin="dense" disabled={isReadOnly}>
                                         <InputLabel id="Department-label">Отдел исполнителей</InputLabel>
                                         <Select
                                             labelId="Department-label"
@@ -850,17 +895,22 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         data={formData.Description || ''}
                                         name="Description"
                                         onChange={(event, editor) => handleDescriptionChange(editor, 'Description')}
+                                        disabled={isReadOnly}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
                                     <TextField
                                         label="Особые пожелания заказчика или инициатора"
                                         name="ProjectScope"
-                                        value={formData.ProjectScope}
+                                        value={formData.ProjectScope ?? ''}
                                         onChange={handleChange}
                                         fullWidth
                                         multiline
                                         margin="dense"
+                                        disabled={isReadOnly}
+                                        InputLabelProps={{
+                                            shrink: formData.ProjectScope ? true : undefined
+                                        }}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
@@ -872,6 +922,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                             files={fileInfo}
                                             onUpload={handleFileUpload}
                                             onDelete={handleFileDelete}
+                                            isReadOnly={isReadOnly}
                                         />
                                     </Box>
                                 </Grid>
@@ -885,6 +936,9 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         jobDescriptions={formData?.JobDescription || []}
                                         projectCardRole={currentUser?.ProjectCardRole || ''}
                                         handleJobChange={handleJobChange}
+                                        disabled={isReadOnly}
+                                        price={formData?.Price}
+                                        cost={formData?.Cost}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
@@ -896,6 +950,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         fullWidth
                                         multiline
                                         margin="dense"
+                                        disabled={isReadOnly}
                                     />
                                 </Grid>
                                 <Grid container item xs={12} md={6} justifyContent="flex-end" alignItems="center">
@@ -907,7 +962,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                                 name="jobCalculated"
                                                 onChange={handleChangeSwitch}
                                                 color="primary"
-                                                error={!!errors.OpenProject_Template_id}
+                                                error={errors.OpenProject_Template_id ? 'true' : 'false'}
                                                 disabled={currentUser.ProjectCardRole !== ROLES.ADMIN && currentUser.ProjectCardRole !== ROLES.TECHNICAL }
                                             />
                                         }
@@ -928,6 +983,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         size="small"
                                         fullWidth
                                         margin="dense"
+                                        disabled={isReadOnly}
                                         InputProps={{
                                             readOnly: true,
                                         }}
@@ -942,6 +998,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         size="small"
                                         fullWidth
                                         margin="dense"
+                                        disabled={isReadOnly}
                                         InputProps={{
                                             readOnly: true,
                                         }}
@@ -958,6 +1015,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         size="small"
                                         fullWidth
                                         margin="dense"
+                                        disabled={isReadOnly}
                                         InputProps={{
                                             endAdornment: <InputAdornment position="end">₽</InputAdornment>,
                                         }}
@@ -972,6 +1030,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         size="small"
                                         fullWidth
                                         margin="dense"
+                                        disabled={isReadOnly}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
@@ -979,19 +1038,21 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         data={formData.JobOnTripTable || []}
                                         projectCardRole={currentUser?.ProjectCardRole || ''}
                                         handleChange={handleJobOnTripChange}
+                                        disabled={isReadOnly}
                                     />
                                 </Grid>
                                 <Grid item xs={6} md={4}>
-                                    <FormControl fullWidth margin="dense">
+                                    <FormControl fullWidth margin="dense" error={Boolean(errors?.OpenProject_Template_id)}>
                                         <InputLabel id="OpenProject-template">Шаблон проекта</InputLabel>
                                         <Select
                                             labelId="OpenProject-template-label"
                                             id="OpenProject-template"
                                             name="OpenProject_Template_id"
-                                            value={formData.OpenProject_Template_id || ''}
+                                            value={projectTemplateOptions.some(item => item.value === formData.OpenProject_Template_id) 
+                                                ? formData.OpenProject_Template_id 
+                                                : ''}
                                             label="Шаблон проекта"
                                             onChange={handleChange}
-                                            error={!!errors?.OpenProject_Template_id}
                                             ref={selectRef}
                                         >
                                             {projectTemplateOptions.length > 0 ? (
@@ -1005,7 +1066,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                             )}
                                         </Select>
                                         {errors.OpenProject_Template_id && 
-                                            <FormHelperText sx={{color: 'red'}}>
+                                            <FormHelperText>
                                                 {errors.OpenProject_Template_id}
                                             </FormHelperText>}
                                     </FormControl>
@@ -1020,6 +1081,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         fullWidth
                                         multiline
                                         margin="dense"
+                                        disabled={isReadOnly}
                                         ref={textFieldRef}
                                     />
                                     <Popper
@@ -1030,7 +1092,14 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
          
                                     >
                                         <ClickAwayListener onClickAway={handleFocusOut}>
-                                            <List style={{ backgroundColor: 'white', border: '1px solid #ccc', padding: '8px', width: textFieldRef.current?.offsetWidth || 300 }}>
+                                            <List style={{ 
+                                                    backgroundColor: 'white', 
+                                                    border: '1px solid #ccc', 
+                                                    padding: '8px', 
+                                                    width: textFieldRef.current?.offsetWidth || 300,
+                                                    maxHeight: '400px',
+                                                    overflowY: 'auto',
+                                                }}>
                                                 {limitation.map((template) => (
                                                     <ListItem key={template.name} dense>
                                                         <Checkbox
@@ -1060,6 +1129,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         fullWidth
                                         margin="dense"
                                         aria-describedby="Sum-helper-text"
+                                        disabled={isReadOnly}
                                         InputProps={{
                                             endAdornment: <InputAdornment position="end">₽</InputAdornment>,
                                         }}
@@ -1116,7 +1186,8 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         onChange={handleChangeCost}
                                         fullWidth
                                         margin="dense"
-                                        aria-describedby="Cost-helper-text"
+                                        aria-describedby="Sum-helper-text"
+                                        disabled={isReadOnly}
                                         InputProps={{
                                             endAdornment: <InputAdornment position="end">₽</InputAdornment>,
                                             readOnly: true,
@@ -1133,7 +1204,8 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         value={formatCurrency(totoalCost)}
                                         fullWidth
                                         margin="dense"
-                                        aria-describedby="TotalCost-helper-text"
+                                        aria-describedby="Sum-helper-text"
+                                        disabled={isReadOnly}
                                         InputProps={{
                                             endAdornment: <InputAdornment position="end">₽</InputAdornment>,
                                             readOnly: true,
@@ -1159,6 +1231,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                                 size="small"
                                                 fullWidth
                                                 margin="dense"
+                                                disabled={isReadOnly}
                                             />
                                         </Grid>
                                         <Grid item xs={6} md={9}>
@@ -1171,6 +1244,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                                 size="small"
                                                 fullWidth
                                                 margin="dense"
+                                                disabled={isReadOnly}
                                             />
                                         </Grid>
                                         <Grid item xs={6} md={3}>
@@ -1182,6 +1256,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                                 size="small"
                                                 fullWidth
                                                 margin="dense"
+                                                disabled={isReadOnly}
                                             />
                                         </Grid>
                                         <Grid item xs={6} md={9}>
@@ -1194,6 +1269,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                                 size="small"
                                                 fullWidth
                                                 margin="dense"
+                                                disabled={isReadOnly}
                                             />
                                         </Grid>
                                         <Grid item xs={6} md={3}>
@@ -1205,6 +1281,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                                 size="small"
                                                 fullWidth
                                                 margin="dense"
+                                                disabled={isReadOnly}
                                             />
                                         </Grid>
                                         <Grid item xs={6} md={9}>
@@ -1217,6 +1294,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                                 size="small"
                                                 fullWidth
                                                 margin="dense"
+                                                disabled={isReadOnly}
                                             />
                                         </Grid>
                                         <Grid item xs={6} md={3}>
@@ -1228,6 +1306,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                                 size="small"
                                                 fullWidth
                                                 margin="dense"
+                                                disabled={isReadOnly}
                                             />
                                         </Grid>
                                         <Grid item xs={6} md={9}>
@@ -1240,6 +1319,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                                 size="small"
                                                 fullWidth
                                                 margin="dense"
+                                                disabled={isReadOnly}
                                             />
                                         </Grid>
                                     </Grid>
@@ -1250,7 +1330,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                     </Typography>
                                 </Grid>
                                 <Grid item xs={6} md={2}>
-                                <FormControl fullWidth margin="dense" error={!!fieldErrors.company}>
+                                <FormControl fullWidth margin="dense" error={Boolean(fieldErrors.company)}>
                                         <InputLabel id="company-label">Компания</InputLabel>
                                         <Select
                                             labelId="company-label"
@@ -1291,7 +1371,8 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                                         onChange={handleChange}
                                         fullWidth
                                         margin="dense"
-                                        error={!!fieldErrors.contract}
+                                        disabled={isReadOnly}
+                                        error={Boolean(fieldErrors.contract)}
                                         helperText={fieldErrors.contract}
                                     />
                                 </Grid>
@@ -1361,19 +1442,39 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved,
                             </Grid>
                         </TabPanel>
                     </Box>
-                    <Box mt={2} display="flex" flexDirection="column" alignItems="flex-end">
-
-                        <Divider sx={{ width: '100%', mb: 2 }} />
-                        <Box>
-                            <Button variant="outlined" onClick={handleCancel} sx={{ mr: 2 }}>
-                                Отмена
-                            </Button>
-                            <Button variant="contained" color="primary" onClick={handleSave}>
-                                Сохранить
-                            </Button>
+                        <Box mt={2} display="flex" flexDirection="column" alignItems="flex-end">
+                            <Divider sx={{ width: '100%', mb: 2 }} />
+                            <Box display="flex" justifyContent="flex-end" alignItems="center">
+                                {(formData.status !== STATUS.PROJECT_STARTED && formData.status !== STATUS.PROJECT_ENDED) && (
+                                    <Button 
+                                        variant={formData.status === STATUS.PROJECT_CANCELED ? "contained" : "outlined"}
+                                        color="primary" 
+                                        onClick={handleProjectCancelToggle}
+                                        sx={{ mr: 15 }} 
+                                    >
+                                        {formData.status === STATUS.PROJECT_CANCELED 
+                                            ? "Возобновить проект" 
+                                            : "Отменить проект"}
+                                    </Button>
+                                )}
+                                <Button 
+                                    variant="outlined" 
+                                    onClick={handleCancel} 
+                                    sx={{ mr: 2 }}
+                                >
+                                    Отмена
+                                </Button>
+                                <Button 
+                                    variant="contained" 
+                                    color="primary" 
+                                    onClick={handleSave}
+                                    disabled={isReadOnly}
+                                >
+                                    Сохранить
+                                </Button>
+                            </Box>
                         </Box>
                     </Box>
-                </Box>
                 <Snackbar
                     open={snackbarState.open}
                     autoHideDuration={6000}

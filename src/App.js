@@ -7,7 +7,7 @@ import ColumnVisibilityModal from './Components/ColumnVisibilityModal.js';
 import LoginForm from './Components/LoginForm.js';
 import CreateForm from './Components/CreateForm.js';
 import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
-import { loginEmail, loginAD, logout, getToken, Update1CField, fetchInitData } from './services/directus';
+import { loginEmail, loginAD, logout, Update1CField, fetchInitData } from './services/directus';
 import getNewCardData from './constants/index.js';
 import { GetUser1C } from './services/1c';
 
@@ -37,7 +37,6 @@ function App() {
     const [CurrentUser, setCurrentUser] = useState({});
     const [UserOption, setUserOption] = useState({});
     const [departament, setdepartament] = useState([]);
-    //const [limitation, setLimitation] = useState([]);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -152,8 +151,6 @@ function App() {
             <div className="App">
                 {Object.keys(CurrentUser).length ? (
                     <TableComponent
-                        //data={tableData}
-                        //setTableData={setTableData}
                         UserOption={UserOption}
                         departamentOption={departament}
                         CurrentUser={CurrentUser}
@@ -170,7 +167,6 @@ function App() {
                         onClose={handleCloseModal}
                         currentUser={CurrentUser}
                         onDataSaved={handleDataSaved}
-                        //limitation={limitation}
                     />
                 )}
                 {isCreateOpen && (

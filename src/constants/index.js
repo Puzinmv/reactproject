@@ -39,7 +39,8 @@ export const STATUS = {
     LABOR_COSTS_ESTIMATED: 'Оценка трудозатрат проведена',
     ECONOMICS_AGREED: 'Экономика согласована',
     PROJECT_STARTED: 'Проект выполняется',
-    PROJECT_ENDED: 'Проект завершен'
+    PROJECT_ENDED: 'Проект завершен',
+    PROJECT_CANCELED: 'Проект отменен'
   };
 export const STATUS_COLORS = {
     [STATUS.NEW_CARD]: 'primary.main',
@@ -47,6 +48,7 @@ export const STATUS_COLORS = {
     [STATUS.ECONOMICS_AGREED]: 'secondary.main',
     [STATUS.PROJECT_STARTED]: 'success.main',
     [STATUS.PROJECT_ENDED]: 'success.main',
+    [STATUS.PROJECT_CANCELED]: 'info.main',
 };
   
 export const getNewCardData = (CurrentUser) => {

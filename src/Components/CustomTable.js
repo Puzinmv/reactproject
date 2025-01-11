@@ -18,8 +18,11 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import TemplatePanel from './TemplatePanel';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import ExcelJS from 'exceljs';
 
-export default function CustomTable({ depatmentid, jobDescriptions, projectCardRole, handleJobChange }) {
+
+export default function CustomTable({ depatmentid, jobDescriptions, projectCardRole, handleJobChange, disabled, price, cost }) {
     const [rows, setRows] = useState(jobDescriptions || []);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [openSnackbar, setOpenSnackbar] = useState(false);
@@ -105,6 +108,77 @@ export default function CustomTable({ depatmentid, jobDescriptions, projectCardR
         }
     };
 
+    const handleExportToExcel = async () => {
+        try {
+            const response = await fetch(`${process.env.PUBLIC_URL}/templates/specification.xlsx`, {
+                headers: {
+                    'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(arrayBuffer);
+            const worksheet = workbook.getWorksheet(1);
+            // Начинаем с 7-й строки 
+            const startRow = 7;
+            // Заполняем данные таблицы
+            rows.forEach((row, index) => {
+                const currentRow = worksheet.getRow(startRow + index);
+                
+                currentRow.getCell(1).value = Number(row.id) || 0;;
+                currentRow.getCell(2).value = row.jobName;
+                currentRow.getCell(3).value = Number(row.frameDay) || 0;
+                currentRow.getCell(9).value = Number(row.resourceDay) || 0;
+                
+                // Устанавливаем числовой тип для ячеек
+                currentRow.getCell(1).numFmt = '0';
+                currentRow.getCell(3).numFmt = '0';
+                currentRow.getCell(9).numFmt = '0';
+                
+                currentRow.commit();
+            });
+
+            // Заполняем дополнительные ячейки
+            worksheet.getCell('D22').value = price; // Цена
+            worksheet.getCell('J22').value = cost;  // Себестоимость
+
+            worksheet.getCell('C22').value = { 
+                formula: '=SUM(C7:C21)',
+                result: rows.reduce((sum, row) => sum + (Number(row.frameDay) || 0), 0)
+            };
+            worksheet.getCell('I22').value = { 
+                formula: '=SUM(I7:I21)',
+                result: rows.reduce((sum, row) => sum + (Number(row.resourceDay) || 0), 0)
+            };
+            // Включаем полный пересчет формул при загрузке
+            workbook.calcProperties.fullCalcOnLoad = true;
+            
+            // Генерация файла
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { 
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+            });
+            
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'Спецификация работы.xlsx';
+            link.click();
+            window.URL.revokeObjectURL(url);
+
+        } catch (error) {
+            console.error('Ошибка при экспорте в Excel:', error);
+            alert('Произошла ошибка при экспорте в Excel');
+        }
+    };
+
+
+
     return (
         <Box sx={{ width: '100%' }}>
             <Paper sx={{ width: '100%', mb: 1 }}>
@@ -123,18 +197,27 @@ export default function CustomTable({ depatmentid, jobDescriptions, projectCardR
                         Описание работ
                     </Typography>
                     <Tooltip title="Добавить строку">
-                        <IconButton onClick={handleAddRow}>
+                        <IconButton 
+                            disabled={disabled}
+                            onClick={handleAddRow}>
                             <AddCircleIcon />
                         </IconButton>
                     </Tooltip>
                     <Tooltip title="Выбрать из шаблона">
-                        <IconButton onClick={() => setIsPanelOpen(true)}>
+                        <IconButton 
+                            disabled={disabled} 
+                            onClick={() => setIsPanelOpen(true)}>
                             <ImportContactsIcon />
                         </IconButton>
                     </Tooltip>
                     <Tooltip title="Копировать в буфер обмена">
                         <IconButton onClick={handleCopyToClipboard}>
                             <ContentCopyIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Экспорт в Excel">
+                        <IconButton onClick={handleExportToExcel}>
+                            <FileDownloadIcon />
                         </IconButton>
                     </Tooltip>
                 </Toolbar>
@@ -178,8 +261,8 @@ export default function CustomTable({ depatmentid, jobDescriptions, projectCardR
                                             component="th"
                                             scope="row"
                                             padding="none"
-                                            contentEditable={projectCardRole === 'Admin' ||
-                                                projectCardRole === 'Technical'}
+                                            contentEditable={!disabled && (projectCardRole === 'Admin' ||
+                                                projectCardRole === 'Technical')}
                                             suppressContentEditableWarning
                                             onBlur={(e) => handleCellEdit(row.id, 'jobName', e.target.textContent)}
                                         >
@@ -188,8 +271,8 @@ export default function CustomTable({ depatmentid, jobDescriptions, projectCardR
                                         <TableCell
                                             sx={{ width: 80 }}
                                             align="right"
-                                            contentEditable={projectCardRole === 'Admin' ||
-                                                projectCardRole === 'Technical'}
+                                            contentEditable={!disabled && (projectCardRole === 'Admin' ||
+                                                projectCardRole === 'Technical')}
                                             suppressContentEditableWarning
                                             onBlur={(e) => handleCellEdit(row.id, 'resourceDay', e.target.textContent)}
                                         >
@@ -198,20 +281,22 @@ export default function CustomTable({ depatmentid, jobDescriptions, projectCardR
                                         <TableCell
                                             sx={{ width: 80 }}
                                             align="right"
-                                            contentEditable={projectCardRole === 'Admin' ||
-                                                projectCardRole === 'Technical'}
+                                            contentEditable={!disabled && (projectCardRole === 'Admin' ||
+                                                projectCardRole === 'Technical')}
                                             suppressContentEditableWarning
                                             onBlur={(e) => handleCellEdit(row.id, 'frameDay', e.target.textContent)}
                                         >
                                             {row.frameDay}
                                         </TableCell>
-                                        <TableCell align="right">
-                                            <Tooltip title="Удалить">
-                                                <IconButton onClick={() => handleDeleteRow(index)}>
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </TableCell>
+                                        {!disabled && (
+                                            <TableCell align="right">
+                                                <Tooltip title="Удалить">
+                                                    <IconButton onClick={() => handleDeleteRow(index)}>
+                                                        <DeleteIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </TableCell>
+                                        )}
                                     </TableRow>
                                 );
                             })}

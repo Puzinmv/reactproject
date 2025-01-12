@@ -7,7 +7,7 @@ import ColumnVisibilityModal from './Components/ColumnVisibilityModal.js';
 import LoginForm from './Components/LoginForm.js';
 import CreateForm from './Components/CreateForm.js';
 import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
-import { loginEmail, loginAD, logout, Update1CField, fetchInitData } from './services/directus';
+import { getToken, loginEmail, loginAD, logout, Update1CField, fetchInitData } from './services/directus';
 import getNewCardData from './constants/index.js';
 import { GetUser1C } from './services/1c';
 import { CircularProgress } from '@mui/material';

@@ -10,6 +10,7 @@ import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
 import { loginEmail, loginAD, logout, Update1CField, fetchInitData } from './services/directus';
 import getNewCardData from './constants/index.js';
 import { GetUser1C } from './services/1c';
+import { CircularProgress } from '@mui/material';
 
 const theme = createTheme({
     typography: {
@@ -39,6 +40,7 @@ function App() {
     const [departament, setdepartament] = useState([]);
     const navigate = useNavigate();
     const location = useLocation();
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const searchParams = new URLSearchParams(location.search);
@@ -76,19 +78,23 @@ function App() {
         }
     };
     
-    // useEffect(() => {
-    //     try {
-    //         const token = async () => await getToken();
-    //         token().then((token) => {
-    //             if (token) {
-    //                 fetchTableData()
-    //             }
-    //         })
-
-    //     } catch (e) {
-    //         setCurrentUser({});
-    //     }
-    // }, []);
+    useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                const token = await getToken();
+                if (token?.data?.access_token) {
+                    await fetchTableData();
+                }
+            } catch (e) {
+                console.error(e);
+                setCurrentUser({});
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        
+        checkAuth();
+    }, []);
 
     const handleLogout = async () => {
         await logout();
@@ -149,7 +155,11 @@ function App() {
         <ThemeProvider theme={theme}>
             <ResponsiveAppBar handleLogout={handleLogout} current={CurrentUser} />
             <div className="App">
-                {Object.keys(CurrentUser).length ? (
+                {isLoading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+                        <CircularProgress />
+                    </div>
+                ) : Object.keys(CurrentUser).length ? (
                     <TableComponent
                         UserOption={UserOption}
                         departamentOption={departament}

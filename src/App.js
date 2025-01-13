@@ -82,7 +82,7 @@ function App() {
         const checkAuth = async () => {
             try {
                 const token = await getToken();
-                if (token?.data?.access_token) {
+                if (token?.data) {
                     await fetchTableData();
                 }
             } catch (e) {

@@ -121,18 +121,18 @@ export const fetchDatanew = async ({
             filter._and[0] = {
                 "_or": [
                     { 
-                        title: { _contains: search }
+                        title: { _icontains: search }
                     },
                     { 
-                        Description: { _contains: search }
+                        Description: { _icontains: search }
                     },
                     { 
                         initiator: {
-                            first_name: { _contains: search }
+                            first_name: { _icontains: search }
                         }
                     },
                     {
-                        Customer: { _contains: search }
+                        Customer: { _icontains: search }
                     }
                 ]
             }
@@ -147,18 +147,18 @@ export const fetchDatanew = async ({
                         fieldFilter.push({
                             [key]: 
                                 {
-                                    first_name: { _contains: value }
+                                    first_name: { _icontains: value }
                                 }
                             });
                     } else if (key === 'Department') {
                         fieldFilter.push({
                             [key]: 
                                 {
-                                    Department: { _contains: value }
+                                    Department: { _icontains: value }
                                 }
                             });
                     } else {
-                        fieldFilter.push({ [key]: { _contains: value }});
+                        fieldFilter.push({ [key]: { _icontains: value }});
                     }
                 }
             });
@@ -170,12 +170,12 @@ export const fetchDatanew = async ({
                 "_or": [
                     {
                         initiator: {
-                            first_name: { _contains: currentUser.first_name }
+                            first_name: { _icontains: currentUser.first_name }
                         }
                     },
                     {
                         Department: {
-                            email: { _contains: currentUser.email }
+                            email: { _icontains: currentUser.email }
                         }
                     }
                 ]}
@@ -315,7 +315,7 @@ export const fetchCustomer = async (initiator) => {
                 fields: ['*'],
                 filter: {
                     manager: {
-                        _contains: initiator.split(" ")[0]
+                        _icontains: initiator.split(" ")[0]
                     }
                 }
             })
@@ -334,7 +334,7 @@ export const fetchCustomerContact = async (CRMID) => {
                 fields: ['*'],
                 filter: {
                     customerCRMID: {
-                        _contains: CRMID
+                        _icontains: CRMID
                     }
                 }
             })

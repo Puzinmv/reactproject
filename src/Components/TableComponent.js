@@ -53,15 +53,6 @@ const formatField = (field, value) => {
     return value;
 };
 
-// const searchInObject = (obj, searchTerm) => {
-//     if (typeof obj !== 'object' || obj === null) {
-//         return String(obj).toLowerCase().includes(searchTerm);
-//     }
-
-//     return Object.values(obj).some(value => searchInObject(value, searchTerm));
-// };
-
-
 const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelect, onCreate }) => {
     const [columns, setColumns] = useState([]);
     const [order, setOrder] = useState('desc');
@@ -79,6 +70,9 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
     const [totalRows, setTotalRows] = useState(0);
     const [loading, setLoading] = useState(false);
     const [tableData, setLocalTableData] = useState([]); // добавляем локальное состояние для данных
+    const [filterAnchorEl, setFilterAnchorEl] = useState(null);
+    const [activeFilterColumn, setActiveFilterColumn] = useState(null);
+    const [selectedStatuses, setSelectedStatuses] = useState([]);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -130,7 +124,7 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
     useEffect(() => {
         if (Array.isArray(UserOption)) setinitiatorOptions(['---', ...UserOption]);
         if (Array.isArray(departamentOption)) setdepartmentOptions(['---', ...new Set(departamentOption.map(item => item.Department))]);
-        setstatusOptions(['---', ...Object.values(STATUS)]);
+        setstatusOptions(Object.values(STATUS));
     }, [departamentOption, UserOption]);
 
     const handleRequestSort = (property) => {
@@ -191,47 +185,97 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
         localStorage.setItem('ShowMyCard', JSON.stringify(event.target.checked));
     };
 
-    // const formatValue = (value) => {
-    //     if (typeof value === 'object' && value !== null && 'first_name' in value && 'last_name' in value) {
-    //         return value.first_name
-    //            // + ' ' + value.last_name || '';
-    //     }
-    //     if (typeof value === 'object' && value !== null) {
-    //         return JSON.stringify(value).toLowerCase();
-    //     } else if (typeof value === 'string') {
-    //         return value.toLowerCase();
-    //     } else if (typeof value === 'number') {
-    //         return value.toString().toLowerCase();
-    //     } else if (value instanceof Date) {
-    //         return value.toISOString().toLowerCase();
-    //     }
-    //     return '';
-    // };
-    // const sortedData = data;
-    // console.log(sortedData, data);
-    // const filteredData = data.filter(row => {
-    //     const globalMatch = searchInObject(row, globalSearch.toLowerCase());
+    const handleFilterClick = (event, columnId) => {
+        event.stopPropagation();
+        setFilterAnchorEl(event.currentTarget);
+        setActiveFilterColumn(columnId);
+    };
 
-    //     const columnMatches = Object.keys(columnSearch).every(columnId => {
-    //         if (columnId === 'initiator' && showMyCards) {
-    //             if (CurrentUser?.email === row?.Department?.email) return  formatValue(row[columnId]).toLowerCase().includes(columnSearch[columnId].toLowerCase());
-    //             return row[columnId] && formatValue(row[columnId]).toLowerCase().includes(CurrentUser.first_name.toLowerCase());
-    //         }
-    //         return formatValue(row[columnId]).toLowerCase().includes(columnSearch[columnId].toLowerCase());
-    //     });
-    //     const showMyCadrMatches = !showMyCards || formatValue(row?.initiator).toLowerCase().includes(CurrentUser.first_name.toLowerCase()) || CurrentUser?.email === row?.Department?.email;
-    //     return globalMatch && columnMatches && showMyCadrMatches;
-    // });
+    const handleFilterClose = () => {
+        setFilterAnchorEl(null);
+        setActiveFilterColumn(null);
+    };
 
-    // const sortedData = filteredData.sort((a, b) => {
-    //     if (orderBy) {
-    //         if (order === 'asc') {
-    //             return a[orderBy] > b[orderBy] ? 1 : -1;
-    //         }
-    //         return a[orderBy] < b[orderBy] ? 1 : -1;
-    //     }
-    //     return 0;
-    // });
+    const getFilterOptions = (columnId) => {
+        switch (columnId) {
+            case 'initiator':
+                return initiatorOptions;
+            case 'Department':
+                return departmentOptions;
+            case 'status':
+                return statusOptions;
+            default:
+                return [];
+        }
+    };
+
+    const handleStatusFilterChange = (status) => {
+        setSelectedStatuses(prev => {
+            const newStatuses = prev.includes(status)
+                ? prev.filter(s => s !== status)
+                : [...prev, status];
+            
+            // Обновляем фильтр
+            if (newStatuses.length === 0) {
+                const { status, ...restFilters } = columnSearch;
+                setColumnSearch(restFilters);
+            } else {
+                setColumnSearch(prev => ({
+                    ...prev,
+                    status: newStatuses
+                }));
+            }
+            
+            return newStatuses;
+        });
+    };
+
+    const renderFilterMenuItem = (option, columnId) => {
+        if (columnId === 'status') {
+            return (
+                <MenuItem key={option} onClick={(e) => e.stopPropagation()}>
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={selectedStatuses.includes(option)}
+                                onChange={() => handleStatusFilterChange(option)}
+                            />
+                        }
+                        label={option}
+                    />
+                </MenuItem>
+            );
+        }
+
+        const isSelected = columnSearch[columnId] === option;
+        return (
+            <MenuItem 
+                key={option} 
+                onClick={() => {
+                    handleColumnSearchChange({ target: { value: option }}, columnId);
+                    handleFilterClose();
+                }}
+                selected={isSelected}
+                sx={{
+                    '&.Mui-selected': {
+                        backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                        '&:hover': {
+                            backgroundColor: 'rgba(25, 118, 210, 0.12)',
+                        },
+                    },
+                }}
+            >
+                {option}
+            </MenuItem>
+        );
+    };
+
+    const isColumnFiltered = (columnId) => {
+        if (columnId === 'status') {
+            return selectedStatuses.length > 0;
+        }
+        return Boolean(columnSearch[columnId]);
+    };
 
     return (
 
@@ -286,51 +330,42 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
                                     column.visible && (
                                         <TableCell key={column.columnId}>
                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                {searchingColumn === column.columnId || columnSearch[column.columnId] ? (
-                                                    (column.columnId === 'initiator' || column.columnId === 'Department' || column.columnId === 'status') ? (
-                                                        <TextField
-                                                            select
-                                                            hiddenLabel
-                                                            value={columnSearch[column.columnId] || ''}
-                                                            onChange={(event) => handleColumnSearchChange(event, column.columnId)}
-                                                            onBlur={() => handleSearchBlur(column.columnId)}
-                                                            variant="standard"
-                                                            size="small"
-                                                            margin="none"
-                                                            autoFocus
-                                                            style={{ width: `${column.label.length + 7}ch` }}
-                                                            InputProps={{
-                                                                style: { fontSize: '0.875rem' } 
-                                                            }}
-                                                        >
-                                                            {(column.columnId === 'initiator' ? initiatorOptions :
-                                                                column.columnId === 'Department' ? departmentOptions : statusOptions)
-                                                                .map(option => (
-                                                                    <MenuItem
-                                                                        key={option}
-                                                                        value={option}
-                                                                        style={{ fontSize: '0.875rem', padding: '6px 16px' }}
-                                                                    >
-                                                                        {option}
-                                                                    </MenuItem>
-                                                                ))}
-                                                        </TextField>
-                                                    ) : (
-                                                            <TextField
-                                                                hiddenLabel
-                                                                value={columnSearch[column.columnId] || ''}
-                                                                onChange={(event) => handleColumnSearchChange(event, column.columnId)}
-                                                                onBlur={() => handleSearchBlur(column.columnId)}
-                                                                variant="standard"
+                                                {column.columnId === 'initiator' || column.columnId === 'Department' || column.columnId === 'status' ? (
+                                                    <TableSortLabel
+                                                        active={orderBy === column.columnId}
+                                                        direction={orderBy === column.columnId ? order : 'asc'}
+                                                        onClick={() => handleRequestSort(column.columnId)}
+                                                    >
+                                                        {column.label}
+                                                        <Tooltip title="Фильтр">
+                                                            <IconButton
                                                                 size="small"
-                                                                margin="none"
-                                                                autoFocus
-                                                                InputProps={{
-                                                                    style: { fontSize: '0.875rem' } 
+                                                                onClick={(e) => handleFilterClick(e, column.columnId)}
+                                                                style={{ 
+                                                                    marginLeft: 4,
+                                                                    color: isColumnFiltered(column.columnId) ? '#1976d2' : 'inherit',
+                                                                    backgroundColor: isColumnFiltered(column.columnId) ? 'rgba(25, 118, 210, 0.08)' : 'inherit'
                                                                 }}
-                                                                style={{ width: `${column.label.length + 7}ch` }}
-                                                            />
-                                                    )
+                                                            >
+                                                                <FilterListIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </TableSortLabel>
+                                                ) : (searchingColumn === column.columnId || columnSearch[column.columnId]) ? (
+                                                    <TextField
+                                                        hiddenLabel
+                                                        value={columnSearch[column.columnId] || ''}
+                                                        onChange={(event) => handleColumnSearchChange(event, column.columnId)}
+                                                        onBlur={() => handleSearchBlur(column.columnId)}
+                                                        variant="standard"
+                                                        size="small"
+                                                        margin="none"
+                                                        autoFocus
+                                                        InputProps={{
+                                                            style: { fontSize: '0.875rem' } 
+                                                        }}
+                                                        style={{ width: `${column.label.length + 7}ch` }}
+                                                    />                                                    
                                                 ) : (
                                                     <TableSortLabel
                                                         active={orderBy === column.columnId}
@@ -433,6 +468,15 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
                     labelRowsPerPage="Показать строк на странице:"
                     labelDisplayedRows={({ from, to, count }) => `${from}-${to} из ${count}`} 
                 />
+                <Menu
+                    anchorEl={filterAnchorEl}
+                    open={Boolean(filterAnchorEl)}
+                    onClose={handleFilterClose}
+                >
+                    {activeFilterColumn && getFilterOptions(activeFilterColumn).map((option) => 
+                        renderFilterMenuItem(option, activeFilterColumn)
+                    )}
+                </Menu>
             </Paper>
 
     );

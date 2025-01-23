@@ -90,10 +90,10 @@ export const fetchDatanew = async ({
     sort = '-id',
     search = '',
     filters = {},
-    columns = [],
     currentUser = null
 }) => {
     try {
+        console.log(filters)
         const fields = [
             '*',
             {
@@ -140,23 +140,27 @@ export const fetchDatanew = async ({
 
         // Фильтры колонок
         if (filters) {
-            let fieldFilter =[]
+            let fieldFilter = []
             Object.entries(filters).forEach(([key, value]) => {
                 if (value) {
                     if (key === 'initiator') {
                         fieldFilter.push({
-                            [key]: 
-                                {
-                                    first_name: { _icontains: value }
-                                }
-                            });
+                            [key]: {
+                                first_name: { _icontains: value }
+                            }
+                        });
                     } else if (key === 'Department') {
                         fieldFilter.push({
-                            [key]: 
-                                {
-                                    Department: { _icontains: value }
-                                }
-                            });
+                            [key]: {
+                                Department: { _icontains: value }
+                            }
+                        });
+                    } else if (key === 'status' && Array.isArray(value)) {
+                        fieldFilter.push({
+                            _or: value.map(status => ({
+                                status: { _eq: status }
+                            }))
+                        });
                     } else {
                         fieldFilter.push({ [key]: { _icontains: value }});
                     }

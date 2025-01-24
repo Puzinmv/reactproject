@@ -1,7 +1,7 @@
 import {
     createDirectus, authentication,  rest,
     readItems, readUsers, updateItem, readMe, readFile, readItem,
-    uploadFiles, deleteFile, createItem, updateMe
+    uploadFiles, deleteFile, createItem, updateMe,
 } from "@directus/sdk";
 
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
@@ -216,56 +216,32 @@ export const fetchDatanew = async ({
 };
 
 export const fetchInitData = async () => {
-    const [Users, Department, user] = await Promise.all([
-        directus.request(readUsers({fields:['first_name']})),
+    const [initiatorIds, Department, user] = await Promise.all([
+        directus.request(readItems('Project_Card', {
+            groupBy: ['initiator'],
+            filter: {
+                initiator: { 
+                    _nnull: true,
+                    first_name: { _nnull: true }
+                }
+            }
+        })),
         directus.request(readItems('Department', { fields: ['*'] })),
         directus.request(readMe())
     ]);
+    const uniqueInitiatorIds = initiatorIds.map(item => item.initiator).filter(Boolean);
+
+    const Users = await directus.request(readUsers({
+        fields: ['id', 'first_name'],
+        filter: {
+            id: {
+                _in: uniqueInitiatorIds
+            }
+        }
+    }));
     return [Users, Department, user]
 }
-// export const fetchDataold = async (token) => {
-//     const makeRequest = async (token) => {
-//         const data = await directus.request(readItems('Project_Card', {
-//                 fields: [
-//                     '*',
-//                     {
-//                         user_created: ['id', 'first_name', 'last_name']
-//                     },
-//                     {
-//                         user_updated: ['id', 'first_name', 'last_name']
-//                     },
-//                     {
-//                         initiator: ['id', 'first_name', 'last_name', 'Head', 'RefKey_1C']
-//                     },
-//                     {
-//                         Department: ['*']
-//                     },
-//                     {
-//                         Files: ['*']
-//                     },
-//                 ],
-//             })
-//         );
 
-//         const departament = await directus.request(
-//              readItems('Department', { fields: ['*'] })
-//         );
-//         const limitationTemplate = await directus.request(
-//             readItems('JobLimitation', { fields: ['name'] })
-//         );
-//         const CurrentUser = await getCurrentUser();
-
-
-//         return [data, departament, limitationTemplate, CurrentUser];
-//     };
-
-//     try {
-//         return await makeRequest(token);
-//     } catch (error) {
-//         console.error(error);
-//         throw error;
-//     }
-// };
 export const fetchCard = async (ID) => {
     try {
         const fields = [

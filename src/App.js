@@ -75,10 +75,6 @@ function App() {
         setIsColumnModalOpen(!isColumnModalOpen);
     };
 
-    const handleDataSaved = () => {
-        fetchTableData();
-    };
-
     return (
         <AuthWrapper isLiginFunc = {fetchTableData}>
             <div className="App">
@@ -95,7 +91,7 @@ function App() {
                         departament={departament}
                         onClose={handleCloseModal}
                         currentUser={CurrentUser}
-                        onDataSaved={handleDataSaved}
+                        onDataSaved={fetchTableData}
                     />
                 )}
                 {isCreateOpen && (
@@ -104,7 +100,7 @@ function App() {
                         departament={departament}
                         currentUser={CurrentUser}
                         onClose={handleCloseModal}
-                        onDataSaved={handleDataSaved}
+                        onDataSaved={fetchTableData}
                     />
                 )}
                 {isColumnModalOpen && (

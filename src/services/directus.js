@@ -54,25 +54,21 @@ export const loginAD = async (login, password) => {
 
 
 export const getToken = async () => {
-    try {
-        const token = await fetch(process.env.REACT_APP_API_URL+'/auth/refresh', {
-            method: 'POST',
-            credentials: 'include', // this is required in order to send the refresh/session token cookie
-            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: 'session' }) // using 'session' mode, but can also be 'cookie' or 'json'
+    const token = await fetch(process.env.REACT_APP_API_URL+'/auth/refresh', {
+        method: 'POST',
+        credentials: 'include', 
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'session' }) // using 'session' mode, but can also be 'cookie' or 'json'
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            console.log(data)
+            return data
         })
-            .then((response) => response.json())
-            .then((data) => {
-                console.log(data)
-                return data
-            })
-        //const token = await directus.refresh();
-        //console.log(token)
-        return token;
-    } catch (e) {
-        console.error(e)
-    }
-
+        .catch((e) => {
+            console.error(e)
+        })
+    return token;
 };
 
 export const getCurrentUser = async () => {
@@ -240,7 +236,31 @@ export const fetchInitData = async () => {
         }
     }));
     return [Users, Department, user]
+    
 }
+
+export const fetchInitGrade = async () => {
+    try {
+        const [presaleUsers, gradesData] = await Promise.all([
+            directus.request(readItems('PresaleUsers', {
+                fields: ['*', { user: ['id', 'first_name'] }]
+            })),
+            directus.request(readItems('gradePresale', {
+                fields: ['*'],
+                filter: {
+                    user_created: {
+                        _eq: '$CURRENT_USER'
+                    }
+                }
+            }))
+        ]);
+
+        return [presaleUsers, gradesData];
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};
 
 export const fetchCard = async (ID) => {
     try {
@@ -490,6 +510,56 @@ export const deleteFileDirectus = async (fileId) => {
         await directus.request(deleteFile(fileId));
     } catch (error) {
         console.error('Ошибка при удалении файла:', error);
+        throw error;
+    }
+};
+
+// export const fetchGrades = async (userId) => {
+//     try {
+//         const grades = await directus.request(readItems('gradePresale', {
+//             fields: ['*', { presale: ['*', { user: ['id', 'first_name'] }] }],
+//             filter: {
+//                 user_created: {
+//                     _eq: userId
+//                 }
+//             }
+//         }));
+//         return grades;
+//     } catch (error) {
+//         console.error(error);
+//         throw error;
+//     }
+// };
+
+export const updateOrCreateGrade = async (presaleId, grade, dateGrade) => {
+    try {
+        // Проверяем, существует ли уже оценка за этот месяц от текущего пользователя
+        const existingGrade = await directus.request(readItems('gradePresale', {
+            filter: {
+                _and: [
+                    { presale: { _eq: presaleId } },
+                    { dateGrade: { _eq: dateGrade } },
+                    { user_created: { _eq: '$CURRENT_USER' } }
+                ]
+            },
+            limit: 1
+        }));
+
+        if (existingGrade.length > 0) {
+            // Обновляем существующую оценку
+            return await directus.request(updateItem('gradePresale', existingGrade[0].id, {
+                grade: grade
+            }));
+        } else {
+            // Создаем новую оценку
+            return await directus.request(createItem('gradePresale', {
+                grade: grade,
+                presale: presaleId,
+                dateGrade: dateGrade
+            }));
+        }
+    } catch (error) {
+        console.error(error);
         throw error;
     }
 };

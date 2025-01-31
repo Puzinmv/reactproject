@@ -109,11 +109,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
 
         const loadRelatedData = async () => {
             try {
-                // Загрузка пользователей
-                const users = await fetchUser();
-                setInitiatorOptions(users);
                 // Загрузка информации о клиенте
-                if (formData?.initiator?.RefKey_1C || currentUser?.RefKey_1C) {
                     const response = await fetchCustomer1C(formData?.initiator?.RefKey_1C || currentUser?.RefKey_1C);
                     const mappedCustomers = response.map(item => ({
                         name: item.Description,
@@ -128,24 +124,39 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                     );
                     setCustomer(selectedCustomer);
                     if (!selectedCustomer) setAutofill(true);
-                }
-
-                // Загрузка файлов
-                if (formData?.Files) {
-                    const files = await GetfilesInfo(formData?.Files);
-                    setfileInfo(files);
-                }
-
-                // Загрузка шаблонов проектов
-                const templates = await GetProjectTemtplate();
-                setProjectTemplateOptions(templates);
-
             } catch (error) {
-                console.error('Error loading related data:', error);
+                setAutofill(true)
+                console.error('Ошибка при загрузке данных из 1с:', error);
             }
         };
+        fetchUser()
+            .then(users => {
+                setInitiatorOptions(users);
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке пользователей:', error);
+            });
+        // Загрузка файлов
+        if (formData?.Files) {
+            GetfilesInfo(formData?.Files)
+                .then(files => {
+                    setfileInfo(files);
+                })
+                .catch(error => {
+                    console.error('Ошибка при загрузке файлов:', error);
+                });
+        }
 
-        loadRelatedData();
+        // Загрузка шаблонов проектов
+        GetProjectTemtplate()
+            .then(templates => {
+                setProjectTemplateOptions(templates);
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке шаблонов проектов:', error);
+            });
+        // Загрузка информации о клиенте
+        if (formData?.initiator?.RefKey_1C || currentUser?.RefKey_1C) loadRelatedData();
     }, [
         formData?.id, 
         formData?.initiator?.RefKey_1C,
@@ -282,9 +293,34 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         }
     };
 
+    const handleAutofillToggle = async (e) => {
+        setCustomerContactOptions([]);
+        setAutofill(e.target.checked);
+        if (!e.target.checked) {
+            try {
+                const response = await fetchCustomer1C(formData?.initiator?.RefKey_1C || currentUser?.RefKey_1C);
+                const mappedCustomers = response.map(item => ({
+                    name: item.Description,
+                    id: item.Ref_Key,
+                    fullName: item['НаименованиеПолное'],
+                    CRMID: item.Code,
+                    options: item.Description,
+                }));
+                setCustomerOptions(mappedCustomers);
+                const selectedCustomer = mappedCustomers.find(
+                    option => option.name === formData?.Customer
+                );
+                setCustomer(selectedCustomer);
+            } catch (error) {
+                console.error('Ошибка при загрузке данных из 1с:', error);
+                setAutofill(true);
+                triggerSnackbar("Ошибка при загрузке данных из 1С. Автозаполнение включено.", "error");
+            }
+        }
+
+    };
 
     const handleChange = (e) => {
-
         const { name, value } = e.target;
         if ([FORM_FIELDS.COMMENT_JOB, FORM_FIELDS.HIRED_COST, FORM_FIELDS.HIRED, FORM_FIELDS.OPEN_PROJECT_TEMPLATE_ID, FORM_FIELDS.LIMITATIONS].indexOf(name) > -1 &&
             currentUser.ProjectCardRole !== ROLES.ADMIN &&
@@ -589,7 +625,6 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         }
         setSnackbarState({ ...snackbarState, open: false });
     };
-    console.log("render")
 
     const handleProjectCancelToggle = async () => {
         const newStatus = formData.status === STATUS.PROJECT_CANCELED 
@@ -599,7 +634,6 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         await handleSave(newFormData);
     };
 
-    // Изменим проверку статуса для readonly полей
     const isReadOnly = formData.status === STATUS.PROJECT_CANCELED;
 
     return (
@@ -709,10 +743,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                             <Switch
                                                 checked={autofill || false}
                                                 name="autofill"
-                                                onChange={(e) => {
-                                                    setCustomerContactOptions([])
-                                                    setAutofill(e.target.checked)
-                                                }}
+                                                onChange={handleAutofillToggle}
                                             />
                                         }
                                         label={

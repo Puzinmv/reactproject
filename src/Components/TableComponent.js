@@ -88,7 +88,6 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
             });
 
             setLocalTableData(response.data); // устанавливаем данные в локальное состояние
-            //setTableData(response.data);      // обновляем родительское состояние
             setTotalRows(response.meta.total);
         } catch (error) {
             console.error('Error loading data:', error);
@@ -119,7 +118,7 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
             savedColumns = LocalStorageColumns;
         }
         setColumns(savedColumns);
-    }, []); // Убираем tableData, departamentOption, UserOption из зависимостей
+    }, []); 
 
     useEffect(() => {
         if (Array.isArray(UserOption)) setinitiatorOptions(['---', ...UserOption]);

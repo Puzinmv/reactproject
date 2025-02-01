@@ -20,18 +20,52 @@ function GradeApp() {
     const [selectedMonth, setSelectedMonth] = useState('');
     const [grades, setGrades] = useState({});
     const [loading, setLoading] = useState(false);
+    const [expandedRows, setExpandedRows] = useState({});
+    const [allGrades, setAllGrades] = useState({});
+    const [averageGrades, setAverageGrades] = useState({});
 
     const fetchData = async () => {
         try {
-            const [presaleUsersData, gradesData] = await fetchInitGrade();
+            const [presaleUsersData, gradesData, allGradesWithUsers, averageGradesData] = await fetchInitGrade();
             setPresaleUsers(presaleUsersData);
-            // Преобразуем оценки в объект для быстрого доступа
+            
+            // Преобразуем оценки текущего пользователя
             const gradesMap = {};
             gradesData.forEach(grade => {
                 const dateStr = new Date(grade.dateGrade).toISOString().slice(0, 7);
                 gradesMap[`${grade.presale}-${dateStr}`] = grade.grade;
             });
             setGrades(gradesMap);
+
+            // Преобразуем все оценки в структурированный объект, только если они доступны
+            if (allGradesWithUsers) {
+                const allGradesMap = {};
+                allGradesWithUsers.forEach(grade => {
+                    const dateStr = new Date(grade.dateGrade).toISOString().slice(0, 7);
+                    const key = `${grade.presale}-${dateStr}`;
+                    if (!allGradesMap[key]) {
+                        allGradesMap[key] = [];
+                    }
+                    allGradesMap[key].push({
+                        grade: grade.grade,
+                        user: grade.user_created,
+                        date: grade.date_created
+                    });
+                });
+                setAllGrades(allGradesMap);
+            }
+
+            // Преобразуем средние оценки, только если они доступны
+            if (averageGradesData) {
+                const averageGradesMap = {};
+                averageGradesData.forEach(avg => {
+                    const dateStr = new Date(avg.dateGrade).toISOString().slice(0, 7);
+                    const key = `${avg.presale}-${dateStr}`;
+                    averageGradesMap[key] = Number(avg.avg.grade);
+                });
+                setAverageGrades(averageGradesMap);
+            }
+
         } catch (error) {
             console.error(error);
         }
@@ -142,6 +176,13 @@ function GradeApp() {
         return grades[`${presaleId}-${selectedMonth}`] || '';
     };
 
+    const handleRowExpand = (presaleId) => {
+        setExpandedRows(prev => ({
+            ...prev,
+            [presaleId]: !prev[presaleId]
+        }));
+    };
+
     return (
         <AuthWrapper isLiginFunc={fetchData}>
             <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -211,79 +252,76 @@ function GradeApp() {
                 </Paper>
 
                 {presaleUsers && (
-                    <Paper 
-                        elevation={3}
-                        sx={{ 
-                            borderRadius: 2,
-                            overflow: 'hidden'
-                        }}
-                    >
-                        <Typography 
-                            variant="h5" 
-                            component="h2" 
-                            sx={{ 
-                                p: 3,
-                                backgroundColor: 'primary.main',
-                                color: 'white'
-                            }}
-                        >
-                            Оценки за {new Date(selectedMonth).toLocaleString('ru', { year: 'numeric', month: 'long' })}
-                        </Typography>
+                    <Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden' }}>
                         <TableContainer>
                             <Table>
                                 <TableHead>
                                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                                         <TableCell sx={{ fontWeight: 'bold' }}>Имя</TableCell>
                                         <TableCell sx={{ fontWeight: 'bold' }}>Оценка</TableCell>
+                                        {Object.keys(averageGrades).length > 0 && (
+                                            <TableCell sx={{ fontWeight: 'bold' }}>Средняя оценка</TableCell>
+                                        )}
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {presaleUsers
                                         .filter(presale => isUserActiveInPeriod(presale, selectedMonth))
                                         .map(presale => (
-                                            <TableRow 
-                                                key={presale.id}
-                                                sx={{ 
-                                                    '&:hover': { 
-                                                        backgroundColor: '#f8f8f8' 
-                                                    }
-                                                }}
-                                            >
-                                                <TableCell>{presale.user.first_name}</TableCell>
-                                                <TableCell>
-                                                    <ToggleButtonGroup
-                                                        value={getGradeValue(presale.id)}
-                                                        exclusive
-                                                        onChange={(event, value) => handleGradeChange(presale.id, event, value)}
-                                                        aria-label="оценка"
-                                                        size="small"
-                                                        color="secondary"
-                                                        disabled={loading}
-                                                        sx={{ 
-                                                            flexWrap: 'wrap',
-                                                            '& .MuiToggleButton-root': { 
-                                                                minWidth: '35px',
-                                                                '&.Mui-selected': {
-                                                                    backgroundColor: 'secondary.main',
-                                                                    color: 'white',
-                                                                    '&:hover': {
-                                                                        backgroundColor: 'secondary.dark',
-                                                                    }
-                                                                }
-                                                            }
-                                                        }}
-                                                    >
-                                                        {[...Array(10)].map((_, i) => (
-                                                            <ToggleButton 
-                                                                key={i + 1} 
-                                                                value={i + 1}
-                                                            >
-                                                                {i + 1}
-                                                            </ToggleButton>
-                                                        ))}
-                                                    </ToggleButtonGroup>
-                                                </TableCell>
-                                            </TableRow>
+                                            <React.Fragment key={presale.id}>
+                                                <TableRow 
+                                                    sx={{ 
+                                                        '&:hover': { backgroundColor: '#f8f8f8' },
+                                                        cursor: Object.keys(allGrades).length > 0 ? 'pointer' : 'default'
+                                                    }}
+                                                    onClick={() => Object.keys(allGrades).length > 0 && handleRowExpand(presale.id)}
+                                                >
+                                                    <TableCell>{presale.user.first_name}</TableCell>
+                                                    <TableCell>
+                                                        <ToggleButtonGroup
+                                                            value={getGradeValue(presale.id)}
+                                                            exclusive
+                                                            onChange={(event, value) => handleGradeChange(presale.id, event, value)}
+                                                            aria-label="оценка"
+                                                            size="small"
+                                                            color="secondary"
+                                                            disabled={loading}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            {[...Array(10)].map((_, i) => (
+                                                                <ToggleButton key={i + 1} value={i + 1}>
+                                                                    {i + 1}
+                                                                </ToggleButton>
+                                                            ))}
+                                                        </ToggleButtonGroup>
+                                                    </TableCell>
+                                                    {Object.keys(averageGrades).length > 0 && (
+                                                        <TableCell>
+                                                            {averageGrades[`${presale.id}-${selectedMonth}`] 
+                                                                ? averageGrades[`${presale.id}-${selectedMonth}`].toFixed(1) 
+                                                                : '-'}
+                                                        </TableCell>
+                                                    )}
+                                                </TableRow>
+                                                {expandedRows[presale.id] && Object.keys(allGrades).length > 0 && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={Object.keys(averageGrades).length > 0 ? 3 : 2} sx={{ backgroundColor: '#fafafa', p: 2 }}>
+                                                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                                                                История оценок за {new Date(selectedMonth).toLocaleString('ru', { year: 'numeric', month: 'long' })}:
+                                                            </Typography>
+                                                            {allGrades[`${presale.id}-${selectedMonth}`]?.map((grade, index) => (
+                                                                <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                                                                    {grade.user.first_name}: {grade.grade} - {new Date(grade.date).toLocaleString('ru')}
+                                                                </Typography>
+                                                            )) || (
+                                                                <Typography variant="body2" color="text.secondary">
+                                                                    Нет оценок за выбранный период
+                                                                </Typography>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </React.Fragment>
                                         ))}
                                 </TableBody>
                             </Table>

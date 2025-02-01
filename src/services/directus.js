@@ -241,7 +241,7 @@ export const fetchInitData = async () => {
 
 export const fetchInitGrade = async () => {
     try {
-        const [presaleUsers, gradesData] = await Promise.all([
+        const [presaleUsers, gradesData, allGradesWithUsers] = await Promise.all([
             directus.request(readItems('PresaleUsers', {
                 fields: ['*', { user: ['id', 'first_name'] }]
             })),
@@ -252,10 +252,33 @@ export const fetchInitGrade = async () => {
                         _eq: '$CURRENT_USER'
                     }
                 }
+            })),
+            directus.request(readItems('gradePresale', {
+                fields: ['*', {
+                    user_created: ['id', 'first_name']
+                }],
+                filter: {
+                    dateGrade: {
+                        _nnull: true
+                    }
+                }
             }))
         ]);
 
-        return [presaleUsers, gradesData];
+        // Получаем средние оценки для каждого пресейла
+        const averageGrades = await directus.request(readItems('gradePresale', {
+            aggregate: {
+                avg: 'grade'
+            },
+            groupBy: ['presale', 'dateGrade'],
+            filter: {
+                dateGrade: {
+                    _nnull: true
+                }
+            }
+        }));
+
+        return [presaleUsers, gradesData, allGradesWithUsers, averageGrades];
     } catch (error) {
         console.error(error);
         throw error;

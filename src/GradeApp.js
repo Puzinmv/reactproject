@@ -37,8 +37,15 @@ function GradeApp() {
             });
             setGrades(gradesMap);
 
-            // Преобразуем все оценки в структурированный объект, только если они доступны
-            if (allGradesWithUsers) {
+            // Проверяем, есть ли доступ к оценкам других пользователей
+            const hasAccessToOtherGrades = allGradesWithUsers && allGradesWithUsers.some(grade => 
+                !gradesData.some(userGrade => 
+                    userGrade.id === grade.id
+                )
+            );
+
+            // Преобразуем все оценки только если есть доступ к оценкам других пользователей
+            if (hasAccessToOtherGrades) {
                 const allGradesMap = {};
                 allGradesWithUsers.forEach(grade => {
                     const dateStr = new Date(grade.dateGrade).toISOString().slice(0, 7);
@@ -49,21 +56,24 @@ function GradeApp() {
                     allGradesMap[key].push({
                         grade: grade.grade,
                         user: grade.user_created,
-                        date: grade.date_created
+                        date: grade.date_updated
                     });
                 });
                 setAllGrades(allGradesMap);
-            }
 
-            // Преобразуем средние оценки, только если они доступны
-            if (averageGradesData) {
-                const averageGradesMap = {};
-                averageGradesData.forEach(avg => {
-                    const dateStr = new Date(avg.dateGrade).toISOString().slice(0, 7);
-                    const key = `${avg.presale}-${dateStr}`;
-                    averageGradesMap[key] = Number(avg.avg.grade);
-                });
-                setAverageGrades(averageGradesMap);
+                // Преобразуем средние оценки только если есть доступ к оценкам других пользователей
+                if (averageGradesData) {
+                    const averageGradesMap = {};
+                    averageGradesData.forEach(avg => {
+                        const dateStr = new Date(avg.dateGrade).toISOString().slice(0, 7);
+                        const key = `${avg.presale}-${dateStr}`;
+                        averageGradesMap[key] = Number(avg.avg.grade);
+                    });
+                    setAverageGrades(averageGradesMap);
+                }
+            } else {
+                setAllGrades({});
+                setAverageGrades({});
             }
 
         } catch (error) {
@@ -152,14 +162,13 @@ function GradeApp() {
         if (newValue !== null) {
             try {
                 setLoading(true);
-                // Получаем первый день предыдущего месяца относительно выбранного
+                // Получаем первый день выбранного месяца
                 const [year, month] = selectedMonth.split('-');
-                const selectedDate = new Date(year, month, 1); // Преобразуем выбранную дату
-                const prevMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1); // Получаем предыдущий месяц
-                const dateGrade = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}-01`;
+                const dateGrade = `${year}-${month}-01`;
 
                 await updateOrCreateGrade(presaleId, newValue, dateGrade);
-                
+                fetchData()
+                // Обновляем оценки текущего пользователя
                 setGrades(prev => ({
                     ...prev,
                     [`${presaleId}-${selectedMonth}`]: newValue
@@ -181,13 +190,14 @@ function GradeApp() {
             ...prev,
             [presaleId]: !prev[presaleId]
         }));
-    };
+    }; 
+    console.log(averageGrades)
 
     return (
         <AuthWrapper isLiginFunc={fetchData}>
             <Container maxWidth="lg" sx={{ py: 4 }}>
                 <Typography 
-                    variant="h4" 
+                    variant="h3" 
                     component="h1" 
                     gutterBottom
                     sx={{

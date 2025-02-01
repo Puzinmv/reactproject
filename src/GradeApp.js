@@ -42,6 +42,7 @@ function GradeApp() {
         const today = new Date();
         const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1);
         setSelectedMonth(`${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`);
+        fetchData();
     }, []);
 
     const getMonthsList = () => {

@@ -66,7 +66,10 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
     const [initiatorOptions, setinitiatorOptions] = useState([]);   // перечень инициаторов в картах
     const [departmentOptions, setdepartmentOptions] = useState([]); // перечень отделов исполнителей в картах
     const [statusOptions, setstatusOptions] = useState([]);         // перечень статусов в картах
-    const [showMyCards, setShowMyCards] = useState(true);           // показать только мои карты
+    const [showMyCards, setShowMyCards] = useState(() => {
+        const savedValue = localStorage.getItem('ShowMyCard');
+        return savedValue ? JSON.parse(savedValue) : true;
+    });
     const [totalRows, setTotalRows] = useState(0);
     const [loading, setLoading] = useState(false);
     const [tableData, setLocalTableData] = useState([]); // добавляем локальное состояние для данных

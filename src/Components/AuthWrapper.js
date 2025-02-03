@@ -25,13 +25,21 @@ const theme = createTheme({
 function AuthWrapper({ children, isLiginFunc }) {
     const [currentUser, setCurrentUser] = useState({});
     const [isLoading, setIsLoading] = useState(true);
+    const [savedSearchParams, setSavedSearchParams] = useState('');
 
     useEffect(() => {
+        // Сохраняем параметры URL при первой загрузке
+        setSavedSearchParams(window.location.search);
+        
         const checkAuth = async () => {
             try {
                 const token = await getToken();
                 if (token?.data) {
                     setCurrentUser(token.data);
+                    // Восстанавливаем параметры URL после успешной авторизации
+                    if (savedSearchParams && window.location.search === '') {
+                        window.history.replaceState({}, '', savedSearchParams);
+                    }
                 }
             } catch (e) {
                 console.error(e);
@@ -42,7 +50,7 @@ function AuthWrapper({ children, isLiginFunc }) {
         };
         
         checkAuth();
-    }, []);
+    }, [savedSearchParams]);
 
     const handleLogout = async () => {
         await logout();
@@ -51,23 +59,23 @@ function AuthWrapper({ children, isLiginFunc }) {
 
     const handleLogin = async (email, password, isAD) => {
         try {
+            let token;
             if (isAD) {
-                const token = await loginAD(email, password);
-                if (token) {
-                    setCurrentUser(token);
-                    isLiginFunc()
-                    return true;
-                }
-                return false;
+                token = await loginAD(email, password);
             } else {
-                const token = await loginEmail(email, password);
-                if (token) {
-                    setCurrentUser(token);
-                    isLiginFunc()
-                    return true;
-                }
-                return false;
+                token = await loginEmail(email, password);
             }
+            
+            if (token) {
+                setCurrentUser(token);
+                // Восстанавливаем параметры URL после успешного входа
+                if (savedSearchParams) {
+                    window.history.replaceState({}, '', savedSearchParams);
+                }
+                isLiginFunc();
+                return true;
+            }
+            return false;
         } catch (error) {
             return false;
         }

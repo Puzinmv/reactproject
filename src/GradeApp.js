@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AuthWrapper from './Components/AuthWrapper';
-import { fetchInitGrade, updateOrCreateGrade } from './services/directus';
+import { fetchInitGrade, updateOrCreateGrade, closeMonthGrades, openMonthGrades } from './services/directus';
 import { 
     Container, 
     Typography, 
@@ -12,8 +12,11 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TableRow
+    TableRow,
+    IconButton,
+    Tooltip
 } from '@mui/material';
+import { LockOutlined, LockOpenOutlined } from '@mui/icons-material';
 
 function GradeApp() {
     const [presaleUsers, setPresaleUsers] = useState(null);
@@ -23,10 +26,11 @@ function GradeApp() {
     const [expandedRows, setExpandedRows] = useState({});
     const [allGrades, setAllGrades] = useState({});
     const [averageGrades, setAverageGrades] = useState({});
+    const [closedMonths, setClosedMonths] = useState([]);
 
     const fetchData = async () => {
         try {
-            const [presaleUsersData, gradesData, allGradesWithUsers, averageGradesData] = await fetchInitGrade();
+            const [presaleUsersData, gradesData, allGradesWithUsers, averageGradesData, closedMonthsData] = await fetchInitGrade();
             setPresaleUsers(presaleUsersData);
             
             // Преобразуем оценки текущего пользователя
@@ -75,6 +79,9 @@ function GradeApp() {
                 setAllGrades({});
                 setAverageGrades({});
             }
+
+            // Сохраняем закрытые месяцы
+            setClosedMonths(closedMonthsData.map(item => item.monthDate));
 
         } catch (error) {
             console.error(error);
@@ -190,8 +197,26 @@ function GradeApp() {
             ...prev,
             [presaleId]: !prev[presaleId]
         }));
-    }; 
-    console.log(averageGrades)
+    };
+
+    const handleToggleMonth = async () => {
+        try {
+            setLoading(true);
+            if (isMonthClosed(selectedMonth)) {
+                await openMonthGrades(selectedMonth);
+                setClosedMonths(prev => prev.filter(month => month !== selectedMonth));
+            } else {
+                await closeMonthGrades(selectedMonth);
+                setClosedMonths(prev => [...prev, selectedMonth]);
+            }
+        } catch (error) {
+            console.error('Ошибка при изменении статуса месяца:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const isMonthClosed = (month) => closedMonths.includes(month);
 
     return (
         <AuthWrapper isLiginFunc={fetchData}>
@@ -270,7 +295,27 @@ function GradeApp() {
                                         <TableCell sx={{ fontWeight: 'bold' }}>Имя</TableCell>
                                         <TableCell sx={{ fontWeight: 'bold' }}>Оценка</TableCell>
                                         {Object.keys(averageGrades).length > 0 && (
-                                            <TableCell sx={{ fontWeight: 'bold' }}>Средняя оценка</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                Средняя оценка
+                                                <Tooltip title={isMonthClosed(selectedMonth) ? "Открыть оценки за месяц" : "Закрыть оценки за месяц"}>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={handleToggleMonth}
+                                                        disabled={loading}
+                                                        sx={{ 
+                                                            '&:hover': { 
+                                                                backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                                                            }
+                                                        }}
+                                                    >
+                                                        {isMonthClosed(selectedMonth) ? (
+                                                            <LockOpenOutlined fontSize="small" />
+                                                        ) : (
+                                                            <LockOutlined fontSize="small" />
+                                                        )}
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </TableCell>
                                         )}
                                     </TableRow>
                                 </TableHead>
@@ -295,7 +340,7 @@ function GradeApp() {
                                                             aria-label="оценка"
                                                             size="small"
                                                             color="secondary"
-                                                            disabled={loading}
+                                                            disabled={loading || isMonthClosed(selectedMonth)}
                                                             onClick={(e) => e.stopPropagation()}
                                                         >
                                                             {[...Array(10)].map((_, i) => (
@@ -328,6 +373,23 @@ function GradeApp() {
                                                                     Нет оценок за выбранный период
                                                                 </Typography>
                                                             )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                                {isMonthClosed(selectedMonth) && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={Object.keys(averageGrades).length > 0 ? 3 : 2} sx={{ backgroundColor: '#fafafa', p: 2 }}>
+                                                            <Typography 
+                                                                variant="caption" 
+                                                                color="text.secondary"
+                                                                sx={{ 
+                                                                    display: 'block', 
+                                                                    mt: 1,
+                                                                    fontStyle: 'italic'
+                                                                }}
+                                                            >
+                                                                Оценки за этот месяц закрыты
+                                                            </Typography>
                                                         </TableCell>
                                                     </TableRow>
                                                 )}

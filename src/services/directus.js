@@ -1,7 +1,7 @@
 import {
     createDirectus, authentication,  rest,
     readItems, readUsers, updateItem, readMe, readFile, readItem,
-    uploadFiles, deleteFile, createItem, updateMe,
+    uploadFiles, deleteFile, createItem, updateMe, deleteItem
 } from "@directus/sdk";
 
 export const directus = createDirectus(process.env.REACT_APP_API_URL)
@@ -241,7 +241,7 @@ export const fetchInitData = async () => {
 
 export const fetchInitGrade = async () => {
     try {
-        const [presaleUsers, gradesData, allGradesWithUsers] = await Promise.all([
+        const [presaleUsers, gradesData, allGradesWithUsers, averageGrades, closedMonths] = await Promise.all([
             directus.request(readItems('PresaleUsers', {
                 fields: ['*', { user: ['id', 'first_name'] }]
             })),
@@ -262,23 +262,24 @@ export const fetchInitGrade = async () => {
                         _nnull: true
                     }
                 }
+            })),
+            directus.request(readItems('gradePresale', {
+                aggregate: {
+                    avg: 'grade'
+                },
+                groupBy: ['presale', 'dateGrade'],
+                filter: {
+                    dateGrade: {
+                        _nnull: true
+                    }
+                }
+            })),
+            directus.request(readItems('closedGrades', {
+                fields: ['monthDate']
             }))
         ]);
 
-        // Получаем средние оценки для каждого пресейла
-        const averageGrades = await directus.request(readItems('gradePresale', {
-            aggregate: {
-                avg: 'grade'
-            },
-            groupBy: ['presale', 'dateGrade'],
-            filter: {
-                dateGrade: {
-                    _nnull: true
-                }
-            }
-        }));
-
-        return [presaleUsers, gradesData, allGradesWithUsers, averageGrades];
+        return [presaleUsers, gradesData, allGradesWithUsers, averageGrades, closedMonths];
     } catch (error) {
         console.error(error);
         throw error;
@@ -580,6 +581,38 @@ export const updateOrCreateGrade = async (presaleId, grade, dateGrade) => {
                 presale: presaleId,
                 dateGrade: dateGrade
             }));
+        }
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};
+
+export const closeMonthGrades = async (month) => {
+    try {
+        return await directus.request(createItem('closedGrades', {
+            monthDate: month
+        }));
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};
+
+export const openMonthGrades = async (month) => {
+    try {
+        // Находим и удаляем запись о закрытом месяце
+        const closedMonth = await directus.request(readItems('closedGrades', {
+            filter: {
+                monthDate: {
+                    _eq: month
+                }
+            },
+            limit: 1
+        }));
+        
+        if (closedMonth.length > 0) {
+            await directus.request(deleteItem('closedGrades', closedMonth[0].id));
         }
     } catch (error) {
         console.error(error);

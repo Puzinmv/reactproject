@@ -21,15 +21,6 @@ function App() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    useEffect(() => {
-        const searchParams = new URLSearchParams(location.search);
-        const rowId = searchParams.get('id');
-        if (rowId) {
-            setSelectedRowId(rowId);
-            setIsModalOpen(true);
-        }
-    }, [location.search]);
-
     const fetchTableData = async () => {
         try {
             const [Users, Department, user] = await fetchInitData();
@@ -52,6 +43,20 @@ function App() {
             console.error(error);
         }
     };
+
+    useEffect(() => {
+        const searchParams = new URLSearchParams(location.search);
+        const rowId = searchParams.get('id');
+        if (rowId) {
+            fetchTableData();
+            setSelectedRowId(rowId);
+            setIsModalOpen(true);
+        }
+    }, [location.search]);
+
+    useEffect(() => {
+        fetchTableData();
+    }, []);
     
     const handleRowSelect = (row) => {
         setSelectedRowId(row.id);

@@ -51,6 +51,7 @@ function GradeApp() {
             // Преобразуем все оценки только если есть доступ к оценкам других пользователей
             if (hasAccessToOtherGrades) {
                 const allGradesMap = {};
+                console.log(allGradesWithUsers)
                 allGradesWithUsers.forEach(grade => {
                     const dateStr = new Date(grade.dateGrade).toISOString().slice(0, 7);
                     const key = `${grade.presale}-${dateStr}`;
@@ -59,10 +60,11 @@ function GradeApp() {
                     }
                     allGradesMap[key].push({
                         grade: grade.grade,
-                        user: grade.user_created,
-                        date: grade.date_updated
+                        user: grade.user_updated || grade.user_created,
+                        date: grade.date_updated || grade.date_created
                     });
                 });
+                
                 setAllGrades(allGradesMap);
 
                 // Преобразуем средние оценки только если есть доступ к оценкам других пользователей
@@ -362,7 +364,8 @@ function GradeApp() {
                                                     <TableRow>
                                                         <TableCell colSpan={Object.keys(averageGrades).length > 0 ? 3 : 2} sx={{ backgroundColor: '#fafafa', p: 2 }}>
                                                             <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                                                                История оценок за {new Date(selectedMonth).toLocaleString('ru', { year: 'numeric', month: 'long' })}:
+                                                                История оценок за {new Date(selectedMonth).toLocaleString('ru', { year: 'numeric', month: 'long' })} 
+                                                                (Всего оценок: {allGrades[`${presale.id}-${selectedMonth}`]?.length || 0}):
                                                             </Typography>
                                                             {allGrades[`${presale.id}-${selectedMonth}`]?.map((grade, index) => (
                                                                 <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>

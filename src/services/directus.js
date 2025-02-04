@@ -212,7 +212,7 @@ export const fetchDatanew = async ({
 };
 
 export const fetchInitData = async () => {
-    const [initiatorIds, Department, user] = await Promise.all([
+    const [initiatorIds, Department] = await Promise.all([
         directus.request(readItems('Project_Card', {
             groupBy: ['initiator'],
             filter: {
@@ -223,7 +223,6 @@ export const fetchInitData = async () => {
             }
         })),
         directus.request(readItems('Department', { fields: ['*'] })),
-        directus.request(readMe())
     ]);
     const uniqueInitiatorIds = initiatorIds.map(item => item.initiator).filter(Boolean);
 
@@ -235,7 +234,7 @@ export const fetchInitData = async () => {
             }
         }
     }));
-    return [Users, Department, user]
+    return [Users, Department]
     
 }
 

@@ -4,7 +4,7 @@ import TableComponent from './Components/TableComponent.js';
 import ModalForm from './Components/ModalForm.js';
 import ColumnVisibilityModal from './Components/ColumnVisibilityModal.js';
 import CreateForm from './Components/CreateForm.js';
-import { Update1CField, fetchInitData } from './services/directus';
+import { Update1CField, fetchInitData, getCurrentUser } from './services/directus';
 import getNewCardData from './constants/index.js';
 import { GetUser1C } from './services/1c';
 import AuthWrapper from './Components/AuthWrapper';
@@ -21,15 +21,11 @@ function App() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const fetchTableData = async () => {
+    const fetchCurrentUserData = async () => {
         try {
-            const [Users, Department, user] = await fetchInitData();
-            console.log('Users', Users);
-            console.log('departament', Department);
-            console.log('user', user);
+            const user = await getCurrentUser();
             setCurrentUser(user);
-            setdepartament(Department)
-            setUserOption(Users.map(item => item.first_name))
+            await fetchTableData();
             if (user?.first_name) {
                 const user1C = await GetUser1C(user.first_name)
                 if (user1C && user1C !== user?.RefKey_1C) {
@@ -39,6 +35,19 @@ function App() {
                     }
                 }
             }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const fetchTableData = async () => {
+        try {
+            const [Users, Department] = await fetchInitData();
+            console.log('Users', Users);
+            console.log('departament', Department);
+            setdepartament(Department)
+            setUserOption(Users.map(item => item.first_name))
+
         } catch (error) {
             console.error(error);
         }
@@ -81,7 +90,7 @@ function App() {
     };
 
     return (
-        <AuthWrapper isLiginFunc = {fetchTableData}>
+        <AuthWrapper isLiginFunc = {fetchCurrentUserData}>
             <div className="App">
                 <TableComponent
                     UserOption={UserOption}

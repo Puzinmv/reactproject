@@ -323,8 +323,8 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const handleChange = (e) => {
         const { name, value } = e.target;
         if ([FORM_FIELDS.COMMENT_JOB, FORM_FIELDS.HIRED_COST, FORM_FIELDS.HIRED, FORM_FIELDS.OPEN_PROJECT_TEMPLATE_ID, FORM_FIELDS.LIMITATIONS].indexOf(name) > -1 &&
-            currentUser.ProjectCardRole !== ROLES.ADMIN &&
-            currentUser.ProjectCardRole !== ROLES.TECHNICAL)
+            currentUser?.ProjectCardRole !== ROLES.ADMIN &&
+            currentUser?.ProjectCardRole !== ROLES.TECHNICAL)
         {
             triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning")
             return
@@ -406,8 +406,8 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     };
 
     const handleCheckboxToggle = (template) => {
-        if (currentUser.ProjectCardRole !== ROLES.ADMIN &&
-            currentUser.ProjectCardRole !== ROLES.TECHNICAL) {
+        if (currentUser?.ProjectCardRole !== ROLES.ADMIN &&
+            currentUser?.ProjectCardRole !== ROLES.TECHNICAL) {
             triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning")
             return
         }
@@ -549,8 +549,8 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     };
 
     const handleJobChange = (jobDescriptions) => {
-        if (currentUser.ProjectCardRole !== ROLES.ADMIN &&
-            currentUser.ProjectCardRole !== ROLES.TECHNICAL) {
+        if (currentUser?.ProjectCardRole !== ROLES.ADMIN &&
+            currentUser?.ProjectCardRole !== ROLES.TECHNICAL) {
             triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning")
             return false
         }
@@ -567,8 +567,8 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     };
 
     const handleJobOnTripChange = (data) => {
-        if (currentUser.ProjectCardRole !== ROLES.ADMIN &&
-            currentUser.ProjectCardRole !== ROLES.TECHNICAL) {
+        if (currentUser?.ProjectCardRole !== ROLES.ADMIN &&
+            currentUser?.ProjectCardRole !== ROLES.TECHNICAL) {
             triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning")
             return false
         }
@@ -994,7 +994,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                                 onChange={handleChangeSwitch}
                                                 color="primary"
                                                 error={errors.OpenProject_Template_id ? 'true' : 'false'}
-                                                disabled={currentUser.ProjectCardRole !== ROLES.ADMIN && currentUser.ProjectCardRole !== ROLES.TECHNICAL }
+                                                disabled={currentUser?.ProjectCardRole !== ROLES.ADMIN && currentUser?.ProjectCardRole !== ROLES.TECHNICAL }
                                             />
                                         }
                                         label={
@@ -1376,7 +1376,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                         </Select>
                                         {fieldErrors.company && <FormHelperText>{fieldErrors.company}</FormHelperText>}
                                     </FormControl>
-                                    {(currentUser.email === EMAILS.ADMIN) && (
+                                    {(currentUser?.email === EMAILS.ADMIN) && (
                                         <FormControlLabel
                                             control={
                                                 <Switch

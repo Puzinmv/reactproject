@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import TableComponent from './Components/TableComponent.js';
 import ModalForm from './Components/ModalForm.js';
@@ -21,11 +21,11 @@ function App() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const fetchCurrentUserData = async () => {
+
+    const fetchCurrentUserData = useCallback(async () => {
         try {
             const user = await getCurrentUser();
             setCurrentUser(user);
-            await fetchTableData();
             if (user?.first_name) {
                 const user1C = await GetUser1C(user.first_name)
                 if (user1C && user1C !== user?.RefKey_1C) {
@@ -38,34 +38,39 @@ function App() {
         } catch (error) {
             console.error(error);
         }
-    };
+    }, []);
 
-    const fetchTableData = async () => {
+    const fetchTableData = useCallback(async () => {
         try {
             const [Users, Department] = await fetchInitData();
             console.log('Users', Users);
             console.log('departament', Department);
             setdepartament(Department)
             setUserOption(Users.map(item => item.first_name))
-
+            await fetchCurrentUserData();
         } catch (error) {
             console.error(error);
         }
-    };
+    }, [fetchCurrentUserData]);
+
+    const onLogin = useCallback(async () => {
+        await fetchCurrentUserData()
+        await fetchTableData();
+    }, [fetchCurrentUserData, fetchTableData]);
 
     useEffect(() => {
         const searchParams = new URLSearchParams(location.search);
         const rowId = searchParams.get('id');
         if (rowId) {
-            fetchTableData();
+            //fetchTableData();
             setSelectedRowId(rowId);
             setIsModalOpen(true);
         }
     }, [location.search]);
 
     useEffect(() => {
-        fetchTableData();
-    }, []);
+        onLogin();
+    }, [onLogin]);
     
     const handleRowSelect = (row) => {
         setSelectedRowId(row.id);
@@ -90,7 +95,7 @@ function App() {
     };
 
     return (
-        <AuthWrapper isLiginFunc = {fetchCurrentUserData}>
+        <AuthWrapper isLiginFunc = {onLogin}>
             <div className="App">
                 <TableComponent
                     UserOption={UserOption}

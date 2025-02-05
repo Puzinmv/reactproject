@@ -36,7 +36,6 @@ function ResponsiveAppBar({ handleLogout, current }) {
         <AppBar position="static">
             <Container maxWidth={false}>
                 <Toolbar disableGutters sx={{ justifyContent: 'space-between' }}>
-                    {/* Logo and Mobile menu */}
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <Box sx={{ display: { xs: 'none', md: 'flex' }, mr: 2 }}>
                             <img src="/logo.png" alt="Logo" style={{ height: '40px' }} />
@@ -105,11 +104,11 @@ function ResponsiveAppBar({ handleLogout, current }) {
                     </Box>
 
                     {/* User menu */}
-                    {Object.keys(current).length > 0 && (
+                    {current && (
                         <Box>
-                            <Tooltip title={`${current.first_name}`}>
+                            <Tooltip title={current.first_name || ''}>
                                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                                    <Avatar alt={`${current.first_name}`} src="" />
+                                    <Avatar alt={current.first_name || ''} src="" />
                                 </IconButton>
                             </Tooltip>
                             <Menu
@@ -135,8 +134,8 @@ function ResponsiveAppBar({ handleLogout, current }) {
                                             handleLogout();
                                         }}
                                     >
-                                    <Typography textAlign="center">{setting}</Typography>
-                                </MenuItem>
+                                        <Typography textAlign="center">{setting}</Typography>
+                                    </MenuItem>
                                 ))}
                             </Menu>
                         </Box>

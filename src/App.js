@@ -76,7 +76,6 @@ function App() {
         setSelectedRowId(row.id);
         setIsModalOpen(true);
         navigate(`?id=${row.id}`);
-        fetchTableData();
     };
 
     const handleCreate = () => {

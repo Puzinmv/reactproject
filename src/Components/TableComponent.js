@@ -90,7 +90,7 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
                 currentUser: showMyCards ? CurrentUser : null
             });
 
-            setLocalTableData(response.data); // устанавливаем данные в локальное состояние
+            setLocalTableData(response.data);
             setTotalRows(response.meta.total);
         } catch (error) {
             console.error('Error loading data:', error);
@@ -100,8 +100,11 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
     }, [page, rowsPerPage, order, orderBy, globalSearch, columnSearch, columns, showMyCards, CurrentUser]);
 
     useEffect(() => {
-        console.log("callback")
-        loadData();
+        const timer = setTimeout(() => {
+            loadData();
+        }, 300);
+
+        return () => clearTimeout(timer);
     }, [loadData]);
 
     const handleColumnVisibilityChange = useCallback((id) => {

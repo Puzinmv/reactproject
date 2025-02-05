@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getToken, loginEmail, loginAD, logout } from '../services/directus';
+import { getToken, loginEmail, loginAD, logout, getCurrentUser } from '../services/directus';
 import LoginForm from './LoginForm';
 import { CircularProgress } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
@@ -23,60 +23,70 @@ const theme = createTheme({
 });
 
 function AuthWrapper({ children, isLiginFunc }) {
-    const [currentUser, setCurrentUser] = useState({});
+    const [currentUser, setCurrentUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [savedSearchParams, setSavedSearchParams] = useState('');
 
-    useEffect(() => {
-        // Сохраняем параметры URL при первой загрузке
-        setSavedSearchParams(window.location.search);
-        
-        const checkAuth = async () => {
-            try {
-                const token = await getToken();
-                if (token?.data) {
-                    setCurrentUser(token.data);
-                    // Восстанавливаем параметры URL после успешной авторизации
-                    if (savedSearchParams && window.location.search === '') {
-                        window.history.replaceState({}, '', savedSearchParams);
-                    }
-                }
-            } catch (e) {
-                console.error(e);
-                setCurrentUser({});
-            } finally {
-                setIsLoading(false);
+    const checkAuthAndGetUser = async () => {
+        try {
+            // Проверяем токен
+            const token = await getToken();
+            if (!token?.data) {
+                throw new Error('No valid token');
             }
-        };
-        
-        checkAuth();
+
+            // Получаем данные пользователя
+            const userData = await getCurrentUser();
+            if (userData) {
+                setCurrentUser(userData);
+                // Восстанавливаем параметры URL после успешной авторизации
+                if (savedSearchParams && window.location.search === '') {
+                    window.history.replaceState({}, '', savedSearchParams);
+                }
+                return true;
+            }
+        } catch (e) {
+            console.error(e);
+            setCurrentUser(null);
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        setSavedSearchParams(window.location.search);
+        checkAuthAndGetUser();
     }, [savedSearchParams]);
 
     const handleLogout = async () => {
         await logout();
-        setCurrentUser({});
+        setCurrentUser(null);
     };
 
     const handleLogin = async (email, password, isAD) => {
         try {
-            let token;
+            let loginResult;
             if (isAD) {
-                token = await loginAD(email, password);
+                loginResult = await loginAD(email, password);
             } else {
-                token = await loginEmail(email, password);
+                loginResult = await loginEmail(email, password);
             }
             
-            if (token) {
-                setCurrentUser(token);
-                // Восстанавливаем параметры URL после успешного входа
-                if (savedSearchParams) {
-                    window.history.replaceState({}, '', savedSearchParams);
+            if (loginResult) {
+                const userData = await getCurrentUser();
+                if (userData) {
+                    setCurrentUser(userData);
+                    if (savedSearchParams) {
+                        window.history.replaceState({}, '', savedSearchParams);
+                    }
+                    isLiginFunc();
+                    return true;
                 }
-                isLiginFunc();
-                return true;
             }
             return false;
         } catch (error) {
+            console.error(error);
             return false;
         }
     };
@@ -88,7 +98,7 @@ function AuthWrapper({ children, isLiginFunc }) {
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
                     <CircularProgress />
                 </div>
-            ) : Object.keys(currentUser).length ? (
+            ) : currentUser ? (
                 children
             ) : (
                 <LoginForm onLogin={handleLogin} />

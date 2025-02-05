@@ -38,10 +38,10 @@ export const loginAD = async (login, password) => {
             const result = await response.json();
             if (window.location.hostname === 'localhost') {
                 directus.setToken(result.data.access_token);
-                console.log('localhost')
+                console.log('localhost',result)
             }
-            const token = await getToken()
-            return token;
+            //const token = await getToken()
+            return true;
         } else {
             return null;
         }
@@ -54,31 +54,37 @@ export const loginAD = async (login, password) => {
 
 
 export const getToken = async () => {
-    const token = await fetch(process.env.REACT_APP_API_URL+'/auth/refresh', {
-        method: 'POST',
-        credentials: 'include', 
-        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'session' }) // using 'session' mode, but can also be 'cookie' or 'json'
-    })
-        .then((response) => response.json())
-        .then((data) => {
-            console.log(data)
-            return data
-        })
-        .catch((e) => {
-            console.error(e)
-        })
-    return token;
+    try {
+        const response = await fetch(process.env.REACT_APP_API_URL+'/auth/refresh', {
+            method: 'POST',
+            credentials: 'include', 
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'session' })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Token refresh failed');
+        }
+        
+        const data = await response.json();
+        return data;
+    } catch (e) {
+        console.error(e);
+        throw e;
+    }
 };
 
 export const getCurrentUser = async () => {
     try {
         const user = await directus.request(readMe());
+        if (!user) {
+            throw new Error('Failed to get user data');
+        }
         return user;
     } catch (e) {
-        console.error(e)
+        console.error(e);
+        throw e;
     }
-
 };
 export const fetchDatanew = async ({
     page = 1,
@@ -89,7 +95,7 @@ export const fetchDatanew = async ({
     currentUser = null
 }) => {
     try {
-        console.log(filters)
+        console.log(filters,currentUser)
         const fields = [
             '*',
             {

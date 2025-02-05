@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getToken, loginEmail, loginAD, logout, getCurrentUser } from '../services/directus';
 import LoginForm from './LoginForm';
 import { CircularProgress } from '@mui/material';
@@ -27,7 +27,7 @@ function AuthWrapper({ children, isLiginFunc }) {
     const [isLoading, setIsLoading] = useState(true);
     const [savedSearchParams, setSavedSearchParams] = useState('');
 
-    const checkAuthAndGetUser = async () => {
+    const checkAuthAndGetUser = useCallback(async () => {
         try {
             // Проверяем токен
             const token = await getToken();
@@ -52,12 +52,18 @@ function AuthWrapper({ children, isLiginFunc }) {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [savedSearchParams]);
 
     useEffect(() => {
         setSavedSearchParams(window.location.search);
         checkAuthAndGetUser();
-    }, [savedSearchParams]);
+    }, [checkAuthAndGetUser]);
+
+    useEffect(() => {
+        if (currentUser && savedSearchParams && window.location.search === '') {
+            window.history.replaceState({}, '', savedSearchParams);
+        }
+    }, [savedSearchParams, currentUser]);
 
     const handleLogout = async () => {
         await logout();

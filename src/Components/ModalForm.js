@@ -34,13 +34,14 @@ const TabPanel = ({ children, value, index }) => {
     );
 };
 const calculateTotalCost = (data) => {
-    return [
-        data.Cost || 0,
-        data.tiketsCost || 0,
-        data.HotelCost || 0,
-        data.dailyCost || 0,
-        data.otherPayments || 0,
-    ].reduce((sum, value) => sum + value, 0);
+    const costs = [
+        parseFloat(data.Cost) || 0,
+        parseFloat(data.tiketsCost) || 0,
+        parseFloat(data.HotelCost) || 0,
+        parseFloat(data.dailyCost) || 0,
+        parseFloat(data.otherPayments) || 0
+    ];
+    return costs.reduce((sum, value) => sum + value, 0);
 };
 
 // Функция для определения цвета статуса
@@ -71,7 +72,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const [anchorEl, setAnchorEl] = useState(null);
     const [checkedTemplates, setCheckedTemplates] = useState([]);
     const [snackbarState, setSnackbarState] = useState({ open: false, message: '', severity: 'info', multiline: false });
-    const [totoalCost, settotoalCost] = useState(calculateTotalCost(formData));
+    const [totalCost, setTotalCost] = useState(0);
     const [totoalCostPerHour, settotoalCostPerHour] = useState('');
     const [CostPerHour, setCostPerHour] = useState('');
     const [SummPerHour, setSummPerHour] = useState(0);
@@ -82,7 +83,6 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const selectRef = useRef(null);
     const switchRef = useRef(null);
 
-
     // Первичная загрузка данных карточки
     useEffect(() => {
         const loadCard = async () => {
@@ -90,7 +90,8 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                 const [row, limitation] = await fetchCard(rowid);
                 if (row) {
                     setFormData(row);
-                    setLimitation(limitation)
+                    setLimitation(limitation);
+                    setTotalCost(calculateTotalCost(row));
                 } else {
                     onClose();
                 }
@@ -166,9 +167,9 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     ]); 
 
     useEffect(() => {
-        if (totoalCost && formData?.resourceSumm) settotoalCostPerHour(`${Math.round(totoalCost * 100 / (formData.resourceSumm * 8)) / 100} ₽/час`)
+        if (totalCost && formData?.resourceSumm) settotoalCostPerHour(`${Math.round(totalCost * 100 / (formData.resourceSumm * 8)) / 100} ₽/час`)
         else settotoalCostPerHour('')
-    }, [totoalCost, formData.resourceSumm]);
+    }, [totalCost, formData.resourceSumm]);
 
     useEffect(() => {
         const newCheckedTemplates = limitation.filter((template) => formData.Limitations?.includes(template.name.trim())).map((template) => template.name);
@@ -187,6 +188,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
             }));
             prevResourceSummRef.current = formData.resourceSumm;
         }
+        //setTotalCost(calculateTotalCost(formData))
     }, [formData.Cost, formData.resourceSumm]);
 
     useEffect(() => {
@@ -213,14 +215,17 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     }, [formData.Price, formData.Cost]);
 
     useEffect(() => {
-        const value = (formData?.resourceSumm * 8 * formData?.Department?.CostHour || 0) + (formData?.HiredCost || 0);
-        setFormData(prevData => {
-            if (prevData.Cost !== value) {
-                settotoalCost(calculateTotalCost({ ...prevData, Cost: value }))
-                return { ...prevData, Cost: value };
-            }
-            return prevData;
-        });
+        if (formData.resourceSumm !== undefined || formData.HiredCost !== undefined) {
+            const value = (formData?.resourceSumm * 8 * formData?.Department?.CostHour || 0) + (formData?.HiredCost || 0);
+            
+            setFormData(prevData => {
+                if (prevData.Cost !== value) {
+                    setTotalCost(calculateTotalCost({ ...prevData, Cost: value }))
+                    return { ...prevData, Cost: value };
+                }
+                return prevData;
+            });
+        }
     }, [formData?.Department?.CostHour, formData.HiredCost, formData.resourceSumm]);
 
     useEffect(() => {
@@ -352,8 +357,9 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
             setErrors({...errors, OpenProject_Template_id: ''});
         }
 
-        if (['Cost', 'tiketsCost', 'dailyCost', 'otherPayments'].indexOf(name) > -1) {
-            settotoalCost(calculateTotalCost({ ...formData, [name]: newValue }));
+        if (['Cost', 'tiketsCost', 'dailyCost', 'HotelCost', 'otherPayments'].indexOf(name) > -1) {
+            console.log(calculateTotalCost({ ...formData, [name]: newValue }),name, newValue )
+            setTotalCost(calculateTotalCost({ ...formData, [name]: newValue }));
         }
 
         // Проверка соответствия с шаблонами ограничения от исполнителей
@@ -368,7 +374,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         const { name, value } = e.target;
         let newValue = parseCurrency(value);
         setFormData({ ...formData, [name]: newValue });
-        settotoalCost(calculateTotalCost({ ...formData, [name]: newValue }));
+        setTotalCost(calculateTotalCost({ ...formData, [name]: newValue }));
         console.log(formData[name])
 
     };
@@ -1232,7 +1238,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                     <TextField
                                         label="Себестоимость с накладными"
                                         name="TotalCost"
-                                        value={formatCurrency(totoalCost)}
+                                        value={formatCurrency(totalCost)}
                                         fullWidth
                                         margin="dense"
                                         aria-describedby="Sum-helper-text"

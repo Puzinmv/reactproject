@@ -83,6 +83,20 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const selectRef = useRef(null);
     const switchRef = useRef(null);
 
+    // Добавляем обработчик ошибок ResizeObserver
+    useEffect(() => {
+        const resizeObserverError = error => {
+            if (error.message.includes('ResizeObserver')) {
+                // Игнорируем ошибку ResizeObserver
+                error.preventDefault();
+                return;
+            }
+        };
+
+        window.addEventListener('error', resizeObserverError);
+        return () => window.removeEventListener('error', resizeObserverError);
+    }, []);
+
     // Первичная загрузка данных карточки
     useEffect(() => {
         const loadCard = async () => {
@@ -211,6 +225,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                 priceAproved: false,
             }));
             prevPriceRef.current = formData.Price;
+            prevCostRef.current = formData.Cost;
         }
     }, [formData.Price, formData.Cost]);
 

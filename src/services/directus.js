@@ -438,6 +438,20 @@ export const UpdateData = async (data) => {
             Department: data.Department.id || data.Department
         };
 
+        // Преобразование числовых полей
+        const numericFields = ['HotelCost', 'dailyCost', 'otherPayments', 'tiketsCost'];
+        numericFields.forEach(field => {
+            if (field in savedata) {
+                const value = savedata[field];
+                if (typeof value === 'string') {
+                    const cleanValue = value.replace(/\s/g, '').replace(',', '.');
+                    savedata[field] = parseFloat(cleanValue) || 0;
+                } else if (value === null || value === undefined) {
+                    savedata[field] = 0;
+                }
+            }
+        });
+
         ['id', 'user_created', 'date_created', 'user_updated', 'date_updated', 'sort'].forEach(key => delete savedata[key]);
         
         Object.keys(savedata).forEach(key => {

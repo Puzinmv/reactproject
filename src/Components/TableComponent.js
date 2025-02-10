@@ -58,7 +58,10 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
     const [order, setOrder] = useState('desc');
     const [orderBy, setOrderBy] = useState('id');
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [rowsPerPage, setRowsPerPage] = useState(() => {
+        const savedValue = localStorage.getItem('rowsPerPage');
+        return savedValue ? parseInt(savedValue, 10) : 10;
+    });
     const [anchorEl, setAnchorEl] = useState(null);
     const [globalSearch, setGlobalSearch] = useState('');
     const [columnSearch, setColumnSearch] = useState({});
@@ -142,8 +145,10 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
         setPage(newPage);
     };
 
-    const handleChangeRowsPerPage = (event, newPage) => {
-        setRowsPerPage(parseInt(event.target.value, 10));
+    const handleChangeRowsPerPage = (event) => {
+        const newValue = parseInt(event.target.value, 10);
+        setRowsPerPage(newValue);
+        localStorage.setItem('rowsPerPage', newValue.toString());
         setPage(0);
     };
 

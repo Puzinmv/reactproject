@@ -61,7 +61,7 @@ export const fetchCustomer1C = async (RefKey_1C) => {
         };
         const response = await axios.request(config);
         if (response.status === 200) {
-            console.log("Запрос успешно выполнен", response.data.value);
+            //console.log("Запрос успешно выполнен", response.data.value);
             return response.data.value
         } else {
             console.error('Непредвиденный статус ответа:', response.status);

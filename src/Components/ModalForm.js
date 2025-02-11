@@ -196,13 +196,16 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     useEffect(() => {
         if (formData?.Cost && formData?.resourceSumm) setCostPerHour(`${Math.round(formData.Cost * 100 / (formData.resourceSumm * 8)) / 100} ₽/час`)
         else setCostPerHour('')
-        if (prevResourceSummRef.current !== formData.resourceSumm) {
+        console.log(prevResourceSummRef, formData.resourceSumm)
+        if (prevResourceSummRef.current !== undefined && formData.resourceSumm !== undefined && prevResourceSummRef.current !== formData.resourceSumm) {
+            console.log(prevResourceSummRef, formData.resourceSumm)
             setFormData(prevFormData => ({
                 ...prevFormData,
                 jobCalculated: false,
             }));
             prevResourceSummRef.current = formData.resourceSumm;
         }
+        
         //setTotalCost(calculateTotalCost(formData))
     }, [formData.Cost, formData.resourceSumm]);
 
@@ -259,6 +262,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
             }
             return prevData;
         });
+        console.log("useEffect STATUS")
     }, [formData.Project_created, formData.jobCalculated, formData.priceAproved]);
 
     const validateFields = () => {

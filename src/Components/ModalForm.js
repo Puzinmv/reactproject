@@ -82,20 +82,11 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const [fieldErrors, setFieldErrors] = useState({});
     const selectRef = useRef(null);
     const switchRef = useRef(null);
-    console.log(formData.priceAproved,formData.jobCalculated)
-    // Добавляем обработчик ошибок ResizeObserver
-    useEffect(() => {
-        const resizeObserverError = error => {
-            if (error.message.includes('ResizeObserver')) {
-                // Игнорируем ошибку ResizeObserver
-                error.preventDefault();
-                return;
-            }
-        };
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-        window.addEventListener('error', resizeObserverError);
-        return () => window.removeEventListener('error', resizeObserverError);
-    }, []);
+    console.log(formData.priceAproved,formData.jobCalculated )
+    // const prevPriceRef = useRef(null);
+    // const prevCostRef = useRef(null);
 
     // Первичная загрузка данных карточки
     useEffect(() => {
@@ -182,32 +173,34 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     ]); 
 
     useEffect(() => {
+        if (!formData?.resourceSumm) return;
         if (totalCost && formData?.resourceSumm) settotoalCostPerHour(`${Math.round(totalCost * 100 / (formData.resourceSumm * 8)) / 100} ₽/час`)
         else settotoalCostPerHour('')
     }, [totalCost, formData.resourceSumm]);
 
     useEffect(() => {
+        if (!formData?.Limitations) return;
         const newCheckedTemplates = limitation.filter((template) => formData.Limitations?.includes(template.name.trim())).map((template) => template.name);
         setCheckedTemplates(newCheckedTemplates);
     }, [formData.Limitations, limitation]);
 
-    const prevResourceSummRef = useRef(formData.resourceSumm);
+    // const prevResourceSummRef = useRef(formData.resourceSumm);
 
     useEffect(() => {
         if (formData?.Cost && formData?.resourceSumm) setCostPerHour(`${Math.round(formData.Cost * 100 / (formData.resourceSumm * 8)) / 100} ₽/час`)
         else setCostPerHour('')
-        console.log(prevResourceSummRef, formData.resourceSumm)
-        if (prevResourceSummRef.current !== undefined && formData.resourceSumm !== undefined && prevResourceSummRef.current !== formData.resourceSumm) {
-            console.log(prevResourceSummRef, formData.resourceSumm)
-            setFormData(prevFormData => ({
-                ...prevFormData,
-                jobCalculated: false,
-            }));
-            prevResourceSummRef.current = formData.resourceSumm;
-        }
+        // console.log(prevResourceSummRef, formData.resourceSumm)
+        // if (prevResourceSummRef.current !== undefined && formData.resourceSumm !== undefined && prevResourceSummRef.current !== formData.resourceSumm) {
+        //     console.log(prevResourceSummRef, formData.resourceSumm)
+        //     setFormData(prevFormData => ({
+        //         ...prevFormData,
+        //         jobCalculated: false,
+        //     }));
+        //     prevResourceSummRef.current = formData.resourceSumm;
+        // }
         
-        //setTotalCost(calculateTotalCost(formData))
-    }, [formData.Cost, formData.resourceSumm]);
+        setTotalCost(calculateTotalCost({Cost:formData.Cost, tiketsCost: formData.tiketsCost, HotelCost:formData.HotelCost, dailyCost: formData.dailyCost, otherPayments:formData.otherPayments}))
+    }, [formData.Cost, formData.resourceSumm, formData.tiketsCost, formData.HotelCost, formData.dailyCost, formData.otherPayments]);
 
     useEffect(() => {
         if (formData.Price && formData.frameSumm) {
@@ -218,36 +211,25 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
 
     }, [formData.Price, formData.frameSumm]);
 
-
-    // const prevPriceRef = useRef(formData.Price);
-    // const prevCostRef = useRef(formData.Cost);
-
-    // useEffect(() => {
-    //     if (prevPriceRef.current !== formData.Price) {
-    //         setFormData(prevFormData => ({
-    //             ...prevFormData,
-    //             priceAproved: false,
-    //         }));
-    //         prevPriceRef.current = formData.Price;
-    //         prevCostRef.current = formData.Cost;
-    //     }
-    // }, [formData.Price, formData.Cost]);
-
     useEffect(() => {
+        if (isInitialLoad) return;
         if (formData.resourceSumm !== undefined || formData.HiredCost !== undefined) {
+            //console.log(formData)
             const value = (formData?.resourceSumm * 8 * formData?.Department?.CostHour || 0) + (formData?.HiredCost || 0);
             
             setFormData(prevData => {
-                if (prevData.Cost !== value) {
+                if (prevData?.Cost && prevData.Cost !== value) {
+                    console.log(prevData)
                     setTotalCost(calculateTotalCost({ ...prevData, Cost: value }))
-                    return { ...prevData, Cost: value };
+                    return { ...prevData, jobCalculated: false, priceAproved: false, Cost: value };
                 }
                 return prevData;
             });
         }
-    }, [formData?.Department?.CostHour, formData.HiredCost, formData.resourceSumm]);
+    }, [formData?.Department?.CostHour, formData?.HiredCost, formData?.resourceSumm, isInitialLoad]);
 
     useEffect(() => {
+        if (![STATUS.NEW_CARD, STATUS.LABOR_COSTS_ESTIMATED, STATUS.ECONOMICS_AGREED].includes(formData.status)) return;
         let newStatus = STATUS.NEW_CARD;
         if (formData.jobCalculated && !formData.priceAproved) {
             newStatus = STATUS.LABOR_COSTS_ESTIMATED;
@@ -262,8 +244,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
             }
             return prevData;
         });
-        console.log("useEffect STATUS")
-    }, [formData.Project_created, formData.jobCalculated, formData.priceAproved]);
+    }, [formData.Project_created, formData.jobCalculated, formData.priceAproved, formData.status]);
 
     const validateFields = () => {
         const newErrors = {};
@@ -297,10 +278,10 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         }
     };
 
-    const handleCancel = () => {
-        //setFormData(row);
-        onClose();
-    };
+    // const handleCancel = () => {
+    //     //setFormData(row);
+    //     onClose();
+    // };
 
     const triggerSnackbar = (message, severity, options = {}) => {
         setSnackbarState({ open: true, message, severity, ...options });
@@ -370,17 +351,20 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                 setStartDateHelperText('');
             }
         }
-
-        setFormData({ ...formData, [name]: newValue });
+        if (name === 'Price' && formData?.Price !== newValue) {
+            setFormData({ ...formData, priceAproved: false, [name]: newValue })
+        } else {setFormData({ ...formData, [name]: newValue })}
+        
+        
 
         if (name === 'OpenProject_Template_id' && newValue) {
             setErrors({...errors, OpenProject_Template_id: ''});
         }
 
-        if (['Cost', 'tiketsCost', 'dailyCost', 'HotelCost', 'otherPayments'].indexOf(name) > -1) {
-            console.log(calculateTotalCost({ ...formData, [name]: newValue }),name, newValue )
-            setTotalCost(calculateTotalCost({ ...formData, [name]: newValue }));
-        }
+        // if (['Cost', 'tiketsCost', 'dailyCost', 'HotelCost', 'otherPayments'].indexOf(name) > -1) {
+        //     console.log(calculateTotalCost({ ...formData, [name]: newValue }),name, newValue )
+        //     setTotalCost(calculateTotalCost({ ...formData, [name]: newValue }));
+        // }
 
         // Проверка соответствия с шаблонами ограничения от исполнителей
         if (name === FORM_FIELDS.LIMITATIONS) {
@@ -588,6 +572,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
             const resourceDay = parseFloat(key.resourceDay);
             return sum + (isNaN(resourceDay) ? 0 : resourceDay);
         }, 0);
+        setIsInitialLoad(false);
         setFormData({ ...formData, JobDescription: jobDescriptions, frameSumm: frame, resourceSumm: resource });
         return true
     };
@@ -1516,7 +1501,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                 )}
                                 <Button 
                                     variant="outlined" 
-                                    onClick={handleCancel} 
+                                    onClick={onClose} 
                                     sx={{ mr: 2 }}
                                 >
                                     Отмена

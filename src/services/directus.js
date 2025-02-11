@@ -439,7 +439,7 @@ export const UpdateData = async (data) => {
         };
 
         // Преобразование числовых полей
-        const numericFields = ['HotelCost', 'dailyCost', 'otherPayments', 'tiketsCost'];
+        const numericFields = ['HotelCost', 'dailyCost', 'otherPayments', 'tiketsCost','HiredCost'];
         numericFields.forEach(field => {
             if (field in savedata) {
                 const value = savedata[field];

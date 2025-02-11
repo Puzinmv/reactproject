@@ -82,7 +82,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const [fieldErrors, setFieldErrors] = useState({});
     const selectRef = useRef(null);
     const switchRef = useRef(null);
-
+    console.log(formData.priceAproved,formData.jobCalculated)
     // Добавляем обработчик ошибок ResizeObserver
     useEffect(() => {
         const resizeObserverError = error => {
@@ -106,6 +106,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                     setFormData(row);
                     setLimitation(limitation);
                     setTotalCost(calculateTotalCost(row));
+                    console.log(row)
                 } else {
                     onClose();
                 }
@@ -215,19 +216,19 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     }, [formData.Price, formData.frameSumm]);
 
 
-    const prevPriceRef = useRef(formData.Price);
-    const prevCostRef = useRef(formData.Cost);
+    // const prevPriceRef = useRef(formData.Price);
+    // const prevCostRef = useRef(formData.Cost);
 
-    useEffect(() => {
-        if (prevPriceRef.current !== formData.Price || prevCostRef.current !== formData.Cost) {
-            setFormData(prevFormData => ({
-                ...prevFormData,
-                priceAproved: false,
-            }));
-            prevPriceRef.current = formData.Price;
-            prevCostRef.current = formData.Cost;
-        }
-    }, [formData.Price, formData.Cost]);
+    // useEffect(() => {
+    //     if (prevPriceRef.current !== formData.Price) {
+    //         setFormData(prevFormData => ({
+    //             ...prevFormData,
+    //             priceAproved: false,
+    //         }));
+    //         prevPriceRef.current = formData.Price;
+    //         prevCostRef.current = formData.Cost;
+    //     }
+    // }, [formData.Price, formData.Cost]);
 
     useEffect(() => {
         if (formData.resourceSumm !== undefined || formData.HiredCost !== undefined) {

@@ -355,7 +355,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
             setFormData({ ...formData, priceAproved: false, [name]: newValue })
         } else {setFormData({ ...formData, [name]: newValue })}
         
-        
+        if (name === 'HiredCost') setIsInitialLoad(false);
 
         if (name === 'OpenProject_Template_id' && newValue) {
             setErrors({...errors, OpenProject_Template_id: ''});

@@ -214,11 +214,11 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     useEffect(() => {
         if (isInitialLoad) return;
         if (formData.resourceSumm !== undefined || formData.HiredCost !== undefined) {
-            //console.log(formData)
-            const value = (formData?.resourceSumm * 8 * formData?.Department?.CostHour || 0) + (formData?.HiredCost || 0);
             
+            const value = (formData?.resourceSumm * 8 * formData?.Department?.CostHour || 0) + (formData?.HiredCost || 0);
+            console.log("isInitialLoad", isInitialLoad, value)
             setFormData(prevData => {
-                if (prevData?.Cost && prevData.Cost !== value) {
+                if (prevData?.Cost !== undefined && prevData.Cost !== value) {
                     console.log(prevData)
                     setTotalCost(calculateTotalCost({ ...prevData, Cost: value }))
                     return { ...prevData, jobCalculated: false, priceAproved: false, Cost: value };
@@ -355,7 +355,11 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
             setFormData({ ...formData, priceAproved: false, [name]: newValue })
         } else {setFormData({ ...formData, [name]: newValue })}
         
-        if (name === 'HiredCost') setIsInitialLoad(false);
+        if (name === 'HiredCost') {
+            console.log("isInitialLoad",isInitialLoad)
+            setIsInitialLoad(false);
+
+        }
 
         if (name === 'OpenProject_Template_id' && newValue) {
             setErrors({...errors, OpenProject_Template_id: ''});

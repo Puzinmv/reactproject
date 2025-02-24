@@ -4,8 +4,12 @@ import {
     Container, Avatar, Button, Tooltip, MenuItem
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import { Link } from 'react-router-dom';
 
-const pages = ['Карта проекта'];
+const pages = [
+    { name: 'Карта проекта', path: '/' },
+    { name: 'Оценка', path: '../grade' }
+];
 const settings = ['Выйти'];
 
 function ResponsiveAppBar({ handleLogout, current }) {
@@ -32,7 +36,6 @@ function ResponsiveAppBar({ handleLogout, current }) {
         <AppBar position="static">
             <Container maxWidth={false}>
                 <Toolbar disableGutters sx={{ justifyContent: 'space-between' }}>
-                    {/* Logo and Mobile menu */}
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <Box sx={{ display: { xs: 'none', md: 'flex' }, mr: 2 }}>
                             <img src="/logo.png" alt="Logo" style={{ height: '40px' }} />
@@ -67,8 +70,13 @@ function ResponsiveAppBar({ handleLogout, current }) {
                                 }}
                             >
                                 {pages.map((page) => (
-                                    <MenuItem key={page} onClick={handleCloseNavMenu}>
-                                        <Typography textAlign="center">{page}</Typography>
+                                    <MenuItem 
+                                        key={page.name} 
+                                        onClick={handleCloseNavMenu}
+                                        component={Link}
+                                        to={page.path}
+                                    >
+                                        <Typography textAlign="center">{page.name}</Typography>
                                     </MenuItem>
                                 ))}
                             </Menu>
@@ -84,21 +92,23 @@ function ResponsiveAppBar({ handleLogout, current }) {
                     <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
                         {pages.map((page) => (
                             <Button
-                                key={page}
+                                key={page.name}
                                 onClick={handleCloseNavMenu}
+                                component={Link}
+                                to={page.path}
                                 sx={{ my: 2, color: 'white', display: 'block' }}
                             >
-                                {page}
+                                {page.name}
                             </Button>
                         ))}
                     </Box>
 
                     {/* User menu */}
-                    {Object.keys(current).length > 0 && (
+                    {current && (
                         <Box>
-                            <Tooltip title={`${current.first_name}`}>
+                            <Tooltip title={current.first_name || ''}>
                                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                                    <Avatar alt={`${current.first_name}`} src="" />
+                                    <Avatar alt={current.first_name || ''} src="" />
                                 </IconButton>
                             </Tooltip>
                             <Menu
@@ -124,8 +134,8 @@ function ResponsiveAppBar({ handleLogout, current }) {
                                             handleLogout();
                                         }}
                                     >
-                                    <Typography textAlign="center">{setting}</Typography>
-                                </MenuItem>
+                                        <Typography textAlign="center">{setting}</Typography>
+                                    </MenuItem>
                                 ))}
                             </Menu>
                         </Box>

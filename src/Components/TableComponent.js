@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button,
     TableSortLabel, TablePagination, Paper, Checkbox, IconButton, Menu, MenuItem,
-    TextField, Tooltip, Switch, Typography, FormControlLabel, Box
+    TextField, Tooltip, Switch, Typography, FormControlLabel, Box, CircularProgress
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddIcon from '@mui/icons-material/Add'; 
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { FIELD_NAMES, STATUS, STATUS_COLORS} from '../constants/index.js';
+import { fetchDatanew } from '../services/directus.js';
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
@@ -52,21 +53,15 @@ const formatField = (field, value) => {
     return value;
 };
 
-const searchInObject = (obj, searchTerm) => {
-    if (typeof obj !== 'object' || obj === null) {
-        return String(obj).toLowerCase().includes(searchTerm);
-    }
-
-    return Object.values(obj).some(value => searchInObject(value, searchTerm));
-};
-
-
-const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
+const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelect, onCreate }) => {
     const [columns, setColumns] = useState([]);
     const [order, setOrder] = useState('desc');
     const [orderBy, setOrderBy] = useState('id');
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [rowsPerPage, setRowsPerPage] = useState(() => {
+        const savedValue = localStorage.getItem('rowsPerPage');
+        return savedValue ? parseInt(savedValue, 10) : 10;
+    });
     const [anchorEl, setAnchorEl] = useState(null);
     const [globalSearch, setGlobalSearch] = useState('');
     const [columnSearch, setColumnSearch] = useState({});
@@ -74,32 +69,71 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
     const [initiatorOptions, setinitiatorOptions] = useState([]);   // перечень инициаторов в картах
     const [departmentOptions, setdepartmentOptions] = useState([]); // перечень отделов исполнителей в картах
     const [statusOptions, setstatusOptions] = useState([]);         // перечень статусов в картах
-    const [showMyCards, setShowMyCards] = useState(true);           // показать только мои карты
+    const [showMyCards, setShowMyCards] = useState(() => {
+        const savedValue = localStorage.getItem('ShowMyCard');
+        return savedValue ? JSON.parse(savedValue) : true;
+    });
+    const [totalRows, setTotalRows] = useState(0);
+    const [loading, setLoading] = useState(false);
+    const [tableData, setLocalTableData] = useState([]); // добавляем локальное состояние для данных
+    const [filterAnchorEl, setFilterAnchorEl] = useState(null);
+    const [activeFilterColumn, setActiveFilterColumn] = useState(null);
+    const [selectedStatuses, setSelectedStatuses] = useState([]);
+
+    const loadData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await fetchDatanew({
+                page: page + 1,
+                limit: rowsPerPage,
+                sort: `${order === 'desc' ? '-' : ''}${orderBy}`,
+                search: globalSearch,
+                filters: columnSearch,
+                columns: columns.filter(col => col.visible).map(col => col.columnId),
+                currentUser: showMyCards ? CurrentUser : null
+            });
+
+            setLocalTableData(response.data);
+            setTotalRows(response.meta.total);
+        } catch (error) {
+            console.error('Error loading data:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [page, rowsPerPage, order, orderBy, globalSearch, columnSearch, columns, showMyCards, CurrentUser]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            loadData();
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [loadData]);
+
+    const handleColumnVisibilityChange = useCallback((id) => {
+        setColumns(prevColumns => {
+            const newColumns = prevColumns.map(column => 
+                column.columnId === id ? { ...column, visible: !column.visible } : column
+            );
+            localStorage.setItem('columns', JSON.stringify(newColumns));
+            return newColumns;
+        });
+    }, []);
 
     useEffect(() => {
         let savedColumns = FIELD_NAMES;
         const LocalStorageColumns = JSON.parse(localStorage.getItem('columns'));
-        if (Array.isArray(LocalStorageColumns)) {
-            if (LocalStorageColumns.length > 0) {
-                savedColumns = JSON.parse(localStorage.getItem('columns'));
-            }
+        if (Array.isArray(LocalStorageColumns) && LocalStorageColumns.length > 0) {
+            savedColumns = LocalStorageColumns;
         }
-        const SetSelect = localStorage.getItem('ShowMyCard');
-        if (SetSelect) setShowMyCards(JSON.parse(SetSelect))
-        setinitiatorOptions(['---', ...new Set(data.map(item => item?.initiator?.first_name || ''
-            //+ ' ' + item.initiator.last_name || ''
-        ))]);
-        setdepartmentOptions(['---', ...new Set(data.map(item => item.Department.Department))]);
-        setstatusOptions(['---', ...new Set(data.map(item => item.status))]);
         setColumns(savedColumns);
-    }, [data]);
+    }, []); 
 
     useEffect(() => {
-        if (JSON.stringify(columns) !== JSON.stringify(FIELD_NAMES) && columns.length>0) {
-            localStorage.setItem('columns', JSON.stringify(columns));
-        }
-        
-    }, [columns]);
+        if (Array.isArray(UserOption)) setinitiatorOptions(['---', ...UserOption]);
+        if (Array.isArray(departamentOption)) setdepartmentOptions(['---', ...new Set(departamentOption.map(item => item.Department))]);
+        setstatusOptions(Object.values(STATUS));
+    }, [departamentOption, UserOption]);
 
     const handleRequestSort = (property) => {
         const isAsc = orderBy === property && order === 'asc';
@@ -112,7 +146,9 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
     };
 
     const handleChangeRowsPerPage = (event) => {
-        setRowsPerPage(parseInt(event.target.value, 10));
+        const newValue = parseInt(event.target.value, 10);
+        setRowsPerPage(newValue);
+        localStorage.setItem('rowsPerPage', newValue.toString());
         setPage(0);
     };
 
@@ -120,10 +156,6 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
         if (onRowSelect) {
             onRowSelect(row);
         }
-    };
-
-    const handleColumnVisibilityChange = (id) => {
-        setColumns(columns.map(column => column.columnId === id ? { ...column, visible: !column.visible } : column));
     };
 
     const handleMenuOpen = (event) => {
@@ -136,14 +168,16 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
 
     const handleGlobalSearchChange = (event) => {
         setGlobalSearch(event.target.value);
+        setPage(0);
     };
 
     const handleColumnSearchChange = (event, columnId) => {
-        const value = event.target.value === '---' ? '' : event.target.value
-        setColumnSearch({
-            ...columnSearch,
+        const value = event.target.value === '---' ? '' : event.target.value;
+        setColumnSearch(prev => ({
+            ...prev,
             [columnId]: value
-        });
+        }));
+        setPage(0);
     };
 
     const handleSearchIconClick = (columnId) => {
@@ -161,103 +195,174 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
         localStorage.setItem('ShowMyCard', JSON.stringify(event.target.checked));
     };
 
-    const formatValue = (value) => {
-        if (typeof value === 'object' && value !== null && 'first_name' in value && 'last_name' in value) {
-            return value.first_name
-               // + ' ' + value.last_name || '';
-        }
-        if (typeof value === 'object' && value !== null) {
-            return JSON.stringify(value).toLowerCase();
-        } else if (typeof value === 'string') {
-            return value.toLowerCase();
-        } else if (typeof value === 'number') {
-            return value.toString().toLowerCase();
-        } else if (value instanceof Date) {
-            return value.toISOString().toLowerCase();
-        }
-        return '';
+    const handleFilterClick = (event, columnId) => {
+        event.stopPropagation();
+        setFilterAnchorEl(event.currentTarget);
+        setActiveFilterColumn(columnId);
     };
 
-    const filteredData = data.filter(row => {
-        const globalMatch = searchInObject(row, globalSearch.toLowerCase());
+    const handleFilterClose = () => {
+        setFilterAnchorEl(null);
+        setActiveFilterColumn(null);
+    };
 
-        const columnMatches = Object.keys(columnSearch).every(columnId => {
-            if (columnId === 'initiator' && showMyCards) {
-                if (CurrentUser?.email === row?.Department?.email) return  formatValue(row[columnId]).toLowerCase().includes(columnSearch[columnId].toLowerCase());
-                return row[columnId] && formatValue(row[columnId]).toLowerCase().includes(CurrentUser.first_name.toLowerCase());
-            }
-            return formatValue(row[columnId]).toLowerCase().includes(columnSearch[columnId].toLowerCase());
-        });
-        const showMyCadrMatches = !showMyCards || formatValue(row?.initiator).toLowerCase().includes(CurrentUser.first_name.toLowerCase()) || CurrentUser?.email === row?.Department?.email;
-        return globalMatch && columnMatches && showMyCadrMatches;
-    });
-
-    const sortedData = filteredData.sort((a, b) => {
-        if (orderBy) {
-            if (order === 'asc') {
-                return a[orderBy] > b[orderBy] ? 1 : -1;
-            }
-            return a[orderBy] < b[orderBy] ? 1 : -1;
+    const getFilterOptions = (columnId) => {
+        switch (columnId) {
+            case 'initiator':
+                return initiatorOptions;
+            case 'Department':
+                return departmentOptions;
+            case 'status':
+                return statusOptions;
+            default:
+                return [];
         }
-        return 0;
-    });
+    };
 
-    return (
-        <Paper>
-            <div style={{ display: 'flex', alignItems: 'center', padding: '16px' }}>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<AddIcon />}
-                    style={{ marginRight: '16px' }}
-                    onClick={onCreate}
-                >
-                    Новая карта проекта
-                </Button>
-                <FormControlLabel
-                    control={
-                        <Switch
-                            checked={showMyCards}
-                            onChange={handleSwitchChange}
-                            color="primary"
-                            style={{ marginRight: '16px' }}
-                        />
-                    }
-                    label={
-                        <Typography variant="body1" color="textPrimary">
-                            Мои карты
-                        </Typography>
-                    }
-                    labelPlacement="end"
-                />
-                <TextField
-                    label="Поиск..."
-                    value={globalSearch}
-                    onChange={handleGlobalSearchChange}
-                    variant="outlined"
-                    margin="normal"
-                    size="small"
-                    style={{ marginLeft: 'auto' }}  
-                />
-            </div>
-            <TableContainer
-                component={Paper}
-                style={{
-                    maxHeight: '76vh',
-                    overflowY: 'auto' 
+    const handleStatusFilterChange = (status) => {
+        setSelectedStatuses(prev => {
+            const newStatuses = prev.includes(status)
+                ? prev.filter(s => s !== status)
+                : [...prev, status];
+            
+            // Обновляем фильтр
+            if (newStatuses.length === 0) {
+                const { status, ...restFilters } = columnSearch;
+                setColumnSearch(restFilters);
+            } else {
+                setColumnSearch(prev => ({
+                    ...prev,
+                    status: newStatuses
+                }));
+            }
+            
+            return newStatuses;
+        });
+    };
+
+    const renderFilterMenuItem = (option, columnId) => {
+        if (columnId === 'status') {
+            return (
+                <MenuItem key={option} onClick={(e) => e.stopPropagation()}>
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={selectedStatuses.includes(option)}
+                                onChange={() => handleStatusFilterChange(option)}
+                            />
+                        }
+                        label={option}
+                    />
+                </MenuItem>
+            );
+        }
+
+        const isSelected = columnSearch[columnId] === option;
+        return (
+            <MenuItem 
+                key={option} 
+                onClick={() => {
+                    handleColumnSearchChange({ target: { value: option }}, columnId);
+                    handleFilterClose();
+                }}
+                selected={isSelected}
+                sx={{
+                    '&.Mui-selected': {
+                        backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                        '&:hover': {
+                            backgroundColor: 'rgba(25, 118, 210, 0.12)',
+                        },
+                    },
                 }}
             >
-                <Table stickyHeader>
-                    <TableHead>
-                        <TableRow>
-                            {columns.map((column) => (
-                                column.visible && (
-                                    <TableCell key={column.columnId}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            {searchingColumn === column.columnId || columnSearch[column.columnId] ? (
-                                                (column.columnId === 'initiator' || column.columnId === 'Department' || column.columnId === 'status') ? (
+                {option}
+            </MenuItem>
+        );
+    };
+
+    const isColumnFiltered = (columnId) => {
+        if (columnId === 'status') {
+            return selectedStatuses.length > 0;
+        }
+        return Boolean(columnSearch[columnId]);
+    };
+
+    return (
+
+            <Paper>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '16px' }}>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<AddIcon />}
+                        style={{ marginRight: '16px' }}
+                        onClick={onCreate}
+                    >
+                        Новая карта проекта
+                    </Button>
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={showMyCards}
+                                onChange={handleSwitchChange}
+                                color="primary"
+                                style={{ marginRight: '16px' }}
+                            />
+                        }
+                        label={
+                            <Typography variant="body1" color="textPrimary">
+                                Мои карты
+                            </Typography>
+                        }
+                        labelPlacement="end"
+                    />
+                    <TextField
+                        label="Поиск..."
+                        value={globalSearch}
+                        onChange={handleGlobalSearchChange}
+                        variant="outlined"
+                        margin="normal"
+                        size="small"
+                        style={{ marginLeft: 'auto' }}  
+                    />
+                </div>
+                <TableContainer
+                    component={Paper}
+                    style={{
+                        maxHeight: '76vh',
+                        overflowY: 'auto' 
+                    }}
+                >
+                    <Table stickyHeader>
+                        <TableHead>
+                            <TableRow>
+                                {columns.map((column) => (
+                                    column.visible && (
+                                        <TableCell key={column.columnId}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                {column.columnId === 'initiator' || column.columnId === 'Department' || column.columnId === 'status' ? (
+                                                    <TableSortLabel
+                                                        active={orderBy === column.columnId}
+                                                        direction={orderBy === column.columnId ? order : 'asc'}
+                                                        onClick={() => handleRequestSort(column.columnId)}
+                                                    >
+                                                        {column.label}
+                                                        <Tooltip title="Фильтр">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={(e) => handleFilterClick(e, column.columnId)}
+                                                                style={{ 
+                                                                    marginLeft: 4,
+                                                                    color: isColumnFiltered(column.columnId) ? '#1976d2' : 'inherit',
+                                                                    backgroundColor: isColumnFiltered(column.columnId) ? 'rgba(25, 118, 210, 0.08)' : 'inherit'
+                                                                }}
+                                                            >
+                                                                <FilterListIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </TableSortLabel>
+                                                ) : (searchingColumn === column.columnId || columnSearch[column.columnId]) ? (
                                                     <TextField
-                                                        select
                                                         hiddenLabel
                                                         value={columnSearch[column.columnId] || ''}
                                                         onChange={(event) => handleColumnSearchChange(event, column.columnId)}
@@ -266,123 +371,124 @@ const TableComponent = ({ data, CurrentUser, onRowSelect, onCreate }) => {
                                                         size="small"
                                                         margin="none"
                                                         autoFocus
-                                                        style={{ width: `${column.label.length + 7}ch` }}
                                                         InputProps={{
                                                             style: { fontSize: '0.875rem' } 
                                                         }}
-                                                    >
-                                                        {(column.columnId === 'initiator' ? initiatorOptions :
-                                                            column.columnId === 'Department' ? departmentOptions : statusOptions)
-                                                            .map(option => (
-                                                                <MenuItem
-                                                                    key={option}
-                                                                    value={option}
-                                                                    style={{ fontSize: '0.875rem', padding: '6px 16px' }}
-                                                                >
-                                                                    {option}
-                                                                </MenuItem>
-                                                            ))}
-                                                    </TextField>
+                                                        style={{ width: `${column.label.length + 7}ch` }}
+                                                    />                                                    
                                                 ) : (
-                                                        <TextField
-                                                            hiddenLabel
-                                                            value={columnSearch[column.columnId] || ''}
-                                                            onChange={(event) => handleColumnSearchChange(event, column.columnId)}
-                                                            onBlur={() => handleSearchBlur(column.columnId)}
-                                                            variant="standard"
-                                                            size="small"
-                                                            margin="none"
-                                                            autoFocus
-                                                            InputProps={{
-                                                                style: { fontSize: '0.875rem' } 
-                                                            }}
-                                                            style={{ width: `${column.label.length + 7}ch` }}
-                                                        />
-                                                )
-                                            ) : (
-                                                <TableSortLabel
-                                                    active={orderBy === column.columnId}
-                                                    direction={orderBy === column.columnId ? order : 'asc'}
-                                                    onClick={(event) => {
-                                                        if (event.target.closest('.MuiTableSortLabel-icon')) {
-                                                            handleRequestSort(column.columnId);
-                                                        }
-                                                    }}
-                                                >
-                                                    {column.label}
-                                                    <Tooltip title="Поиск">
-                                                            <IconButton
-                                                                size="small"
-                                                                onClick={() => handleSearchIconClick(column.columnId)}
-                                                                style={{ marginLeft: 4 }}
-                                                            >
-                                                                {(column.columnId === 'initiator' || column.columnId === 'Department' || column.columnId === 'status') ? (
-                                                                    <FilterListIcon fontSize="small" />
-                                                                ) : (
-                                                                    <SearchIcon fontSize="small" />
-                                                                )}
-                                                            </IconButton>
-                                                    </Tooltip>
-                                                </TableSortLabel>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                )
-                            ))}
-                            <TableCell style={{ padding: 0, width: 'auto' }}>
-                                <IconButton onClick={handleMenuOpen} style={{ float: 'right' }}>
-                                    <MoreVertIcon />
-                                </IconButton>
-                                <Menu
-                                    anchorEl={anchorEl}
-                                    open={Boolean(anchorEl)}
-                                    onClose={handleMenuClose}
-                                >
-                                    {columns.map((column) => (
-                                        <MenuItem key={column.columnId} onClick={() => handleColumnVisibilityChange(column.columnId)}>
-                                            <Checkbox checked={column.visible} />
-                                            {column.label}
-                                        </MenuItem>
-                                    ))}
-                                </Menu>
-                            </TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {(rowsPerPage > 0 ? sortedData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage) : sortedData).map((row) => (
-                            <TableRow
-                                key={row.id}
-                                onClick={() => handleRowClick(row)}
-                                style={{
-                                    cursor: 'pointer',
-                                    transition: 'background-color 0.3s',
-                                }}
-                                hover={true}
-                            >
-                                {columns.map((column) => (
-                                    column.visible && (
-                                        <TableCell key={column.columnId}>
-                                            {formatField(column.columnId, row[column.columnId])}
+                                                    <TableSortLabel
+                                                        active={orderBy === column.columnId}
+                                                        direction={orderBy === column.columnId ? order : 'asc'}
+                                                        onClick={(event) => {
+                                                            if (event.target.closest('.MuiTableSortLabel-icon')) {
+                                                                handleRequestSort(column.columnId);
+                                                            }
+                                                        }}
+                                                    >
+                                                        {column.label}
+                                                        <Tooltip title="Поиск">
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={() => handleSearchIconClick(column.columnId)}
+                                                                    style={{ marginLeft: 4 }}
+                                                                >
+                                                                    {(column.columnId === 'initiator' || column.columnId === 'Department' || column.columnId === 'status') ? (
+                                                                        <FilterListIcon fontSize="small" />
+                                                                    ) : (
+                                                                        <SearchIcon fontSize="small" />
+                                                                    )}
+                                                                </IconButton>
+                                                        </Tooltip>
+                                                    </TableSortLabel>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     )
                                 ))}
+                                <TableCell style={{ padding: 0, width: 'auto' }}>
+                                    <IconButton onClick={handleMenuOpen} style={{ float: 'right' }}>
+                                        <MoreVertIcon />
+                                    </IconButton>
+                                    <Menu
+                                        anchorEl={anchorEl}
+                                        open={Boolean(anchorEl)}
+                                        onClose={handleMenuClose}
+                                    >
+                                        {columns.map((column) => (
+                                            <MenuItem key={column.columnId} onClick={() => handleColumnVisibilityChange(column.columnId)}>
+                                                <Checkbox checked={column.visible} />
+                                                {column.label}
+                                            </MenuItem>
+                                        ))}
+                                    </Menu>
+                                </TableCell>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-            <TablePagination
-                rowsPerPageOptions={[10, 50, 100, { value: -1, label: 'Все' }]}
-                component="div"
-                count={filteredData.length}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={handleChangePage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                labelRowsPerPage="Показать строк на странице:"
-                labelDisplayedRows={({ from, to, count }) => `${from}-${to} из ${count}`} 
-            />
-        </Paper>
+                        </TableHead>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={columns.filter(col => col.visible).length + 1}>
+                                        <CircularProgress />
+                                    </TableCell>
+                                </TableRow>
+                            ) : !tableData || tableData.length === 0 ? (
+                                <TableRow>
+                                    <TableCell 
+                                        colSpan={columns.filter(col => col.visible).length + 1}
+                                        style={{ textAlign: 'center', padding: '20px' }}
+                                    >
+                                        <Typography variant="h6">
+                                            Данные не найдены
+                                        </Typography>
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                tableData.map((row) => (
+                                    <TableRow
+                                        key={row.id}
+                                        onClick={() => handleRowClick(row)}
+                                        style={{
+                                            cursor: 'pointer',
+                                            transition: 'background-color 0.3s',
+                                        }}
+                                        hover={true}
+                                    >
+                                        {columns.map((column) => (
+                                            column.visible && (
+                                            <TableCell key={column.columnId}>
+                                                {formatField(column.columnId, row[column.columnId])}
+                                            </TableCell>
+                                        )
+                                    ))}
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+                <TablePagination
+                    rowsPerPageOptions={[10, 50, 100, { value: -1, label: 'Все' }]}
+                    component="div"
+                    count={Number(totalRows)}
+                    rowsPerPage={rowsPerPage}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    labelRowsPerPage="Показать строк на странице:"
+                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} из ${count}`} 
+                />
+                <Menu
+                    anchorEl={filterAnchorEl}
+                    open={Boolean(filterAnchorEl)}
+                    onClose={handleFilterClose}
+                >
+                    {activeFilterColumn && getFilterOptions(activeFilterColumn).map((option) => 
+                        renderFilterMenuItem(option, activeFilterColumn)
+                    )}
+                </Menu>
+            </Paper>
+
     );
 };
 

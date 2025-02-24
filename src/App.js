@@ -1,83 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
 import TableComponent from './Components/TableComponent.js';
 import ModalForm from './Components/ModalForm.js';
 import ColumnVisibilityModal from './Components/ColumnVisibilityModal.js';
-import LoginForm from './Components/LoginForm.js';
 import CreateForm from './Components/CreateForm.js';
-import ResponsiveAppBar from './Components/ResponsiveAppBar.js';
-import { loginEmail, loginAD, logout, fetchData, getToken, Update1CField } from './services/directus';
+import { Update1CField, fetchInitData, getCurrentUser } from './services/directus';
 import getNewCardData from './constants/index.js';
 import { GetUser1C } from './services/1c';
+import AuthWrapper from './Components/AuthWrapper';
 
-const theme = createTheme({
-    typography: {
-        fontFamily: 'Roboto, sans-serif',
-    },
-    components: {
-        MuiTableRow: {
-            styleOverrides: {
-                root: {
-                    "&.MuiTableRow-hover:hover": {
-                        backgroundColor: '#cfe2f3',
-                    },
-                },
-            },
-        },
-    },
-});
 
 function App() {
-    const [selectedRow, setSelectedRow] = useState(null);
+    const [SelectedRowId, setSelectedRowId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
-    const [tableData, setTableData] = useState([]);
     const [CurrentUser, setCurrentUser] = useState({});
+    const [UserOption, setUserOption] = useState({});
     const [departament, setdepartament] = useState([]);
-    const [limitation, setLimitation] = useState([]);
     const navigate = useNavigate();
     const location = useLocation();
 
 
-    useEffect(() => {
+    const fetchCurrentUserData = useCallback(async () => {
         try {
-            const token = async () => await getToken();
-            token().then((token) => {
-                if (token) {
-                    fetchTableData()
-                }
-            })
-
-        } catch (e) {
-            setCurrentUser({});
-        }
-    }, []);
-
-    useEffect(() => {
-        const searchParams = new URLSearchParams(location.search);
-        const rowId = searchParams.get('id');
-        if (rowId) {
-            const row = tableData.find(item => item.id === parseInt(rowId));
-            if (row) {
-                setSelectedRow(row);
-                setIsModalOpen(true);
-            }
-        }
-    }, [location.search, tableData]);
-
-    const fetchTableData = async () => {
-        try {
-            const [data, departament, limitationTemplate, user] = await fetchData();
-            console.log('Data', data);
-            console.log('departament', departament);
-            console.log('user', user);
-            console.log('limitationTemplate', limitationTemplate);
-            setTableData(data);
+            const user = await getCurrentUser();
             setCurrentUser(user);
-            setdepartament(departament)
-            setLimitation(limitationTemplate)
             if (user?.first_name) {
                 const user1C = await GetUser1C(user.first_name)
                 if (user1C && user1C !== user?.RefKey_1C) {
@@ -90,94 +38,87 @@ function App() {
         } catch (error) {
             console.error(error);
         }
-    };
+    }, []);
 
-    const handleLogout = async () => {
-        await logout();
-        setCurrentUser({});
-    };
+    const fetchTableData = useCallback(async () => {
+        try {
+            const [Users, Department] = await fetchInitData();
+            console.log('Users', Users);
+            console.log('departament', Department);
+            setdepartament(Department)
+            setUserOption(Users.map(item => item.first_name))
+            await fetchCurrentUserData();
+        } catch (error) {
+            console.error(error);
+        }
+    }, [fetchCurrentUserData]);
 
+    const onLogin = useCallback(async () => {
+        await fetchCurrentUserData()
+        await fetchTableData();
+    }, [fetchCurrentUserData, fetchTableData]);
+
+    useEffect(() => {
+        const searchParams = new URLSearchParams(location.search);
+        const rowId = searchParams.get('id');
+        if (rowId) {
+            //fetchTableData();
+            setSelectedRowId(rowId);
+            setIsModalOpen(true);
+        }
+    }, [location.search]);
+
+    useEffect(() => {
+        onLogin();
+    }, [onLogin]);
+    
     const handleRowSelect = (row) => {
-        setSelectedRow(row);
+        setSelectedRowId(row.id);
         setIsModalOpen(true);
         navigate(`?id=${row.id}`);
-        fetchTableData();
     };
 
     const handleCreate = () => {
-        setSelectedRow(getNewCardData(CurrentUser));
         setIsCreateOpen(true);
     };
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setIsCreateOpen(false);
-        setSelectedRow(null);
+        setSelectedRowId(null);
         navigate('/');
-    };
-
-    const handleLogin = async (email, password, isAD) => {
-        try {
-            if (isAD) {
-                const token = await loginAD(email, password);
-                if (token) {
-                    fetchTableData();
-                    return true;
-                }
-                return false;
-            } else {
-                const token = await loginEmail(email, password);
-                if (token) {
-                    fetchTableData();
-                    return true;
-                }
-                return false;
-            }
-
-        } catch (error) {
-            return false;
-        }
     };
 
     const handleToggleColumnModal = () => {
         setIsColumnModalOpen(!isColumnModalOpen);
     };
 
-    const handleDataSaved = () => {
-        fetchTableData();
-    };
-
     return (
-        <ThemeProvider theme={theme}>
-            <ResponsiveAppBar handleLogout={handleLogout} current={CurrentUser} />
+        <AuthWrapper isLiginFunc = {onLogin}>
             <div className="App">
-                {Object.keys(CurrentUser).length ? (
-                    <TableComponent
-                        data={tableData}
-                        CurrentUser={CurrentUser}
-                        onRowSelect={handleRowSelect}
-                        onCreate={handleCreate}
-                    />
-                ) : (
-                    <LoginForm onLogin={handleLogin} />
-                )}
+                <TableComponent
+                    UserOption={UserOption}
+                    departamentOption={departament}
+                    CurrentUser={CurrentUser}
+                    onRowSelect={handleRowSelect}
+                    onCreate={handleCreate}
+                />
                 {isModalOpen && (
                     <ModalForm
-                        row={selectedRow}
+                        rowid={SelectedRowId}
                         departament={departament}
                         onClose={handleCloseModal}
                         currentUser={CurrentUser}
-                        onDataSaved={handleDataSaved}
-                        limitation={limitation}
+                        onDataSaved={fetchTableData}
                     />
                 )}
                 {isCreateOpen && (
                     <CreateForm
-                        row={selectedRow}
+                        row={getNewCardData(CurrentUser)}
                         departament={departament}
                         currentUser={CurrentUser}
                         onClose={handleCloseModal}
-                        onDataSaved={handleDataSaved}
+                        onDataSaved={fetchTableData}
                     />
                 )}
                 {isColumnModalOpen && (
@@ -186,7 +127,7 @@ function App() {
                     />
                 )}
             </div>
-        </ThemeProvider>
+        </AuthWrapper>
     );
 }
 

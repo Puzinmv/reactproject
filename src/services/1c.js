@@ -5,7 +5,7 @@ const LINKS ={
     MAIN: 'https://1c.asterit.ru/ut_11_5_asterit/odata/standard.odata/',
     USER: 'Catalog_Пользователи'
  }
-const API_KEY = '0J/Rg9C30LjQvSDQnC7Qki46QmxvdW1pbmUhMQ=='
+const API_KEY = '0J7QsdC80LXQvTpuRTZ6YW1hcA=='
 const THRESHOLD = 0.3 // Чем ниже, тем более строгий поиск
 
 
@@ -61,7 +61,7 @@ export const fetchCustomer1C = async (RefKey_1C) => {
         };
         const response = await axios.request(config);
         if (response.status === 200) {
-            console.log("Запрос успешно выполнен", response.data.value);
+            //console.log("Запрос успешно выполнен", response.data.value);
             return response.data.value
         } else {
             console.error('Непредвиденный статус ответа:', response.status);

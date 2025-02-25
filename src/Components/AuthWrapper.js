@@ -22,7 +22,7 @@ const theme = createTheme({
     },
 });
 
-function AuthWrapper({ children, isLiginFunc }) {
+function AuthWrapper({ children, isLoginFunc }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [savedSearchParams, setSavedSearchParams] = useState('');
@@ -86,7 +86,7 @@ function AuthWrapper({ children, isLiginFunc }) {
                     if (savedSearchParams) {
                         window.history.replaceState({}, '', savedSearchParams);
                     }
-                    isLiginFunc();
+                    isLoginFunc();
                     return true;
                 }
             }

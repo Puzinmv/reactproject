@@ -94,7 +94,7 @@ function App() {
     };
 
     return (
-        <AuthWrapper isLiginFunc = {onLogin}>
+        <AuthWrapper isLoginFunc = {onLogin}>
             <div className="App">
                 <TableComponent
                     UserOption={UserOption}

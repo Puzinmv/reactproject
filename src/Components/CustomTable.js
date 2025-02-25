@@ -144,15 +144,15 @@ export default function CustomTable({ depatmentid, jobDescriptions, projectCardR
             });
 
             // Заполняем дополнительные ячейки
-            worksheet.getCell('D22').value = price; // Цена
-            worksheet.getCell('J22').value = cost;  // Себестоимость
+            worksheet.getCell('D26').value = price; // Цена
+            worksheet.getCell('J26').value = cost;  // Себестоимость
 
-            worksheet.getCell('C22').value = { 
-                formula: '=SUM(C7:C21)',
+            worksheet.getCell('C26').value = { 
+                formula: '=SUM(C7:C25)',
                 result: rows.reduce((sum, row) => sum + (Number(row.frameDay) || 0), 0)
             };
-            worksheet.getCell('I22').value = { 
-                formula: '=SUM(I7:I21)',
+            worksheet.getCell('I26').value = { 
+                formula: '=SUM(I7:I25)',
                 result: rows.reduce((sum, row) => sum + (Number(row.resourceDay) || 0), 0)
             };
             // Включаем полный пересчет формул при загрузке

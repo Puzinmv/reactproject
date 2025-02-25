@@ -221,7 +221,7 @@ function GradeApp() {
     const isMonthClosed = (month) => closedMonths.includes(month);
 
     return (
-        <AuthWrapper isLiginFunc={fetchData}>
+        <AuthWrapper isLoginFunc={fetchData}>
             <Container maxWidth="lg" sx={{ py: 4 }}>
                 <Typography 
                     variant="h3" 

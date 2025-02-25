@@ -199,5 +199,75 @@ export const GetProjectTemtplate = async () => {
     return data
 };
 
+export const GetProjects = async () => {
+    try {
+        
+        let allProjects = [];
+        let offset = 1;
+        const pageSize = 100;
+        
+        // Добавляем фильтр для исключения шаблонов
+        const templatedFilter = encodeURIComponent('[{"templated":{"operator":"=","values":["f"]}}]');
+        
+        while (true) {
+            const projectsConfig = {
+                method: 'get',
+                url: `${LINKS.PROJECT}?pageSize=${pageSize}&offset=${offset}&filters=${templatedFilter}`,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Basic ' + API_KEY
+                }
+            };
+            
+            const projectsResponse = await axios.request(projectsConfig);
+            const projects = projectsResponse.data._embedded.elements;
+            allProjects = [...allProjects, ...projects];
+            
+            if (projects.length < pageSize) {
+                break;
+            }
+            offset += pageSize;
+        }
+
+        // Получаем информацию о работах для каждого проекта
+        const projectsWithWP = await Promise.all(allProjects.map(async (project) => {
+            try {
+                const wpConfig = {
+                    method: 'get',
+                    url: `${LINKS.PROJECT}${project.id}/work_packages?filters=[{"status_id":{"operator":"*"}}]&pageSize=1&sumElementsPerGroup=true`,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Basic ' + API_KEY
+                    }
+                };
+                
+                const wpResponse = await axios.request(wpConfig);
+                const wpSummary = wpResponse.data._embedded.elements[0] || {};
+                
+                return {
+                    ...project,
+                    workPackages: {
+                        startDate: wpSummary.startDate,
+                        dueDate: wpSummary.dueDate,
+                        duration: wpSummary.duration,
+                        estimatedTime: wpSummary.estimatedTime,
+                        spentTime: wpSummary.spentTime,
+                        remainingTime: wpSummary.remainingTime,
+                        percentageDone: wpSummary.percentageDone,
+                        status: wpSummary._links?.status?.title
+                    }
+                };
+            } catch (error) {
+                console.error(`Ошибка при получении work packages для проекта ${project.id}:`, error);
+                return project;
+            }
+        }));
+
+        return projectsWithWP;
+    } catch (error) {
+        console.error('Ошибка при получении списка проектов:', error);
+        throw error;
+    }
+};
 
 export default CreateProject;

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import GradeApp from './GradeApp'
+// import AnalyticsApp from './AnalyticsApp'
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
@@ -13,6 +14,7 @@ root.render(
         <Routes>
             <Route path="/" element={<App />} />
             <Route path="/grade" element={<GradeApp />} />
+            {/* <Route path="/analytics" element={<AnalyticsApp />} /> */}
         </Routes>
     </Router>
   //</React.StrictMode>

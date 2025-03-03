@@ -83,6 +83,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const selectRef = useRef(null);
     const switchRef = useRef(null);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [aiJobDescriptions, setAiJobDescriptions] = useState([]);
 
     console.log(formData.priceAproved,formData.jobCalculated )
     // const prevPriceRef = useRef(null);
@@ -97,6 +98,9 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                     setFormData(row);
                     setLimitation(limitation);
                     setTotalCost(calculateTotalCost(row));
+                    if (row.aiJobDescriptions) {
+                        setAiJobDescriptions(row.aiJobDescriptions);
+                    }
                     console.log(row)
                 } else {
                     onClose();
@@ -980,8 +984,17 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                     <CustomTable
                                         depatmentid={formData.Department?.id || -1}
                                         jobDescriptions={formData?.JobDescription || []}
+                                        aiJobDescriptions={aiJobDescriptions}
                                         projectCardRole={currentUser?.ProjectCardRole || ''}
                                         handleJobChange={handleJobChange}
+                                        handleAiJobChange={(newAiDescriptions) => {
+                                            setAiJobDescriptions(newAiDescriptions);
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                aiJobDescriptions: newAiDescriptions
+                                            }));
+                                            return true;
+                                        }}
                                         disabled={isReadOnly}
                                         price={formData?.Price}
                                         cost={formData?.Cost}

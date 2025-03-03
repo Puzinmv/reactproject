@@ -201,7 +201,7 @@ export const GetProjectTemtplate = async () => {
 
 export const GetProjects = async () => {
     try {
-        
+        const API_KEY = process.env.REACT_APP_OPENPROJECT_API_KEY;
         let allProjects = [];
         let offset = 1;
         const pageSize = 100;

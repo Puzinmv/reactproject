@@ -639,4 +639,23 @@ export const openMonthGrades = async (month) => {
     }
 };
 
+export const fetchAITemplates = async (departmentId) => {
+    try {
+        const templates = await directus.request(
+            readItems('TemplateFromAI', {
+                fields: ['JobDescription'],
+                filter: {
+                    Department: {
+                        _eq: departmentId
+                    }
+                }
+            })
+        );
+        return templates;
+    } catch (error) {
+        console.error('Ошибка при получении AI шаблонов:', error);
+        throw error;
+    }
+};
+
 export default directus;

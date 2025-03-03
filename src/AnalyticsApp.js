@@ -58,7 +58,7 @@ function AnalyticsApp() {
 
     return (
        // <AuthWrapper isLoginFunc={fetchData}>
-            <Container maxWidth="lg" sx={{ py: 4 }}>
+            <Container maxWidth={false} disableGutters>
                 <Typography 
                     variant="h3" 
                     component="h1" 
@@ -72,28 +72,35 @@ function AnalyticsApp() {
                     Отчеты
                 </Typography>
 
-                <TableContainer component={Paper} sx={{ mb: 4 }}>
+                <TableContainer 
+                    component={Paper} 
+                    sx={{ 
+                        mb: 4,
+                        maxHeight: 'calc(100vh - 200px)', // Высота таблицы с учетом отступов
+                        width: '100%' // Полная ширина
+                    }}
+                >
                     {loading ? (
                         <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
                             <CircularProgress />
                         </Box>
                     ) : data ? (
-                        <Table>
+                        <Table stickyHeader sx={{ minWidth: 2000 }}> {/* Минимальная ширина для горизонтального скролла */}
                             <TableHead>
                                 <TableRow>
-                                    <TableCell>ID</TableCell>
-                                    <TableCell>Название</TableCell>
-                                    <TableCell>Заказчик</TableCell>
-                                    <TableCell>Контактное лицо</TableCell>
-                                    <TableCell>Дата начала</TableCell>
-                                    <TableCell>Дата окончания</TableCell>
-                                    <TableCell>Длительность</TableCell>
-                                    <TableCell>План. время</TableCell>
-                                    <TableCell>Затр. время</TableCell>
-                                    <TableCell>Ост. время</TableCell>
-                                    <TableCell>Прогресс</TableCell>
-                                    <TableCell>Статус задач</TableCell>
-                                    <TableCell>Статус проекта</TableCell>
+                                    <TableCell sx={{ minWidth: 80 }}>ID</TableCell>
+                                    <TableCell sx={{ minWidth: 200 }}>Название</TableCell>
+                                    <TableCell sx={{ minWidth: 150 }}>Заказчик</TableCell>
+                                    <TableCell sx={{ minWidth: 150 }}>Контактное лицо</TableCell>
+                                    <TableCell sx={{ minWidth: 120 }}>Дата начала</TableCell>
+                                    <TableCell sx={{ minWidth: 120 }}>Дата окончания</TableCell>
+                                    <TableCell sx={{ minWidth: 120 }}>Длительность</TableCell>
+                                    <TableCell sx={{ minWidth: 120 }}>План. время</TableCell>
+                                    <TableCell sx={{ minWidth: 120 }}>Затр. время</TableCell>
+                                    <TableCell sx={{ minWidth: 120 }}>Ост. время</TableCell>
+                                    <TableCell sx={{ minWidth: 100 }}>Прогресс</TableCell>
+                                    <TableCell sx={{ minWidth: 150 }}>Статус задач</TableCell>
+                                    <TableCell sx={{ minWidth: 150 }}>Статус проекта</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>

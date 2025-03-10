@@ -21,7 +21,6 @@ function App() {
     const navigate = useNavigate();
     const location = useLocation();
 
-
     const fetchCurrentUserData = useCallback(async () => {
         try {
             const user = await getCurrentUser();
@@ -94,7 +93,7 @@ function App() {
     };
 
     return (
-        <AuthWrapper isLoginFunc = {onLogin}>
+        <AuthWrapper isLoginFunc={onLogin}>
             <div className="App">
                 <TableComponent
                     UserOption={UserOption}

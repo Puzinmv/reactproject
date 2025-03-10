@@ -4,20 +4,29 @@ import './index.css';
 import App from './App';
 import GradeApp from './GradeApp'
 import AnalyticsApp from './AnalyticsApp'
+import AIChat from './pages/AIChat';
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
+import { CssBaseline } from '@mui/material';
+import { theme } from './styles/theme';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  //<React.StrictMode>
+  <React.StrictMode>
     <Router>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
         <Routes>
-            <Route path="/" element={<App />} />
-            <Route path="/grade" element={<GradeApp />} />
-            <Route path="/analytics" element={<AnalyticsApp />} />
+          <Route path="/" element={<App />} />
+          <Route path="/grade" element={<GradeApp />} />
+          <Route path="/analytics" element={<AnalyticsApp />} />
+          <Route path="/AI" element={<AIChat />} />
+          <Route path="/AI/:chatId" element={<AIChat />} />
         </Routes>
+      </ThemeProvider>
     </Router>
-  //</React.StrictMode>
+  </React.StrictMode>
 );
 
 // If you want to start measuring performance in your app, pass a function

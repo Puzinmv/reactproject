@@ -658,4 +658,89 @@ export const fetchAITemplates = async (departmentId) => {
     }
 };
 
+// Функции для работы с AI чатами
+
+export const fetchUserChats = async () => {
+    try {
+        const chats = await directus.request(readItems('AI_Chats', {
+            fields: ['*'],
+            filter: {
+                user_created: {
+                    _eq: '$CURRENT_USER'
+                }
+            },
+            sort: ['-date_created']
+        }));
+        return chats;
+    } catch (error) {
+        console.error('Ошибка при получении чатов:', error);
+        throw error;
+    }
+};
+
+export const createNewChat = async (title) => {
+    try {
+        const chat = await directus.request(createItem('AI_Chats', {
+            title: title || 'Новый чат'
+        }));
+        return chat;
+    } catch (error) {
+        console.error('Ошибка при создании чата:', error);
+        throw error;
+    }
+};
+
+export const fetchChatMessages = async (chatId) => {
+    try {
+        const messages = await directus.request(readItems('AI_Messages', {
+            fields: ['*'],
+            filter: {
+                chat_id: {
+                    _eq: chatId
+                }
+            },
+            sort: ['date_created']
+        }));
+        return messages;
+    } catch (error) {
+        console.error('Ошибка при получении сообщений:', error);
+        throw error;
+    }
+};
+
+export const saveMessage = async (chatId, content, role, reasoning = null) => {
+    try {
+        const message = await directus.request(createItem('AI_Messages', {
+            chat_id: chatId,
+            content,
+            role,
+            reasoning
+        }));
+        return message;
+    } catch (error) {
+        console.error('Ошибка при сохранении сообщения:', error);
+        throw error;
+    }
+};
+
+export const updateChatTitle = async (chatId, title) => {
+    try {
+        await directus.request(updateItem('AI_Chats', chatId, {
+            title
+        }));
+    } catch (error) {
+        console.error('Ошибка при обновлении названия чата:', error);
+        throw error;
+    }
+};
+
+export const deleteChat = async (chatId) => {
+    try {
+        await directus.request(deleteItem('AI_Chats', chatId));
+    } catch (error) {
+        console.error('Ошибка при удалении чата:', error);
+        throw error;
+    }
+};
+
 export default directus;

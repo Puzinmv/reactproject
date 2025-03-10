@@ -675,7 +675,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                     fontFamily: 'Roboto, sans-serif',
                     ml: '5rem',
                     mr: '5rem',
-                    maxHeight: '90vh',
+                    maxHeight: '95vh',
                 }}>
                     <Box sx={{ borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <Tabs value={tabIndex} onChange={handleTabChange} aria-label="form tabs" sx={{ flexShrink: 0 }} >

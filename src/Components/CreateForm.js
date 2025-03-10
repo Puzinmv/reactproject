@@ -239,7 +239,7 @@ const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => 
                 fontFamily: 'Roboto, sans-serif',
                 ml: '5rem',
                 mr: '5rem',
-                maxHeight: '90vh',
+                maxHeight: '95vh',
             }}>
                 <Box sx={{
                     maxHeight: 'calc(90vh - 64px)',

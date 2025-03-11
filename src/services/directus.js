@@ -743,4 +743,84 @@ export const deleteChat = async (chatId) => {
     }
 };
 
+export const fetchSystemPrompt = async (modelId) => {
+    try {
+        const prompts = await directus.request(readItems('AI_System_Prompts', {
+            fields: ['*'],
+            // filter: {
+            //     model_id: {
+            //         _eq: modelId
+            //     }
+            // },
+            limit: 1
+        }));
+        
+        return prompts.length > 0 ? prompts[0].prompt : null;
+    } catch (error) {
+        console.error('Ошибка при получении системного промпта:', error);
+        return null;
+    }
+};
+
+export const fetchUserPromptWrapper = async (modelId) => {
+    try {
+        const wrappers = await directus.request(readItems('AI_User_Prompt_Wrappers', {
+            fields: ['*'],
+            // filter: {
+            //     model_id: {
+            //         _eq: modelId
+            //     }
+            // },
+            limit: 1
+        }));
+        console.log(wrappers)
+        return wrappers.length > 0 ? wrappers[0].wrapper : null;
+    } catch (error) {
+        console.error('Ошибка при получении обертки промпта:', error);
+        return null;
+    }
+};
+
+export const updateSystemPrompt = async (prompt) => {
+    try {
+        const prompts = await directus.request(readItems('AI_System_Prompts', {
+            limit: 1
+        }));
+
+        if (prompts.length > 0) {
+            await directus.request(updateItem('AI_System_Prompts', prompts[0].id, {
+                prompt
+            }));
+        } else {
+            await directus.request(createItem('AI_System_Prompts', {
+                prompt
+            }));
+        }
+    } catch (error) {
+        console.error('Ошибка при обновлении системного промпта:', error);
+        throw error;
+    }
+};
+
+export const updateUserPromptWrapper = async (wrapper) => {
+    try {
+        const wrappers = await directus.request(readItems('AI_User_Prompt_Wrappers', {
+            limit: 1
+        }));
+
+        if (wrappers.length > 0) {
+            await directus.request(updateItem('AI_User_Prompt_Wrappers', wrappers[0].id, {
+                wrapper
+            }));
+        } else {
+            await directus.request(createItem('AI_User_Prompt_Wrappers', {
+                wrapper
+            }));
+        }
+    } catch (error) {
+        console.error('Ошибка при обновлении обертки промпта:', error);
+        throw error;
+    }
+};
+
 export default directus;

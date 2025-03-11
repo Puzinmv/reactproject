@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Grid, Box, Typography, TextField, Button, Paper, CircularProgress, IconButton, FormControl, InputLabel, Select, MenuItem, Tooltip } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
@@ -6,12 +6,14 @@ import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import InfoIcon from '@mui/icons-material/Info';
-import { fetchUserChats, createNewChat, fetchChatMessages, saveMessage, updateChatTitle, deleteChat } from '../services/directus';
+import SettingsIcon from '@mui/icons-material/Settings';
+import { fetchUserChats, createNewChat, fetchChatMessages, saveMessage, updateChatTitle, deleteChat, fetchSystemPrompt, fetchUserPromptWrapper } from '../services/directus';
 import { sendMessageToAI } from '../services/openrouter';
 import AIChatMessage from '../Components/AIChatMessage';
 import AIChatSidebar from '../Components/AIChatSidebar';
 import AuthWrapper from '../Components/AuthWrapper';
 import { AI_MODELS, DEFAULT_MODEL } from '../constants/aiModels';
+import PromptSettingsModal from '../Components/PromptSettingsModal';
 
 function AIChat() {
     const { chatId } = useParams();
@@ -28,32 +30,84 @@ function AIChat() {
         const savedModel = localStorage.getItem('selectedAIModel');
         return savedModel || DEFAULT_MODEL;
     });
+    const [systemPrompt, setSystemPrompt] = useState(null);
+    const [userPromptWrapper, setUserPromptWrapper] = useState(null);
+    const [isPromptSettingsOpen, setIsPromptSettingsOpen] = useState(false);
 
-    
-    const loadData = async () => {
+    const handleNewChat = useCallback(async () => {
         try {
+            const newChat = await createNewChat();
+            navigate(`/AI/${newChat.id}`);
+            setChats(prevChats => [newChat, ...prevChats]);
+
+            if (systemPrompt) {
+                console.log('Добавление системного промпта:', systemPrompt);
+                const systemMessage = await saveMessage(
+                    newChat.id,
+                    systemPrompt,
+                    'system'
+                );
+                setMessages([systemMessage]);
+            }
+        } catch (error) {
+            console.error('Ошибка при создании нового чата:', error);
+        }
+    }, [navigate, systemPrompt]);
+
+    const loadData = useCallback(async () => {
+        try {
+            // Сначала загружаем промпты
+            const [newSystemPrompt, newWrapper] = await Promise.all([
+                fetchSystemPrompt(selectedModel),
+                fetchUserPromptWrapper(selectedModel)
+            ]);
+            console.log('Загружены промпты:', { 
+                systemPrompt: newSystemPrompt, 
+                userWrapper: newWrapper 
+            });
+            setSystemPrompt(newSystemPrompt);
+            setUserPromptWrapper(newWrapper);
+
+            // Затем загружаем чаты
             const userChats = await fetchUserChats();
             setChats(userChats);
-            console.log(userChats)
-            if (!chatId && userChats.length > 0) {
-                navigate(`/AI/${userChats[0].id}`);
-                setCurrentChat(userChats[0]);
-            } else if (!chatId) {
-                handleNewChat();
+            
+            if (!chatId) {
+                if (userChats.length > 0) {
+                    navigate(`/AI/${userChats[0].id}`);
+                    setCurrentChat(userChats[0]);
+                } else {
+                    // Создаем новый чат с системным промптом
+                    const newChat = await createNewChat();
+                    navigate(`/AI/${newChat.id}`);
+                    setChats([newChat]);
+                    
+                    // Добавляем системный промпт если он есть
+                    if (newSystemPrompt) {
+                        console.log('Добавление системного промпта в новый чат:', newSystemPrompt);
+                        const systemMessage = await saveMessage(
+                            newChat.id,
+                            newSystemPrompt,
+                            'system'
+                        );
+                        setMessages([systemMessage]);
+                    }
+                }
             } else {
                 const currentChat = userChats.find(chat => chat.id === parseInt(chatId, 10));
                 if (currentChat) {
                     setCurrentChat(currentChat);
                 }
             }
+
         } catch (error) {
             console.error('Ошибка при загрузке чатов:', error);
         }
-    };
+    }, [chatId, navigate, selectedModel]);
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [loadData]);
 
     useEffect(() => {
         if (!chatId) return;
@@ -87,22 +141,27 @@ function AIChat() {
         }
     }, [chatId, chats]);
 
-    // Прокрутка к последнему сообщению
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const handleNewChat = async () => {
-        try {
-            const newChat = await createNewChat();
-            navigate(`/AI/${newChat.id}`);
-            setChats([newChat, ...chats]);
-        } catch (error) {
-            console.error('Ошибка при создании нового чата:', error);
-        }
-    };
+    useEffect(() => {
+        const loadPrompts = async () => {
+            const [newSystemPrompt, newWrapper] = await Promise.all([
+                fetchSystemPrompt(selectedModel),
+                fetchUserPromptWrapper(selectedModel)
+            ]);
+            console.log('Загружены промпты:', { 
+                systemPrompt: newSystemPrompt, 
+                userWrapper: newWrapper 
+            });
+            setSystemPrompt(newSystemPrompt);
+            setUserPromptWrapper(newWrapper);
+        };
 
-    // Функция для обновления названия чата на основе первого ответа
+        loadPrompts();
+    }, [selectedModel]);
+
     const updateChatTitleFromResponse = async (content) => {
         try {
             const titleResponse = await sendMessageToAI([
@@ -117,10 +176,9 @@ function AIChat() {
             ]);
 
             if (titleResponse?.content && currentChat) {
-                // Извлекаем текст из формата \boxed{}
                 const titleMatch = titleResponse.content.match(/\\boxed{(.*?)}/s);
                 const newTitle = titleMatch 
-                    ? titleMatch[1].trim().replace(/^"(.*)"$/, '$1') // Удаляем кавычки если они есть
+                    ? titleMatch[1].trim().replace(/^"(.*)"$/, '$1')
                     : titleResponse.content.trim();
 
                 await updateChatTitle(currentChat.id, newTitle);
@@ -136,8 +194,13 @@ function AIChat() {
         }
     };
 
+    const handlePromptSettingsUpdate = (newSystemPrompt, newUserWrapper) => {
+        setSystemPrompt(newSystemPrompt);
+        setUserPromptWrapper(newUserWrapper);
+    };
+
     const renderModelSelector = () => (
-        <Box sx={{ ml: 2 }}>
+        <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
             <FormControl size="small" sx={{ minWidth: 200 }}>
                 <InputLabel>Модель ИИ</InputLabel>
                 <Select
@@ -181,12 +244,19 @@ function AIChat() {
                     onClick={() => {
                         const model = AI_MODELS.find(m => m.id === selectedModel);
                         if (model) {
-                            // Можно показать модальное окно с подробной информацией
                             alert(`${model.name}\n\n${model.description}\n\nКонтекст: ${model.context}`);
                         }
                     }}
                 >
                     <InfoIcon fontSize="small" />
+                </IconButton>
+            </Tooltip>
+            <Tooltip title="Настройки промптов">
+                <IconButton
+                    size="small"
+                    onClick={() => setIsPromptSettingsOpen(true)}
+                >
+                    <SettingsIcon fontSize="small" />
                 </IconButton>
             </Tooltip>
         </Box>
@@ -200,20 +270,35 @@ function AIChat() {
         setLoading(true);
 
         try {
-            // Сохраняем сообщение пользователя
             const userMessage = await saveMessage(chatId, messageText, 'user');
             const updatedMessages = [...messages, userMessage];
             setMessages(updatedMessages);
 
-            // Передаем выбранную модель в API
-            const aiResponse = await sendMessageToAI(
-                updatedMessages.map(msg => ({
+            const messageHistory = updatedMessages.map(msg => {
+                const processedMessage = {
                     role: msg.role,
                     content: msg.content
-                })),
+                };
+
+                if (msg.role === 'user' && userPromptWrapper) {
+                    processedMessage.content = userPromptWrapper.replace('{prompt}', msg.content);
+                }
+
+                return processedMessage;
+            });
+
+            console.log('Отправка запроса к ИИ:', {
+                model: selectedModel,
+                messages: messageHistory,
+                systemPrompt,
+                userPromptWrapper
+            });
+
+            const aiResponse = await sendMessageToAI(
+                messageHistory,
                 selectedModel
             );
-            console.log(aiResponse)
+
             if (aiResponse?.content) {
                 const savedResponse = await saveMessage(
                     chatId, 
@@ -224,7 +309,6 @@ function AIChat() {
                 const newMessages = [...updatedMessages, savedResponse];
                 setMessages(newMessages);
 
-                // Обновляем название чата только если это первая пара сообщений
                 if (newMessages.length === 2) {
                     await updateChatTitleFromResponse(messageText);
                 }
@@ -255,7 +339,6 @@ function AIChat() {
     };
 
     const handleTitleEdit = async () => {
-        console.log(isEditingTitle, currentChat, editedTitle)
         if (!isEditingTitle) {
             setEditedTitle(currentChat?.title || 'Новый чат');
             setIsEditingTitle(true);
@@ -285,7 +368,6 @@ function AIChat() {
         <AuthWrapper isLoginFunc={loadData}>
             <Container maxWidth="xl" sx={{ height: 'calc(100vh - 80px)', py: 2 }}>
                 <Grid container spacing={2} sx={{ height: '100%' }}>
-                    {/* Боковая панель с историей чатов */}
                     <Grid item xs={12} md={3} sx={{ height: '100%' }}>
                         <AIChatSidebar 
                             chats={chats}
@@ -295,10 +377,8 @@ function AIChat() {
                         />
                     </Grid>
                     
-                    {/* Основная область чата */}
                     <Grid item xs={12} md={9} sx={{ height: '100%' }}>
                         <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                            {/* Обновленный заголовок чата */}
                             <Box sx={{ 
                                 p: 2, 
                                 borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
@@ -354,7 +434,6 @@ function AIChat() {
                                 {renderModelSelector()}
                             </Box>
                             
-                            {/* Сообщения */}
                             <Box sx={{ 
                                 flexGrow: 1, 
                                 overflow: 'auto', 
@@ -381,7 +460,6 @@ function AIChat() {
                                 <div ref={messagesEndRef} />
                             </Box>
                             
-                            {/* Ввод сообщения */}
                             <Box sx={{ p: 2, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
                                 <Grid container spacing={1}>
                                     <Grid item xs>
@@ -413,6 +491,13 @@ function AIChat() {
                     </Grid>
                 </Grid>
             </Container>
+            <PromptSettingsModal
+                open={isPromptSettingsOpen}
+                onClose={() => setIsPromptSettingsOpen(false)}
+                currentSystemPrompt={systemPrompt}
+                currentUserWrapper={userPromptWrapper}
+                onUpdate={handlePromptSettingsUpdate}
+            />
         </AuthWrapper>
     );
 }

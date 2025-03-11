@@ -49,6 +49,10 @@ function AIChat() {
     };
 
     useEffect(() => {
+        loadData();
+    }, []);
+
+    useEffect(() => {
         if (!chatId) return;
         
         const loadMessages = async () => {

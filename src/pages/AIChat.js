@@ -24,7 +24,10 @@ function AIChat() {
     const messagesEndRef = useRef(null);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState('');
-    const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
+    const [selectedModel, setSelectedModel] = useState(() => {
+        const savedModel = localStorage.getItem('selectedAIModel');
+        return savedModel || DEFAULT_MODEL;
+    });
 
     
     const loadData = async () => {
@@ -139,7 +142,10 @@ function AIChat() {
                 <InputLabel>Модель ИИ</InputLabel>
                 <Select
                     value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
+                    onChange={(e) => {
+                        setSelectedModel(e.target.value);
+                        localStorage.setItem('selectedAIModel', e.target.value);
+                    }}
                     label="Модель ИИ"
                 >
                     {AI_MODELS.map((model) => (

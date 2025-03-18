@@ -743,15 +743,60 @@ export const deleteChat = async (chatId) => {
     }
 };
 
+// Функция для получения пользовательских настроек промптов
+export const fetchUserPromptSettings = async () => {
+    try {
+        const settings = await directus.request(readItems('AI_User_Settings', {
+            fields: ['*'],
+            filter: {
+                user_created: {
+                    _eq: '$CURRENT_USER'
+                }
+            },
+            limit: 1
+        }));
+        
+        return settings.length > 0 ? settings[0] : null;
+    } catch (error) {
+        console.error('Ошибка при получении пользовательских настроек:', error);
+        return null;
+    }
+};
+
+// Функция для сохранения пользовательских настроек
+export const saveUserPromptSettings = async (systemPrompt, userWrapper) => {
+    try {
+        const currentSettings = await fetchUserPromptSettings();
+        
+        if (currentSettings) {
+            await directus.request(updateItem('AI_User_Settings', currentSettings.id, {
+                system_prompt: systemPrompt,
+                user_wrapper: userWrapper
+            }));
+        } else {
+            await directus.request(createItem('AI_User_Settings', {
+                system_prompt: systemPrompt,
+                user_wrapper: userWrapper
+            }));
+        }
+    } catch (error) {
+        console.error('Ошибка при сохранении пользовательских настроек:', error);
+        throw error;
+    }
+};
+
+// Обновляем функции получения промптов
 export const fetchSystemPrompt = async (modelId) => {
     try {
+        // Сначала проверяем пользовательские настройки
+        const userSettings = await fetchUserPromptSettings();
+        if (userSettings?.system_prompt) {
+            return userSettings.system_prompt;
+        }
+
+        // Если пользовательских настроек нет, берем значение по умолчанию
         const prompts = await directus.request(readItems('AI_System_Prompts', {
             fields: ['*'],
-            // filter: {
-            //     model_id: {
-            //         _eq: modelId
-            //     }
-            // },
             limit: 1
         }));
         
@@ -764,16 +809,18 @@ export const fetchSystemPrompt = async (modelId) => {
 
 export const fetchUserPromptWrapper = async (modelId) => {
     try {
+        // Сначала проверяем пользовательские настройки
+        const userSettings = await fetchUserPromptSettings();
+        if (userSettings?.user_wrapper) {
+            return userSettings.user_wrapper;
+        }
+
+        // Если пользовательских настроек нет, берем значение по умолчанию
         const wrappers = await directus.request(readItems('AI_User_Prompt_Wrappers', {
             fields: ['*'],
-            // filter: {
-            //     model_id: {
-            //         _eq: modelId
-            //     }
-            // },
             limit: 1
         }));
-        console.log(wrappers)
+        
         return wrappers.length > 0 ? wrappers[0].wrapper : null;
     } catch (error) {
         console.error('Ошибка при получении обертки промпта:', error);

@@ -7,25 +7,31 @@ import {
     Button, 
     TextField,
     Typography,
-    Box
+    Box,
+    Alert
 } from '@mui/material';
-import { updateSystemPrompt, updateUserPromptWrapper } from '../services/directus';
+import { saveUserPromptSettings, fetchUserPromptSettings} from '../services/directus';
 
 function PromptSettingsModal({ open, onClose, currentSystemPrompt, currentUserWrapper, onUpdate }) {
     const [systemPrompt, setSystemPrompt] = useState('');
     const [userWrapper, setUserWrapper] = useState('');
+    const [isCustomSettings, setIsCustomSettings] = useState(false);
 
     useEffect(() => {
         setSystemPrompt(currentSystemPrompt || '');
         setUserWrapper(currentUserWrapper || '');
+        // Проверяем, есть ли уже пользовательские настройки
+        checkCustomSettings();
     }, [currentSystemPrompt, currentUserWrapper, open]);
+
+    const checkCustomSettings = async () => {
+        const settings = await fetchUserPromptSettings();
+        setIsCustomSettings(!!settings);
+    };
 
     const handleSave = async () => {
         try {
-            await Promise.all([
-                updateSystemPrompt(systemPrompt),
-                updateUserPromptWrapper(userWrapper)
-            ]);
+            await saveUserPromptSettings(systemPrompt, userWrapper);
             onUpdate(systemPrompt, userWrapper);
             onClose();
         } catch (error) {
@@ -43,6 +49,11 @@ function PromptSettingsModal({ open, onClose, currentSystemPrompt, currentUserWr
             <DialogTitle>Настройки промптов</DialogTitle>
             <DialogContent>
                 <Box sx={{ mt: 2 }}>
+                    {isCustomSettings && (
+                        <Alert severity="info" sx={{ mb: 2 }}>
+                            У вас установлены персональные настройки промптов
+                        </Alert>
+                    )}
                     <Typography variant="subtitle2" gutterBottom>
                         Системный промпт
                     </Typography>
@@ -75,6 +86,18 @@ function PromptSettingsModal({ open, onClose, currentSystemPrompt, currentUserWr
                 </Box>
             </DialogContent>
             <DialogActions>
+                {isCustomSettings && (
+                    <Button 
+                        onClick={async () => {
+                            await saveUserPromptSettings(null, null);
+                            onUpdate(currentSystemPrompt, currentUserWrapper);
+                            onClose();
+                        }}
+                        color="error"
+                    >
+                        Сбросить к значениям по умолчанию
+                    </Button>
+                )}
                 <Button onClick={onClose}>Отмена</Button>
                 <Button onClick={handleSave} variant="contained">
                     Сохранить

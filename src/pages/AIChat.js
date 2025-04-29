@@ -51,11 +51,19 @@ function AIChat() {
 
                 setAiModels(formattedModels);
                 
-                // Устанавливаем Deepseek R1 или первую доступную модель по умолчанию
-                const defaultModel = formattedModels.find(m => m.id.includes('deepseek-r1')) || formattedModels[0];
-                if (defaultModel) {
-                    setSelectedModel(defaultModel.id);
-                    localStorage.setItem('selectedAIModel', defaultModel.id);
+                // Получаем сохраненную модель из localStorage
+                const savedModel = localStorage.getItem('selectedAIModel');
+                
+                // Если есть сохраненная модель и она доступна в списке, используем её
+                if (savedModel && formattedModels.some(m => m.id === savedModel)) {
+                    setSelectedModel(savedModel);
+                } else {
+                    // Иначе устанавливаем Deepseek R1 или первую доступную модель
+                    const defaultModel = formattedModels.find(m => m.id.includes('deepseek-r1')) || formattedModels[0];
+                    if (defaultModel) {
+                        setSelectedModel(defaultModel.id);
+                        localStorage.setItem('selectedAIModel', defaultModel.id);
+                    }
                 }
             } catch (error) {
                 console.error('Ошибка при загрузке моделей:', error);
@@ -64,6 +72,11 @@ function AIChat() {
 
         loadModels();
     }, []);
+
+    const handleModelChange = (modelId) => {
+        setSelectedModel(modelId);
+        localStorage.setItem('selectedAIModel', modelId);
+    };
 
     const handleNewChat = useCallback(async () => {
         try {
@@ -236,10 +249,7 @@ function AIChat() {
                 <InputLabel>Модель ИИ</InputLabel>
                 <Select
                     value={selectedModel}
-                    onChange={(e) => {
-                        setSelectedModel(e.target.value);
-                        localStorage.setItem('selectedAIModel', e.target.value);
-                    }}
+                    onChange={(e) => handleModelChange(e.target.value)}
                     label="Модель ИИ"
                 >
                     {aiModels.map((model) => {

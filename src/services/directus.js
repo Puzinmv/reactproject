@@ -260,7 +260,8 @@ export const fetchInitGrade = async () => {
             })),
             directus.request(readItems('gradePresale', {
                 fields: ['*', {
-                    user_created: ['id', 'first_name']
+                    user_created: ['id', 'first_name'],
+                    user_updated: ['id', 'first_name'],
                 }],
                 filter: {
                     dateGrade: {

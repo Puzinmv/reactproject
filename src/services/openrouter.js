@@ -1,12 +1,11 @@
 // Сервис для работы с OpenRouter API
-import DEFAULT_MODEL from '../constants/aiModels'
 
 const API_URL = process.env.REACT_APP_OPENROUTER_API_URL || 'https://openrouter.ai/api/v1/chat/completions';
 const API_KEY = process.env.REACT_APP_OPENROUTER_API_KEY;
 const SITE_URL = window.location.origin;
 const SITE_NAME = 'AI Chat';
 
-export const sendMessageToAI = async (messages, model = DEFAULT_MODEL) => {
+export const sendMessageToAI = async (messages, model) => {
     try {
         const response = await fetch(API_URL, {
             method: 'POST',

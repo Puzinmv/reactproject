@@ -8,11 +8,10 @@ import CloseIcon from '@mui/icons-material/Close';
 import InfoIcon from '@mui/icons-material/Info';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { fetchUserChats, createNewChat, fetchChatMessages, saveMessage, updateChatTitle, deleteChat, fetchSystemPrompt, fetchUserPromptWrapper } from '../services/directus';
-import { sendMessageToAI } from '../services/openrouter';
+import { sendMessageToAI, getAvailableModels } from '../services/openrouter';
 import AIChatMessage from '../Components/AIChatMessage';
 import AIChatSidebar from '../Components/AIChatSidebar';
 import AuthWrapper from '../Components/AuthWrapper';
-import { AI_MODELS, DEFAULT_MODEL } from '../constants/aiModels';
 import PromptSettingsModal from '../Components/PromptSettingsModal';
 
 function AIChat() {
@@ -26,13 +25,45 @@ function AIChat() {
     const messagesEndRef = useRef(null);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState('');
-    const [selectedModel, setSelectedModel] = useState(() => {
-        const savedModel = localStorage.getItem('selectedAIModel');
-        return savedModel || DEFAULT_MODEL;
-    });
+    const [aiModels, setAiModels] = useState([]);
+    const [selectedModel, setSelectedModel] = useState('');
     const [systemPrompt, setSystemPrompt] = useState(null);
     const [userPromptWrapper, setUserPromptWrapper] = useState(null);
     const [isPromptSettingsOpen, setIsPromptSettingsOpen] = useState(false);
+
+    useEffect(() => {
+        const loadModels = async () => {
+            try {
+                const models = await getAvailableModels();
+                const freeModels = models.filter(model => 
+                    model.pricing.prompt === "0" && 
+                    model.pricing.completion === "0" && 
+                    model.pricing.request === "0"
+                );
+                
+                const formattedModels = freeModels.map(model => ({
+                    id: model.id,
+                    name: model.name,
+                    description: model.description,
+                    context: `${model.context_length} токенов`,
+                    provider: model.id.split('/')[0]
+                }));
+
+                setAiModels(formattedModels);
+                
+                // Устанавливаем Deepseek R1 или первую доступную модель по умолчанию
+                const defaultModel = formattedModels.find(m => m.id.includes('deepseek-r1')) || formattedModels[0];
+                if (defaultModel) {
+                    setSelectedModel(defaultModel.id);
+                    localStorage.setItem('selectedAIModel', defaultModel.id);
+                }
+            } catch (error) {
+                console.error('Ошибка при загрузке моделей:', error);
+            }
+        };
+
+        loadModels();
+    }, []);
 
     const handleNewChat = useCallback(async () => {
         try {
@@ -201,7 +232,7 @@ function AIChat() {
 
     const renderModelSelector = () => (
         <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
-            <FormControl size="small" sx={{ minWidth: 200 }}>
+            <FormControl size="small" sx={{ minWidth: 300 }}>
                 <InputLabel>Модель ИИ</InputLabel>
                 <Select
                     value={selectedModel}
@@ -211,43 +242,49 @@ function AIChat() {
                     }}
                     label="Модель ИИ"
                 >
-                    {AI_MODELS.map((model) => (
-                        <MenuItem 
-                            key={model.id} 
-                            value={model.id}
-                            sx={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'flex-start'
-                            }}
-                        >
-                            <Typography variant="subtitle2">
-                                {model.name}
-                                <Typography 
-                                    component="span" 
-                                    variant="caption" 
-                                    sx={{ ml: 1, color: 'text.secondary' }}
-                                >
-                                    {model.provider}
+                    {aiModels.map((model) => {
+                        const shortDescription = model.description.length > 100 
+                            ? model.description.substring(0, 100) + '...' 
+                            : model.description;
+                            
+                        return (
+                            <MenuItem 
+                                key={model.id} 
+                                value={model.id}
+                                sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'flex-start',
+                                    py: 1.5
+                                }}
+                            >
+                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                    {model.name}
                                 </Typography>
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                                {model.description}
-                            </Typography>
-                        </MenuItem>
-                    ))}
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                    {shortDescription}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                                    Контекст: {model.context}
+                                </Typography>
+                            </MenuItem>
+                        );
+                    })}
                 </Select>
             </FormControl>
-            <Tooltip title="Информация о модели">
-                <IconButton
-                    size="small"
-                    onClick={() => {
-                        const model = AI_MODELS.find(m => m.id === selectedModel);
-                        if (model) {
-                            alert(`${model.name}\n\n${model.description}\n\nКонтекст: ${model.context}`);
-                        }
-                    }}
-                >
+            <Tooltip title={
+                selectedModel ? (
+                    <Box sx={{ p: 1 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                            {aiModels.find(m => m.id === selectedModel)?.name}
+                        </Typography>
+                        <Typography variant="body2">
+                            {aiModels.find(m => m.id === selectedModel)?.description}
+                        </Typography>
+                    </Box>
+                ) : ''
+            }>
+                <IconButton size="small">
                     <InfoIcon fontSize="small" />
                 </IconButton>
             </Tooltip>
@@ -394,7 +431,7 @@ function AIChat() {
                                             onChange={(e) => setEditedTitle(e.target.value)}
                                             size="small"
                                             autoFocus
-                                            onKeyPress={(e) => {
+                                            onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
                                                     handleTitleEdit();
                                                 }

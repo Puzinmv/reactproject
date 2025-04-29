@@ -64,7 +64,7 @@ function GradeApp() {
                         date: grade.date_updated || grade.date_created
                     });
                 });
-                
+                console.log(allGradesMap)
                 setAllGrades(allGradesMap);
 
                 // Преобразуем средние оценки только если есть доступ к оценкам других пользователей
@@ -311,9 +311,9 @@ function GradeApp() {
                                                         }}
                                                     >
                                                         {isMonthClosed(selectedMonth) ? (
-                                                            <LockOpenOutlined fontSize="small" />
-                                                        ) : (
                                                             <LockOutlined fontSize="small" />
+                                                        ) : (
+                                                            <LockOpenOutlined fontSize="small" />
                                                         )}
                                                     </IconButton>
                                                 </Tooltip>

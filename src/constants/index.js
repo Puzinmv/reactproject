@@ -48,7 +48,7 @@ export const STATUS_COLORS = {
     [STATUS.ECONOMICS_AGREED]: 'secondary.main',
     [STATUS.PROJECT_STARTED]: 'success.main',
     [STATUS.PROJECT_ENDED]: 'success.main',
-    [STATUS.PROJECT_CANCELED]: 'info.main',
+    [STATUS.PROJECT_CANCELED]: 'text.secondary',
 };
   
 export const getNewCardData = (CurrentUser) => {

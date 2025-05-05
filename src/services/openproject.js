@@ -172,7 +172,7 @@ export const CreateProject = async (formData) => {
     }
 };
 
-export const GetProjectTemtplate = async () => {
+export const GetProjectTemtplate = async (prefix) => {
     const config = {
         method: 'get',
         url: `${LINKS.PROJECT}?filters=[{"templated":{"operator":"=","values":["t"]}}]`,
@@ -187,8 +187,11 @@ export const GetProjectTemtplate = async () => {
         .then((response) => {
             let templateOption = []
             if (Array.isArray(response.data._embedded.elements)) {
-                response.data._embedded.elements.map((item) => templateOption.push({ name: item.name, value: item.id }))
+                const elements = response.data._embedded.elements;
+                const filteredElements = prefix ? elements.filter(item => item.name.startsWith(prefix)) : elements;
+                filteredElements.map((item) => templateOption.push({ name: item.name, value: item.id }))
             }
+            console.log(templateOption, prefix)
             return templateOption
         })
         .catch((error) => {

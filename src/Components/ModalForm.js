@@ -85,10 +85,6 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [aiJobDescriptions, setAiJobDescriptions] = useState([]);
 
-    console.log(formData.priceAproved,formData.jobCalculated )
-    // const prevPriceRef = useRef(null);
-    // const prevCostRef = useRef(null);
-
     // Первичная загрузка данных карточки
     useEffect(() => {
         const loadCard = async () => {
@@ -159,7 +155,8 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         }
 
         // Загрузка шаблонов проектов
-        GetProjectTemtplate()
+        console.log(formData.Department.prefix)
+        GetProjectTemtplate(formData?.Department?.prefix)
             .then(templates => {
                 setProjectTemplateOptions(templates);
             })
@@ -173,7 +170,8 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         formData?.initiator?.RefKey_1C,
         formData?.Customer,
         formData?.Files,
-        currentUser?.RefKey_1C
+        currentUser?.RefKey_1C,
+        formData?.Department?.prefix
     ]); 
 
     useEffect(() => {

@@ -26,7 +26,15 @@ function AIChat() {
     const messagesEndRef = useRef(null);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState('');
-    const [aiModels, setAiModels] = useState([]);
+    const [aiModels, setAiModels] = useState([
+        {
+            id: 'deepseek-chat',
+            name: 'DeepSeek Chat',
+            description: 'Платная модель',
+            context: '32K токенов',
+            provider: 'deepseek'
+        }
+    ]);
     const [selectedModel, setSelectedModel] = useState('');
     const [systemPrompt, setSystemPrompt] = useState(null);
     const [userPromptWrapper, setUserPromptWrapper] = useState(null);
@@ -50,16 +58,8 @@ function AIChat() {
                     provider: model.id.split('/')[0]
                 }));
 
-                // Добавляем платную модель DeepSeek
-                formattedModels.push({
-                    id: 'deepseek-chat',
-                    name: 'DeepSeek Chat',
-                    description: 'Платная модель',
-                    context: '32K токенов',
-                    provider: 'deepseek'
-                });
-
-                setAiModels(formattedModels);
+                // Добавляем бесплатные модели к уже существующей платной модели
+                setAiModels(prevModels => [...prevModels, ...formattedModels]);
                 
                 // Получаем сохраненную модель из localStorage
                 const savedModel = localStorage.getItem('selectedAIModel');

@@ -42,8 +42,8 @@ function App() {
     const fetchTableData = useCallback(async () => {
         try {
             const [Users, Department] = await fetchInitData();
-            console.log('Users', Users);
-            console.log('departament', Department);
+            // console.log('Users', Users);
+            // console.log('departament', Department);
             setdepartament(Department)
             setUserOption(Users.map(item => item.first_name))
             await fetchCurrentUserData();

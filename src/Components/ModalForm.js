@@ -155,7 +155,6 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         }
 
         // Загрузка шаблонов проектов
-        console.log(formData.Department.prefix)
         GetProjectTemtplate(formData?.Department?.prefix)
             .then(templates => {
                 setProjectTemplateOptions(templates);

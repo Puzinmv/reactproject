@@ -9,6 +9,7 @@ import InfoIcon from '@mui/icons-material/Info';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { fetchUserChats, createNewChat, fetchChatMessages, saveMessage, updateChatTitle, deleteChat, fetchSystemPrompt, fetchUserPromptWrapper } from '../services/directus';
 import { sendMessageToAI, getAvailableModels } from '../services/openrouter';
+import { sendMessageToDeepSeek } from '../services/deepseek';
 import AIChatMessage from '../Components/AIChatMessage';
 import AIChatSidebar from '../Components/AIChatSidebar';
 import AuthWrapper from '../Components/AuthWrapper';
@@ -48,6 +49,15 @@ function AIChat() {
                     context: `${model.context_length} токенов`,
                     provider: model.id.split('/')[0]
                 }));
+
+                // Добавляем платную модель DeepSeek
+                formattedModels.push({
+                    id: 'deepseek-chat',
+                    name: 'DeepSeek Chat',
+                    description: 'Платная модель',
+                    context: '32K токенов',
+                    provider: 'deepseek'
+                });
 
                 setAiModels(formattedModels);
                 
@@ -341,10 +351,12 @@ function AIChat() {
                 userPromptWrapper
             });
 
-            const aiResponse = await sendMessageToAI(
-                messageHistory,
-                selectedModel
-            );
+            let aiResponse;
+            if (selectedModel.startsWith('deepseek')) {
+                aiResponse = await sendMessageToDeepSeek(messageHistory, selectedModel);
+            } else {
+                aiResponse = await sendMessageToAI(messageHistory, selectedModel);
+            }
 
             if (aiResponse?.content) {
                 const savedResponse = await saveMessage(

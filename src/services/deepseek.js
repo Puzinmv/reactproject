@@ -62,4 +62,34 @@ export const improveJobDescriptions = async (jobDescriptions, departmentId) => {
         console.error('Error calling DeepSeek API:', error);
         throw error;
     }
+};
+
+export const sendMessageToDeepSeek = async (messages, model = 'deepseek-chat') => {
+    try {
+        const response = await fetch(DEEPSEEK_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: messages,
+                stream: false
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to get DeepSeek response');
+        }
+
+        const data = await response.json();
+        return {
+            role: 'assistant',
+            content: data.choices[0].message.content
+        };
+    } catch (error) {
+        console.error('Error calling DeepSeek API:', error);
+        throw error;
+    }
 }; 

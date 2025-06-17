@@ -95,7 +95,6 @@ export const fetchDatanew = async ({
     currentUser = null
 }) => {
     try {
-        console.log(filters,currentUser)
         const fields = [
             '*',
             {

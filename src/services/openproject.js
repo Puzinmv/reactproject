@@ -191,7 +191,6 @@ export const GetProjectTemtplate = async (prefix) => {
                 const filteredElements = prefix ? elements.filter(item => item.name.startsWith(prefix)) : elements;
                 filteredElements.map((item) => templateOption.push({ name: item.name, value: item.id }))
             }
-            console.log(templateOption, prefix)
             return templateOption
         })
         .catch((error) => {

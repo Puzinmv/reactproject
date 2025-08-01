@@ -255,7 +255,8 @@ export const fetchInitGrade = async () => {
                     user_created: {
                         _eq: '$CURRENT_USER'
                     }
-                }
+                },
+                sort: ['-date_created']
             })),
             directus.request(readItems('gradePresale', {
                 fields: ['*', {
@@ -266,7 +267,8 @@ export const fetchInitGrade = async () => {
                     dateGrade: {
                         _nnull: true
                     }
-                }
+                },
+                sort: ['-date_created']
             })),
             directus.request(readItems('gradePresale', {
                 aggregate: {
@@ -277,10 +279,11 @@ export const fetchInitGrade = async () => {
                     dateGrade: {
                         _nnull: true
                     }
-                }
+                },
+                sort: ['-date_created']
             })),
             directus.request(readItems('closedGrades', {
-                fields: ['monthDate']
+                fields: ['monthDate'],
             }))
         ]);
 

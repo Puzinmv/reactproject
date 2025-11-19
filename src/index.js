@@ -5,6 +5,7 @@ import App from './App';
 import GradeApp from './GradeApp'
 import AnalyticsApp from './AnalyticsApp'
 import AIChat from './pages/AIChat';
+import AnketaKII from './pages/AnketaKII';
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
@@ -23,6 +24,7 @@ root.render(
           <Route path="/analytics" element={<AnalyticsApp />} />
           <Route path="/AI" element={<AIChat />} />
           <Route path="/AI/:chatId" element={<AIChat />} />
+          <Route path="/AnketaKII" element={<AnketaKII />} />
         </Routes>
       </ThemeProvider>
     </Router>

@@ -660,6 +660,31 @@ export const fetchAITemplates = async (departmentId) => {
     }
 };
 
+export const fetchListsKIIMatchingCodes = async (codes = []) => {
+    if (!codes.length) {
+        return [];
+    }
+
+    try {
+        const lists = await directus.request(
+            readItems('ListsKII', {
+                fields: ['id', 'NameObject', 'Process', 'number', 'OKVED'],
+                deep: {
+                  OKVED: {
+                    _filter: {
+                      CodeOKVED: { _in: codes },
+                    },
+                  },
+                },
+              })
+        );
+        return lists;
+    } catch (error) {
+        console.error('Ошибка при получении ListsKII:', error);
+        throw error;
+    }
+};
+
 // Функции для работы с AI чатами
 
 export const fetchUserChats = async () => {

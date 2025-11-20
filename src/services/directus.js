@@ -668,19 +668,79 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
     try {
         const lists = await directus.request(
             readItems('ListsKII', {
-                fields: ['id', 'NameObject', 'Process', 'number', 'OKVED'],
-                deep: {
-                  OKVED: {
-                    _filter: {
-                      CodeOKVED: { _in: codes },
-                    },
-                  },
-                },
-              })
+                fields: [
+                    'id',
+                    'NameObject',
+                    'Process',
+                    'number',
+                    { okved: ['ListsKIIokved_code'] }
+                ],
+                filter: {
+                    okved: {
+                        _some: {
+                            ListsKIIokved_code: {
+                                _in: codes
+                            }
+                        }
+                    }
+                }
+            })
         );
         return lists;
     } catch (error) {
         console.error('Ошибка при получении ListsKII:', error);
+        throw error;
+    }
+};
+
+export const fetchOfDataByInn = async (inn) => {
+    try {
+        const records = await directus.request(
+            readItems('ofdata', {
+                fields: ['id', 'INN', 'object'],
+                filter: {
+                    INN: {
+                        _eq: inn
+                    }
+                },
+                limit: 1
+            })
+        );
+        if (!records.length) {
+            return null;
+        }
+
+        const record = records[0];
+        let parsedObject = record.object;
+
+        if (typeof parsedObject === 'string') {
+            try {
+                parsedObject = JSON.parse(parsedObject);
+            } catch (parseError) {
+                console.warn('Не удалось распарсить поле object из ofdata:', parseError);
+            }
+        }
+
+        return {
+            ...record,
+            object: parsedObject
+        };
+    } catch (error) {
+        console.error('Ошибка при получении записи ofdata:', error);
+        throw error;
+    }
+};
+
+export const saveOfDataRecord = async (inn, object) => {
+    try {
+        return await directus.request(
+            createItem('ofdata', {
+                INN: inn,
+                object
+            })
+        );
+    } catch (error) {
+        console.error('Ошибка при сохранении записи ofdata:', error);
         throw error;
     }
 };

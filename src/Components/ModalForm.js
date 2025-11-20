@@ -82,8 +82,10 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const [fieldErrors, setFieldErrors] = useState({});
     const selectRef = useRef(null);
     const switchRef = useRef(null);
+    const customTableRef = useRef(null);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [aiJobDescriptions, setAiJobDescriptions] = useState([]);
+    const [isJobCalculationInProgress, setIsJobCalculationInProgress] = useState(false);
 
     // Первичная загрузка данных карточки
     useEffect(() => {
@@ -388,24 +390,42 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
 
     };
 
-    const handleChangeSwitch = (e) => {
+    const handleChangeSwitch = async (e) => {
         const { name, checked } = e.target;
-        setFormData({ ...formData, [name]: checked });
 
         if (!formData.OpenProject_Template_id && name === 'jobCalculated' && checked) {
-            setErrors({...errors, OpenProject_Template_id: 'Выберите шаблон проекта'});
+            setErrors({ ...errors, OpenProject_Template_id: 'Выберите шаблон проекта' });
             if (selectRef.current) {
                 selectRef.current.focus();
                 selectRef.current.scrollIntoView({ behavior: 'smooth' });
             }
             triggerShakeAnimation();
-            setTimeout(() => {
-                setFormData({ ...formData, jobCalculated: false });
-            }, 500);
             return;
         }
 
-        setErrors({...errors, OpenProject_Template_id: ''});
+        if (name === 'jobCalculated' && checked && formData?.Department?.AutoAI) {
+            if (!customTableRef.current?.handleImproveWithAI) {
+                console.warn('handleImproveWithAI недоступен');
+                triggerSnackbar('Не удалось запустить автоматический расчет трудозатрат', 'error');
+                return;
+            }
+            setIsJobCalculationInProgress(true);
+            try {
+                const result = await customTableRef.current.handleImproveWithAI();
+                if (!result) {
+                    return;
+                }
+            } catch (error) {
+                console.error('Ошибка при выполнении handleImproveWithAI:', error);
+                triggerSnackbar('Ошибка при автоматическом расчете трудозатрат', 'error');
+                return;
+            } finally {
+                setIsJobCalculationInProgress(false);
+            }
+        }
+
+        setFormData(prev => ({ ...prev, [name]: checked }));
+        setErrors(prevErrors => ({ ...prevErrors, OpenProject_Template_id: '' }));
     }
 
 
@@ -979,6 +999,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                             <Grid container spacing={1}>
                                 <Grid item xs={12}>
                                     <CustomTable
+                                        ref={customTableRef}
                                         depatmentid={formData.Department?.id || -1}
                                         jobDescriptions={formData?.JobDescription || []}
                                         aiJobDescriptions={aiJobDescriptions}
@@ -1019,7 +1040,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                                 onChange={handleChangeSwitch}
                                                 color="primary"
                                                 error={errors.OpenProject_Template_id ? 'true' : 'false'}
-                                                disabled={currentUser?.ProjectCardRole !== ROLES.ADMIN && currentUser?.ProjectCardRole !== ROLES.TECHNICAL }
+                                                disabled={(currentUser?.ProjectCardRole !== ROLES.ADMIN && currentUser?.ProjectCardRole !== ROLES.TECHNICAL) || isJobCalculationInProgress }
                                             />
                                         }
                                         label={

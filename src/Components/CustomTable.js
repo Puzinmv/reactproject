@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef, useImperativeHandle } from 'react';
 import Box from '@mui/material/Box';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -27,7 +27,10 @@ import { improveJobDescriptions } from '../services/deepseek';
 import CircularProgress from '@mui/material/CircularProgress';
 
 
-export default function CustomTable({ depatmentid, jobDescriptions, aiJobDescriptions, projectCardRole, handleJobChange, handleAiJobChange, disabled, price, cost }) {
+const CustomTable = forwardRef(function CustomTable(
+    { depatmentid, jobDescriptions, aiJobDescriptions, projectCardRole, handleJobChange, handleAiJobChange, disabled, price, cost },
+    ref
+) {
     const [rows, setRows] = useState(jobDescriptions || []);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [openSnackbar, setOpenSnackbar] = useState({ 
@@ -224,6 +227,14 @@ export default function CustomTable({ depatmentid, jobDescriptions, aiJobDescrip
     };
 
     const handleImproveWithAI = async () => {
+        if (!rows.length) {
+            setOpenSnackbar({
+                open: true,
+                message: 'Добавьте хотя бы одну строку для улучшения описания',
+                severity: 'warning',
+            });
+            return false;
+        }
         setIsLoading(true);
         try {
             const improvedDescriptions = await improveJobDescriptions(rows, depatmentid);
@@ -234,7 +245,9 @@ export default function CustomTable({ depatmentid, jobDescriptions, aiJobDescrip
                     message: 'Описание работ успешно улучшено', 
                     severity: 'success' 
                 });
+                return true;
             }
+            return false;
         } catch (error) {
             console.error('Error improving descriptions:', error);
             setOpenSnackbar({ 
@@ -242,10 +255,15 @@ export default function CustomTable({ depatmentid, jobDescriptions, aiJobDescrip
                 message: error.message || 'Ошибка при улучшении описания работ', 
                 severity: 'error' 
             });
+            return false;
         } finally {
             setIsLoading(false);
         }
     };
+
+    useImperativeHandle(ref, () => ({
+        handleImproveWithAI,
+    }));
 
     return (
         <Box sx={{ width: '100%' }}>
@@ -539,4 +557,6 @@ export default function CustomTable({ depatmentid, jobDescriptions, aiJobDescrip
             )}
         </Box>
     );
-}
+});
+
+export default CustomTable;

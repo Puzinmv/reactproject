@@ -733,6 +733,10 @@ export const fetchOfDataByInn = async (inn) => {
 
 export const saveOfDataRecord = async (inn, object) => {
     try {
+        if (!object || (typeof object === 'object' && !Array.isArray(object) && Object.keys(object).length === 0)) {
+            console.warn('Пустой объект ofdata не будет сохранён в Directus');
+            return null;
+        }
         return await directus.request(
             createItem('ofdata', {
                 INN: inn,

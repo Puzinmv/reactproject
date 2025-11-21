@@ -16,10 +16,58 @@ import {
     Paper,
     Chip
 } from '@mui/material';
+import DescriptionIcon from '@mui/icons-material/Description';
+import { saveAs } from 'file-saver';
+import Docxtemplater from 'docxtemplater';
+import PizZip from 'pizzip';
 import { fetchListsKIIMatchingCodes, fetchOfDataByInn, saveOfDataRecord } from '../services/directus';
 
 const API_URL = 'https://api.ofdata.ru/v2/company';
 const API_KEY = 'GL65hDdeKXQQ139j';
+
+const normalizeCode = (code) => {
+    if (code === null || code === undefined) {
+        return '';
+    }
+    return String(code).trim();
+};
+
+const isEmptyObject = (value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return false;
+    }
+    return Object.keys(value).length === 0;
+};
+
+const splitOkvedGroups = (code) => {
+    const normalized = normalizeCode(code);
+    if (!normalized) {
+        return [];
+    }
+    return normalized
+        .split('.')
+        .map((part) => part.trim())
+        .filter(Boolean);
+};
+
+const expandCodesForMatching = (codes = []) => {
+    const expanded = new Set();
+    codes.forEach((code) => {
+        const normalized = normalizeCode(code);
+        if (!normalized) {
+            return;
+        }
+        expanded.add(normalized);
+        const parts = splitOkvedGroups(normalized);
+        if (parts.length > 0) {
+            expanded.add(parts[0]);
+        }
+        if (parts.length > 1) {
+            expanded.add(`${parts[0]}.${parts[1]}`);
+        }
+    });
+    return Array.from(expanded);
+};
 
 const AnketaKII = () => {
     const [inn, setInn] = useState('');
@@ -30,13 +78,26 @@ const AnketaKII = () => {
     const [listsLoading, setListsLoading] = useState(false);
     const [companyData, setCompanyData] = useState(null);
     const [companyCodes, setCompanyCodes] = useState([]);
+    const [generateLoading, setGenerateLoading] = useState(false);
+    const [generateError, setGenerateError] = useState('');
 
-    const normalizeCode = (code) => {
-        if (code === null || code === undefined) {
-            return '';
+    const isOkvedMatch = useCallback((listCode, companyCode) => {
+        const listParts = splitOkvedGroups(listCode);
+        const companyParts = splitOkvedGroups(companyCode);
+
+        if (!listParts.length || !companyParts.length) {
+            return false;
         }
-        return String(code).trim();
-    };
+
+        if (companyParts.length < listParts.length) {
+            return false;
+        }
+
+        const listPrefix = listParts.slice(0, listParts.length).join('.');
+        const companyPrefix = companyParts.slice(0, listParts.length).join('.');
+
+        return listPrefix === companyPrefix;
+    }, []);
 
     const handleChange = (event) => {
         const value = event.target.value.replace(/\D/g, '').slice(0, 10);
@@ -44,6 +105,17 @@ const AnketaKII = () => {
         if (error) {
             setError('');
         }
+    };
+
+    const extractCompanyName = (companyInfo) => {
+        if (!companyInfo) {
+            return '';
+        }
+        return (
+            companyInfo?.['НаимСокр'] ||
+            companyInfo?.['НаимПолн'] ||
+            ''
+        );
     };
 
     const extractCodes = (companyInfo) => {
@@ -88,10 +160,17 @@ const AnketaKII = () => {
             return;
         }
 
+        const codesForSearch = expandCodesForMatching(uniqueCodes);
+        if (!codesForSearch.length) {
+            setMatchedLists([]);
+            setListsLoading(false);
+            return;
+        }
+
         setListsLoading(true);
         setListsError('');
         try {
-            const matched = await fetchListsKIIMatchingCodes(uniqueCodes);
+            const matched = await fetchListsKIIMatchingCodes(codesForSearch);
             setMatchedLists(matched ?? []);
         } catch (listErr) {
             console.error(listErr);
@@ -115,13 +194,15 @@ const AnketaKII = () => {
         setMatchedLists([]);
         setCompanyData(null);
         setCompanyCodes([]);
+        setGenerateError('');
 
         try {
             let company = null;
+            let apiMetaMessage = '';
             try {
                 const cached = await fetchOfDataByInn(inn);
                 if (cached?.object) {
-                    company = cached.object;
+                    company = isEmptyObject(cached.object) ? null : cached.object;
                     console.log('Данные компании из кэша Directus:', cached);
                 }
             } catch (cacheErr) {
@@ -136,7 +217,11 @@ const AnketaKII = () => {
                 }
 
                 const data = await response.json();
-                company = data?.data;
+                apiMetaMessage = data?.meta?.message || '';
+                const apiCompany = data?.data;
+                if (apiCompany && !isEmptyObject(apiCompany)) {
+                    company = apiCompany;
+                }
                 console.log('Данные компании из внешнего API:', data);
 
                 if (company) {
@@ -148,15 +233,18 @@ const AnketaKII = () => {
                 }
             }
 
+            if (!company) {
+                const message = apiMetaMessage || 'Данные компании не найдены';
+                setCompanyData(null);
+                setMatchedLists([]);
+                setCompanyCodes([]);
+                setError(message);
+                return;
+            }
+
             setCompanyData(company);
             const codes = extractCodes(company);
             setCompanyCodes(codes);
-            if (!company) {
-                setMatchedLists([]);
-                setCompanyCodes([]);
-                setError('Данные компании не найдены');
-                return;
-            }
 
             await findMatchingLists(company);
         } catch (err) {
@@ -167,20 +255,82 @@ const AnketaKII = () => {
         }
     };
 
+    const companyName = useMemo(() => extractCompanyName(companyData), [companyData]);
+
     const matchedCompanyCodes = useMemo(() => {
         if (!companyCodes.length || !matchedLists.length) {
             return new Set();
         }
         const overlaps = new Set();
         matchedLists.forEach((item) => {
-            getListCodes(item?.okved).forEach((code) => {
-                if (companyCodes.includes(code)) {
-                    overlaps.add(code);
-                }
+            getListCodes(item?.okved).forEach((listCode) => {
+                companyCodes.forEach((companyCode) => {
+                    if (isOkvedMatch(listCode, companyCode)) {
+                        overlaps.add(companyCode);
+                    }
+                });
             });
         });
         return overlaps;
-    }, [companyCodes, matchedLists, getListCodes]);
+    }, [companyCodes, matchedLists, getListCodes, isOkvedMatch]);
+
+    const hasMatchedRows = matchedLists.length > 0;
+
+    const handleGenerateDocument = async () => {
+        if (!hasMatchedRows) {
+            return;
+        }
+        setGenerateError('');
+        setGenerateLoading(true);
+        try {
+            const templatePath = encodeURI('/templates/Анкета КИИ.docx');
+            const response = await fetch(templatePath);
+            if (!response.ok) {
+                throw new Error('Не удалось загрузить шаблон документа');
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            const zip = new PizZip(arrayBuffer);
+            const doc = new Docxtemplater(zip, {
+                paragraphLoop: true,
+                linebreaks: true,
+                delimiters: { start: '[[', end: ']]' }
+            });
+
+            const matchedRows = matchedLists.map((item, index) => ({
+                index: index + 1,
+                number: item.number ?? '',
+                name: item.NameObject ?? '',
+                process: item.Process ?? '',
+            }));
+
+            const docData = {
+                companyName: companyName || '—',
+                inn: inn || '—',
+                matchedRows
+            };
+            doc.setData(docData);
+
+            try {
+                doc.render();
+            } catch (renderErr) {
+                console.error(renderErr);
+                throw new Error('Не удалось обработать шаблон. Проверьте плейсхолдеры документа.');
+            }
+
+            const blob = doc.getZip().generate({
+                type: 'blob',
+                mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            });
+
+            const safeCompanyName = (companyName || inn ).replace(/[\\/:*?"<>|]/g, '_');
+            saveAs(blob, `Анкета_${safeCompanyName}.docx`);
+        } catch (generateErr) {
+            console.error(generateErr);
+            setGenerateError(generateErr.message || 'Не удалось сформировать документ');
+        } finally {
+            setGenerateLoading(false);
+        }
+    };
 
     return (
         <Container maxWidth={false} sx={{ mt: 8, px: { xs: 2, sm: 3 } }}>
@@ -211,6 +361,22 @@ const AnketaKII = () => {
                     >
                         {loading ? <CircularProgress size={24} color="inherit" /> : 'Найти'}
                     </Button>
+                    {hasMatchedRows && (
+                        <Button
+                            variant="outlined"
+                            color="primary"
+                            onClick={handleGenerateDocument}
+                            disabled={generateLoading}
+                            startIcon={<DescriptionIcon />}
+                            sx={{ minWidth: 200, height: 40 }}
+                        >
+                            {generateLoading ? (
+                                <CircularProgress size={24} color="inherit" />
+                            ) : (
+                                'Сформировать анкету'
+                            )}
+                        </Button>
+                    )}
                 </Box>
                 <Typography variant="caption" color="text.secondary">
                     Введите 10 цифр ИНН
@@ -218,6 +384,15 @@ const AnketaKII = () => {
                 {error && <Alert severity="error">{error}</Alert>}
                 {listsLoading && <CircularProgress sx={{ alignSelf: 'center' }} />}
                 {listsError && <Alert severity="error">{listsError}</Alert>}
+                {generateError && <Alert severity="error">{generateError}</Alert>}
+                {companyData && (
+                    <Box>
+                        <Typography variant="h6">Заказчик</Typography>
+                        <Typography variant="subtitle1" color="text.primary">
+                            {companyName || 'Наименование не указано'}
+                        </Typography>
+                    </Box>
+                )}
                 {!!companyCodes.length && (
                     <Box>
                         <Typography variant="h6">ОКВЭД заказчика</Typography>
@@ -241,18 +416,25 @@ const AnketaKII = () => {
                         component={Paper}
                         sx={{
                             width: '100%',
-                            maxHeight: '65vh',
-                            overflowY: 'auto',
-                            px: { xs: 1, sm: 2 },
-                            py: 1
+                            maxHeight: '76vh',
+                            overflowY: 'auto'
                         }}
                     >
-                        <Table size="small" stickyHeader>
-                            <TableHead>
+                        <Table stickyHeader>
+                            <TableHead
+                                sx={{
+                                    '& th': {
+                                        position: 'sticky',
+                                        top: 0,
+                                        zIndex: 2,
+                                        backgroundColor: (theme) => theme.palette.background.paper
+                                    }
+                                }}
+                            >
                                 <TableRow>
                                     <TableCell>№</TableCell>
-                                    <TableCell>Наименование объекта</TableCell>
-                                    <TableCell>Процесс</TableCell>
+                                    <TableCell>Наименование типового объекта</TableCell>
+                                    <TableCell>Типовые процессы (функции), выполняемые типовым объектом</TableCell>
                                     <TableCell>ОКВЭД</TableCell>
                                 </TableRow>
                             </TableHead>
@@ -275,7 +457,9 @@ const AnketaKII = () => {
                                                     {rowCodes.length ? (
                                                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                                             {rowCodes.map((code) => {
-                                                                const isMatch = companyCodes.includes(code);
+                                                                const isMatch = companyCodes.some((companyCode) =>
+                                                                    isOkvedMatch(code, companyCode)
+                                                                );
                                                                 return (
                                                                     <Chip
                                                                         key={`${item.id || item.number}-${code}`}

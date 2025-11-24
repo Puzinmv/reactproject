@@ -324,10 +324,8 @@ const AnketaKII = () => {
                 inn: inn || '—',
                 groupedRows
             };
-            doc.setData(docData);
-
             try {
-                doc.render();
+                doc.render(docData);
             } catch (renderErr) {
                 console.error(renderErr);
                 throw new Error('Не удалось обработать шаблон. Проверьте плейсхолдеры документа.');

@@ -669,11 +669,7 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
         const lists = await directus.request(
             readItems('ListsKII', {
                 fields: [
-                    'id',
-                    'NameObject',
-                    'Process',
-                    'number',
-                    { okved: ['ListsKIIokved_code'] }
+                    '*.*',
                 ],
                 filter: {
                     okved: {
@@ -686,7 +682,52 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
                 }
             })
         );
-        return lists;
+
+        const normalizeActivity = (value) => {
+            if (!value || typeof value !== 'string') {
+                return 'Без указания сферы';
+            }
+            const trimmed = value.trim();
+            return trimmed.length ? trimmed : 'Без указания сферы';
+        };
+
+        const parseNumber = (value) => {
+            if (value === null || value === undefined || value === '') {
+                return null;
+            }
+            const numeric = Number(value);
+            return Number.isNaN(numeric) ? null : numeric;
+        };
+
+        const groupedMap = lists.reduce((acc, item) => {
+            const groupKey = normalizeActivity(item?.activity);
+            if (!acc.has(groupKey)) {
+                acc.set(groupKey, []);
+            }
+            acc.get(groupKey).push(item);
+            return acc;
+        }, new Map());
+
+        const groupedLists = Array.from(groupedMap.entries()).map(([activity, items]) => ({
+            activity,
+            items: [...items].sort((a, b) => {
+                const numberA = parseNumber(a?.number);
+                const numberB = parseNumber(b?.number);
+
+                if (numberA === null && numberB === null) {
+                    return 0;
+                }
+                if (numberA === null) {
+                    return 1;
+                }
+                if (numberB === null) {
+                    return -1;
+                }
+                return numberA - numberB;
+            })
+        })).sort((a, b) => a.activity.localeCompare(b.activity, 'ru', { sensitivity: 'base' }));
+
+        return groupedLists;
     } catch (error) {
         console.error('Ошибка при получении ListsKII:', error);
         throw error;
@@ -697,7 +738,7 @@ export const fetchOfDataByInn = async (inn) => {
     try {
         const records = await directus.request(
             readItems('ofdata', {
-                fields: ['id', 'INN', 'object'],
+                fields: ['*'],
                 filter: {
                     INN: {
                         _eq: inn

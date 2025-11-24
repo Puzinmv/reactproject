@@ -73,7 +73,7 @@ const AnketaKII = () => {
     const [inn, setInn] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [matchedLists, setMatchedLists] = useState([]);
+    const [matchedGroups, setMatchedGroups] = useState([]);
     const [listsError, setListsError] = useState('');
     const [listsLoading, setListsLoading] = useState(false);
     const [companyData, setCompanyData] = useState(null);
@@ -148,21 +148,21 @@ const AnketaKII = () => {
 
     const findMatchingLists = async (company) => {
         if (!company) {
-            setMatchedLists([]);
+            setMatchedGroups([]);
             setListsLoading(false);
             return;
         }
 
         const uniqueCodes = extractCodes(company);
         if (!uniqueCodes.length) {
-            setMatchedLists([]);
+            setMatchedGroups([]);
             setListsLoading(false);
             return;
         }
 
         const codesForSearch = expandCodesForMatching(uniqueCodes);
         if (!codesForSearch.length) {
-            setMatchedLists([]);
+            setMatchedGroups([]);
             setListsLoading(false);
             return;
         }
@@ -171,11 +171,12 @@ const AnketaKII = () => {
         setListsError('');
         try {
             const matched = await fetchListsKIIMatchingCodes(codesForSearch);
-            setMatchedLists(matched ?? []);
+            setMatchedGroups(matched ?? []);
+            console.log(matched);
         } catch (listErr) {
             console.error(listErr);
             setListsError('Не удалось получить совпадения из ListsKII');
-            setMatchedLists([]);
+            setMatchedGroups([]);
         } finally {
             setListsLoading(false);
         }
@@ -191,7 +192,7 @@ const AnketaKII = () => {
         setError('');
         setListsError('');
         setListsLoading(false);
-        setMatchedLists([]);
+        setMatchedGroups([]);
         setCompanyData(null);
         setCompanyCodes([]);
         setGenerateError('');
@@ -236,7 +237,7 @@ const AnketaKII = () => {
             if (!company) {
                 const message = apiMetaMessage || 'Данные компании не найдены';
                 setCompanyData(null);
-                setMatchedLists([]);
+                setMatchedGroups([]);
                 setCompanyCodes([]);
                 setError(message);
                 return;
@@ -257,12 +258,19 @@ const AnketaKII = () => {
 
     const companyName = useMemo(() => extractCompanyName(companyData), [companyData]);
 
+    const flattenedMatchedLists = useMemo(() => {
+        if (!matchedGroups.length) {
+            return [];
+        }
+        return matchedGroups.flatMap((group) => Array.isArray(group?.items) ? group.items : []);
+    }, [matchedGroups]);
+
     const matchedCompanyCodes = useMemo(() => {
-        if (!companyCodes.length || !matchedLists.length) {
+        if (!companyCodes.length || !flattenedMatchedLists.length) {
             return new Set();
         }
         const overlaps = new Set();
-        matchedLists.forEach((item) => {
+        flattenedMatchedLists.forEach((item) => {
             getListCodes(item?.okved).forEach((listCode) => {
                 companyCodes.forEach((companyCode) => {
                     if (isOkvedMatch(listCode, companyCode)) {
@@ -272,9 +280,9 @@ const AnketaKII = () => {
             });
         });
         return overlaps;
-    }, [companyCodes, matchedLists, getListCodes, isOkvedMatch]);
+    }, [companyCodes, flattenedMatchedLists, getListCodes, isOkvedMatch]);
 
-    const hasMatchedRows = matchedLists.length > 0;
+    const hasMatchedRows = flattenedMatchedLists.length > 0;
 
     const handleGenerateDocument = async () => {
         if (!hasMatchedRows) {
@@ -296,17 +304,25 @@ const AnketaKII = () => {
                 delimiters: { start: '[[', end: ']]' }
             });
 
-            const matchedRows = matchedLists.map((item, index) => ({
-                index: index + 1,
-                number: item.number ?? '',
-                name: item.NameObject ?? '',
-                process: item.Process ?? '',
+            const groupedRows = matchedGroups.map((group, groupIndex) => ({
+                activity: group?.activity || `Группа ${groupIndex + 1}`,
+                rows: (group?.items || []).map((item, itemIndex) => {
+                    const rowCodes = getListCodes(item.okved);
+                    return {
+                        index: itemIndex + 1,
+                        number: item.number ?? '',
+                        name: item.NameObject ?? '',
+                        process: item.Process ?? '',
+                        okved: rowCodes.join(', ') || '—',
+                        okvedList: rowCodes
+                    };
+                })
             }));
 
             const docData = {
                 companyName: companyName || '—',
                 inn: inn || '—',
-                matchedRows
+                groupedRows
             };
             doc.setData(docData);
 
@@ -439,43 +455,63 @@ const AnketaKII = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {matchedLists.length === 0 ? (
+                                {!hasMatchedRows ? (
                                     <TableRow>
                                         <TableCell colSpan={4} align="center">
                                             Совпадений по ОКВЭД не найдено
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    matchedLists.map((item) => {
-                                        const rowCodes = getListCodes(item.okved);
+                                    matchedGroups.map((group, groupIndex) => {
+                                        const groupTitle = group?.activity || 'Без указания сферы';
+                                        const groupRows = Array.isArray(group?.items) ? group.items : [];
+
                                         return (
-                                            <TableRow key={item.id || `${item.NameObject}-${item.number}`}>
-                                                <TableCell>{item.number}</TableCell>
-                                                <TableCell>{item.NameObject}</TableCell>
-                                                <TableCell>{item.Process}</TableCell>
-                                                <TableCell>
-                                                    {rowCodes.length ? (
-                                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                            {rowCodes.map((code) => {
-                                                                const isMatch = companyCodes.some((companyCode) =>
-                                                                    isOkvedMatch(code, companyCode)
-                                                                );
-                                                                return (
-                                                                    <Chip
-                                                                        key={`${item.id || item.number}-${code}`}
-                                                                        label={code}
-                                                                        size="small"
-                                                                        color={isMatch ? 'success' : 'default'}
-                                                                        variant={isMatch ? 'filled' : 'outlined'}
-                                                                    />
-                                                                );
-                                                            })}
-                                                        </Box>
-                                                    ) : (
-                                                        '—'
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
+                                            <React.Fragment key={`${groupTitle}-${groupIndex}`}>
+                                                <TableRow>
+                                                    <TableCell
+                                                        colSpan={4}
+                                                        sx={{
+                                                            backgroundColor: (theme) => theme.palette.action.hover,
+                                                            fontWeight: 600
+                                                        }}
+                                                    >
+                                                        {groupTitle}
+                                                    </TableCell>
+                                                </TableRow>
+                                                {groupRows.map((item) => {
+                                                    const rowCodes = getListCodes(item.okved);
+                                                    return (
+                                                        <TableRow key={item.id || `${groupTitle}-${item.number}`}>
+                                                            <TableCell>{item.number}</TableCell>
+                                                            <TableCell>{item.NameObject}</TableCell>
+                                                            <TableCell>{item.Process}</TableCell>
+                                                            <TableCell>
+                                                                {rowCodes.length ? (
+                                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                                        {rowCodes.map((code) => {
+                                                                            const isMatch = companyCodes.some((companyCode) =>
+                                                                                isOkvedMatch(code, companyCode)
+                                                                            );
+                                                                            return (
+                                                                                <Chip
+                                                                                    key={`${item.id || item.number}-${code}`}
+                                                                                    label={code}
+                                                                                    size="small"
+                                                                                    color={isMatch ? 'success' : 'default'}
+                                                                                    variant={isMatch ? 'filled' : 'outlined'}
+                                                                                />
+                                                                            );
+                                                                        })}
+                                                                    </Box>
+                                                                ) : (
+                                                                    '—'
+                                                                )}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                            </React.Fragment>
                                         );
                                     })
                                 )}

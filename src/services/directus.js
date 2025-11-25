@@ -711,19 +711,9 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
         const groupedLists = Array.from(groupedMap.entries()).map(([activity, items]) => ({
             activity,
             items: [...items].sort((a, b) => {
-                const numberA = parseNumber(a?.number);
-                const numberB = parseNumber(b?.number);
-
-                if (numberA === null && numberB === null) {
-                    return 0;
-                }
-                if (numberA === null) {
-                    return 1;
-                }
-                if (numberB === null) {
-                    return -1;
-                }
-                return numberA - numberB;
+                const idA = a?.id || 0;
+                const idB = b?.id || 0;
+                return idA - idB;
             })
         })).sort((a, b) => a.activity.localeCompare(b.activity, 'ru', { sensitivity: 'base' }));
 

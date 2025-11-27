@@ -9,6 +9,40 @@ export const directus = createDirectus(process.env.REACT_APP_API_URL)
     .with(rest({ credentials: 'include' }))
     ;
 
+// Вспомогательные функции для сортировки
+const extractGroupNumber = (activityName) => {
+    if (!activityName || typeof activityName !== 'string') {
+        return 999; // Группы без номера идут в конец
+    }
+    const match = activityName.match(/^(\d+)\./);
+    return match ? parseInt(match[1], 10) : 999;
+};
+
+const parseVersionNumber = (numberStr) => {
+    if (!numberStr || typeof numberStr !== 'string') {
+        return [];
+    }
+    return numberStr.split('.').map(part => {
+        const num = parseInt(part.trim(), 10);
+        return isNaN(num) ? 0 : num;
+    });
+};
+
+const compareVersionNumbers = (a, b) => {
+    const partsA = parseVersionNumber(a);
+    const partsB = parseVersionNumber(b);
+    const maxLength = Math.max(partsA.length, partsB.length);
+    
+    for (let i = 0; i < maxLength; i++) {
+        const partA = partsA[i] || 0;
+        const partB = partsB[i] || 0;
+        if (partA !== partB) {
+            return partA - partB;
+        }
+    }
+    return 0;
+};
+
 export const loginEmail = async (email, password) => {
     try {
         const user = await directus.login(email, password);
@@ -691,12 +725,66 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
             return trimmed.length ? trimmed : 'Без указания сферы';
         };
 
-        const parseNumber = (value) => {
-            if (value === null || value === undefined || value === '') {
-                return null;
+        const groupedMap = lists.reduce((acc, item) => {
+            const groupKey = normalizeActivity(item?.activity);
+            if (!acc.has(groupKey)) {
+                acc.set(groupKey, []);
             }
-            const numeric = Number(value);
-            return Number.isNaN(numeric) ? null : numeric;
+            acc.get(groupKey).push(item);
+            return acc;
+        }, new Map());
+
+        const groupedLists = Array.from(groupedMap.entries()).map(([activity, items]) => ({
+            activity,
+            items: [...items].sort((a, b) => {
+                // Сортировка элементов внутри группы по номерам
+                const numberA = a?.number || '';
+                const numberB = b?.number || '';
+                return compareVersionNumbers(numberA, numberB);
+            })
+        })).sort((a, b) => {
+            // Сортировка групп по номерам
+            const groupNumA = extractGroupNumber(a.activity);
+            const groupNumB = extractGroupNumber(b.activity);
+            return groupNumA - groupNumB;
+        });
+
+        return groupedLists;
+    } catch (error) {
+        console.error('Ошибка при получении ListsKII:', error);
+        throw error;
+    }
+};
+
+export const fetchListsKIIByCode = async (code) => {
+    if (!code) {
+        return [];
+    }
+
+    try {
+        const lists = await directus.request(
+            readItems('ListsKII', {
+                fields: [
+                    '*.*',
+                ],
+                filter: {
+                    okved: {
+                        _some: {
+                            ListsKIIokved_code: {
+                                _eq: code
+                            }
+                        }
+                    }
+                }
+            })
+        );
+
+        const normalizeActivity = (value) => {
+            if (!value || typeof value !== 'string') {
+                return '10. Область оборонной промышленности';
+            }
+            const trimmed = value.trim();
+            return trimmed.length ? trimmed : '10. Область оборонной промышленности';
         };
 
         const groupedMap = lists.reduce((acc, item) => {
@@ -711,15 +799,21 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
         const groupedLists = Array.from(groupedMap.entries()).map(([activity, items]) => ({
             activity,
             items: [...items].sort((a, b) => {
-                const idA = a?.id || 0;
-                const idB = b?.id || 0;
-                return idA - idB;
+                // Сортировка элементов внутри группы по номерам
+                const numberA = a?.number || '';
+                const numberB = b?.number || '';
+                return compareVersionNumbers(numberA, numberB);
             })
-        })).sort((a, b) => a.activity.localeCompare(b.activity, 'ru', { sensitivity: 'base' }));
+        })).sort((a, b) => {
+            // Сортировка групп по номерам
+            const groupNumA = extractGroupNumber(a.activity);
+            const groupNumB = extractGroupNumber(b.activity);
+            return groupNumA - groupNumB;
+        });
 
         return groupedLists;
     } catch (error) {
-        console.error('Ошибка при получении ListsKII:', error);
+        console.error('Ошибка при получении данных ListsKII по коду:', error);
         throw error;
     }
 };

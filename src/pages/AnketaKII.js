@@ -14,13 +14,15 @@ import {
     TableHead,
     TableRow,
     Paper,
-    Chip
+    Chip,
+    Checkbox,
+    FormControlLabel
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import { saveAs } from 'file-saver';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
-import { fetchListsKIIMatchingCodes, fetchOfDataByInn, saveOfDataRecord } from '../services/directus';
+import { fetchListsKIIMatchingCodes, fetchListsKIIByCode, fetchOfDataByInn, saveOfDataRecord } from '../services/directus';
 
 const API_URL = 'https://api.ofdata.ru/v2/company';
 const API_KEY = 'GL65hDdeKXQQ139j';
@@ -31,6 +33,26 @@ const normalizeCode = (code) => {
     }
     return String(code).trim();
 };
+
+const extractGroupNumber = (activityName) => {
+    if (!activityName || typeof activityName !== 'string') {
+        return 999; // Группы без номера идут в конец
+    }
+    const match = activityName.match(/^(\d+)\./);
+    return match ? parseInt(match[1], 10) : 999;
+};
+
+const parseVersionNumber = (numberStr) => {
+    if (!numberStr || typeof numberStr !== 'string') {
+        return [];
+    }
+    return numberStr.split('.').map(part => {
+        const num = parseInt(part.trim(), 10);
+        return isNaN(num) ? 0 : num;
+    });
+};
+
+
 
 const isEmptyObject = (value) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -80,6 +102,10 @@ const AnketaKII = () => {
     const [companyCodes, setCompanyCodes] = useState([]);
     const [generateLoading, setGenerateLoading] = useState(false);
     const [generateError, setGenerateError] = useState('');
+    const [isDefenseEnterprise, setIsDefenseEnterprise] = useState(false);
+    const [defenseData, setDefenseData] = useState([]);
+    const [defenseLoading, setDefenseLoading] = useState(false);
+    const [defenseError, setDefenseError] = useState('');
 
     const isOkvedMatch = useCallback((listCode, companyCode) => {
         const listParts = splitOkvedGroups(listCode);
@@ -182,6 +208,34 @@ const AnketaKII = () => {
         }
     };
 
+    const fetchDefenseData = async () => {
+        setDefenseLoading(true);
+        setDefenseError('');
+        try {
+            const defense = await fetchListsKIIByCode('ДО1');
+            setDefenseData(defense ?? []);
+            console.log('Оборонные данные:', defense);
+        } catch (defErr) {
+            console.error(defErr);
+            setDefenseError('Не удалось получить данные оборонных предприятий');
+            setDefenseData([]);
+        } finally {
+            setDefenseLoading(false);
+        }
+    };
+
+    const handleDefenseCheckboxChange = async (event) => {
+        const checked = event.target.checked;
+        setIsDefenseEnterprise(checked);
+        
+        if (checked) {
+            await fetchDefenseData();
+        } else {
+            setDefenseData([]);
+            setDefenseError('');
+        }
+    };
+
     const handleSearch = async () => {
         if (inn.length !== 10) {
             setError('ИНН должен состоять из 10 цифр');
@@ -196,6 +250,9 @@ const AnketaKII = () => {
         setCompanyData(null);
         setCompanyCodes([]);
         setGenerateError('');
+        setIsDefenseEnterprise(false);
+        setDefenseData([]);
+        setDefenseError('');
 
         try {
             let company = null;
@@ -265,6 +322,19 @@ const AnketaKII = () => {
         return matchedGroups.flatMap((group) => Array.isArray(group?.items) ? group.items : []);
     }, [matchedGroups]);
 
+    const combinedGroups = useMemo(() => {
+        const combined = [...matchedGroups];
+        if (isDefenseEnterprise && defenseData.length > 0) {
+            combined.push(...defenseData);
+        }
+        // Сортировка объединенных групп по номерам
+        return combined.sort((a, b) => {
+            const groupNumA = extractGroupNumber(a.activity);
+            const groupNumB = extractGroupNumber(b.activity);
+            return groupNumA - groupNumB;
+        });
+    }, [matchedGroups, isDefenseEnterprise, defenseData]);
+
     const matchedCompanyCodes = useMemo(() => {
         if (!companyCodes.length || !flattenedMatchedLists.length) {
             return new Set();
@@ -282,7 +352,7 @@ const AnketaKII = () => {
         return overlaps;
     }, [companyCodes, flattenedMatchedLists, getListCodes, isOkvedMatch]);
 
-    const hasMatchedRows = flattenedMatchedLists.length > 0;
+    const hasMatchedRows = flattenedMatchedLists.length > 0 || (isDefenseEnterprise && defenseData.length > 0);
 
     const handleGenerateDocument = async () => {
         if (!hasMatchedRows) {
@@ -304,7 +374,7 @@ const AnketaKII = () => {
                 delimiters: { start: '[[', end: ']]' }
             });
 
-            const groupedRows = matchedGroups.map((group, groupIndex) => ({
+            const groupedRows = combinedGroups.map((group, groupIndex) => ({
                 activity: group?.activity || `Группа ${groupIndex + 1}`,
                 rows: (group?.items || []).map((item, itemIndex) => {
                     const rowCodes = getListCodes(item.okved);
@@ -405,6 +475,26 @@ const AnketaKII = () => {
                         <Typography variant="subtitle1" color="text.primary">
                             {companyName || 'Наименование не указано'}
                         </Typography>
+                        <Box sx={{ mt: 2 }}>
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={isDefenseEnterprise}
+                                        onChange={handleDefenseCheckboxChange}
+                                        disabled={defenseLoading}
+                                    />
+                                }
+                                label="Оборонное предприятие"
+                            />
+                            {defenseLoading && (
+                                <CircularProgress size={16} sx={{ ml: 1 }} />
+                            )}
+                        </Box>
+                        {defenseError && (
+                            <Alert severity="error" sx={{ mt: 1 }}>
+                                {defenseError}
+                            </Alert>
+                        )}
                     </Box>
                 )}
                 {!!companyCodes.length && (
@@ -460,7 +550,7 @@ const AnketaKII = () => {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    matchedGroups.map((group, groupIndex) => {
+                                    combinedGroups.map((group, groupIndex) => {
                                         const groupTitle = group?.activity || 'Без указания сферы';
                                         const groupRows = Array.isArray(group?.items) ? group.items : [];
 

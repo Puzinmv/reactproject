@@ -42,17 +42,6 @@ const extractGroupNumber = (activityName) => {
     return match ? parseInt(match[1], 10) : 999;
 };
 
-const parseVersionNumber = (numberStr) => {
-    if (!numberStr || typeof numberStr !== 'string') {
-        return [];
-    }
-    return numberStr.split('.').map(part => {
-        const num = parseInt(part.trim(), 10);
-        return isNaN(num) ? 0 : num;
-    });
-};
-
-
 
 const isEmptyObject = (value) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {

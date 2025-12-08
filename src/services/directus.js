@@ -698,7 +698,21 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
     if (!codes.length) {
         return [];
     }
-
+    
+    // Расширяем список кодов: добавляем варианты с пробелами и без пробелов
+    const expandedCodes = new Set();
+    codes.forEach(code => {
+        const normalized = String(code).trim();
+        if (normalized) {
+            // Добавляем код без пробела
+            expandedCodes.add(normalized);
+            // Добавляем код с пробелом в конце
+            expandedCodes.add(normalized + ' ');
+        }
+    });
+    
+    const codesArray = Array.from(expandedCodes);
+    
     try {
         const lists = await directus.request(
             readItems('ListsKII', {
@@ -709,7 +723,7 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
                     okved: {
                         _some: {
                             ListsKIIokved_code: {
-                                _in: codes
+                                _in: codesArray
                             }
                         }
                     }

@@ -1,7 +1,54 @@
 import { fetchAITemplates } from './directus';
 
-const DEEPSEEK_API_URL = process.env.REACT_APP_DEEPSEEK_API_URL;
+const DEEPSEEK_API_URL = process.env.REACT_APP_DEEPSEEK_API_URL || 'https://api.deepseek.com/v1/chat/completions';
 const DEEPSEEK_API_KEY = process.env.REACT_APP_DEEPSEEK_API_KEY;
+const API_BASE_URL = process.env.REACT_APP_API_URL;
+
+// Функция для выполнения запросов к DeepSeek API
+// Использует прокси через Directus в продакшене, прямой запрос в разработке
+const makeDeepSeekRequest = async (requestBody) => {
+    const options = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+        },
+        body: JSON.stringify(requestBody)
+    };
+
+    if (API_BASE_URL) {
+        const proxyUrl = `${API_BASE_URL}/deepseek-proxy`;
+        
+        try {
+            const response = await fetch(proxyUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    targetUrl: DEEPSEEK_API_URL,
+                    method: 'POST',
+                    headers: options.headers,
+                    body: options.body
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Proxy request failed: ${response.statusText} - ${errorText}`);
+            }
+
+            return response;
+        } catch (error) {
+            console.error('Proxy request error:', error);
+            throw new Error(`Не удалось выполнить запрос через прокси. Проверьте, что эндпоинт /deepseek-proxy настроен на сервере. Ошибка: ${error.message}`);
+        }
+    }
+    
+    // В разработке используем прямой запрос (работает через setupProxy.js)
+    return fetch(DEEPSEEK_API_URL, options);
+};
 
 export const improveJobDescriptions = async (jobDescriptions, departmentId) => {
     try {
@@ -37,17 +84,10 @@ export const improveJobDescriptions = async (jobDescriptions, departmentId) => {
             });
         }
 
-        const response = await fetch(DEEPSEEK_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: 'deepseek-chat',
-                messages: messages,
-                stream: false
-            })
+        const response = await makeDeepSeekRequest({
+            model: 'deepseek-chat',
+            messages: messages,
+            stream: false
         });
 
         if (!response.ok) {
@@ -66,17 +106,10 @@ export const improveJobDescriptions = async (jobDescriptions, departmentId) => {
 
 export const sendMessageToDeepSeek = async (messages, model = 'deepseek-chat') => {
     try {
-        const response = await fetch(DEEPSEEK_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: model,
-                messages: messages,
-                stream: false
-            })
+        const response = await makeDeepSeekRequest({
+            model: model,
+            messages: messages,
+            stream: false
         });
 
         if (!response.ok) {

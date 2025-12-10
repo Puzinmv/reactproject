@@ -699,19 +699,25 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
         return [];
     }
     
-    // Расширяем список кодов: добавляем варианты с пробелами и без пробелов
-    const expandedCodes = new Set();
-    codes.forEach(code => {
-        const normalized = String(code).trim();
-        if (normalized) {
-            // Добавляем код без пробела
-            expandedCodes.add(normalized);
-            // Добавляем код с пробелом в конце
-            expandedCodes.add(normalized + ' ');
-        }
-    });
+    const normalizedCodes = Array.from(new Set(
+        codes
+            .map(code => String(code).trim())
+            .filter(Boolean)
+    ));
     
-    const codesArray = Array.from(expandedCodes);
+    if (!normalizedCodes.length) {
+        return [];
+    }
+    
+    const codeFilters = normalizedCodes.map(code => ({
+        okved: {
+            _some: {
+                ListsKIIokved_code: {
+                    _contains: code
+                }
+            }
+        }
+    }));
     
     try {
         const lists = await directus.request(
@@ -719,14 +725,9 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
                 fields: [
                     '*.*',
                 ],
+                limit: -1,
                 filter: {
-                    okved: {
-                        _some: {
-                            ListsKIIokved_code: {
-                                _in: codesArray
-                            }
-                        }
-                    }
+                    _or: codeFilters
                 }
             })
         );
@@ -781,11 +782,12 @@ export const fetchListsKIIByCode = async (code) => {
                 fields: [
                     '*.*',
                 ],
+                limit: -1,
                 filter: {
                     okved: {
                         _some: {
                             ListsKIIokved_code: {
-                                _eq: code
+                                _contains: String(code).trim()
                             }
                         }
                     }

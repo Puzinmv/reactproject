@@ -556,23 +556,25 @@ const AnketaKII = () => {
                                                         {groupTitle}
                                                     </TableCell>
                                                 </TableRow>
-                                                {groupRows.map((item) => {
+                                                {groupRows.map((item, rowIdx) => {
                                                     const rowCodes = getListCodes(item.okved);
+                                                    const rowKey = item.id ?? `${groupTitle}-${item.number ?? 'row'}-${rowIdx}`;
                                                     return (
-                                                        <TableRow key={item.id || `${groupTitle}-${item.number}`}>
+                                                        <TableRow key={rowKey}>
                                                             <TableCell>{item.number}</TableCell>
                                                             <TableCell>{item.NameObject}</TableCell>
                                                             <TableCell>{item.Process}</TableCell>
                                                             <TableCell>
                                                                 {rowCodes.length ? (
                                                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                                        {rowCodes.map((code) => {
+                                                                        {rowCodes.map((code, codeIdx) => {
+                                                                            const codeKey = `${rowKey}-code-${code}-${codeIdx}`;
                                                                             const isMatch = companyCodes.some((companyCode) =>
                                                                                 isOkvedMatch(code, companyCode)
                                                                             );
                                                                             return (
                                                                                 <Chip
-                                                                                    key={`${item.id || item.number}-${code}`}
+                                                                                    key={codeKey}
                                                                                     label={code}
                                                                                     size="small"
                                                                                     color={isMatch ? 'success' : 'default'}

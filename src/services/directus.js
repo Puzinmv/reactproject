@@ -699,25 +699,19 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
         return [];
     }
     
-    const normalizedCodes = Array.from(new Set(
-        codes
-            .map(code => String(code).trim())
-            .filter(Boolean)
-    ));
-    
-    if (!normalizedCodes.length) {
-        return [];
-    }
-    
-    const codeFilters = normalizedCodes.map(code => ({
-        okved: {
-            _some: {
-                ListsKIIokved_code: {
-                    _contains: code
-                }
-            }
+    // Расширяем список кодов: добавляем варианты с пробелами и без пробелов
+    const expandedCodes = new Set();
+    codes.forEach(code => {
+        const normalized = String(code).trim();
+        if (normalized) {
+            // Добавляем код без пробела
+            expandedCodes.add(normalized);
+            // Добавляем код с пробелом в конце
+            expandedCodes.add(normalized + ' ');
         }
-    }));
+    });
+    
+    const codesArray = Array.from(expandedCodes);
     
     try {
         const lists = await directus.request(
@@ -727,7 +721,13 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
                 ],
                 limit: -1,
                 filter: {
-                    _or: codeFilters
+                    okved: {
+                        _some: {
+                            ListsKIIokved_code: {
+                                _in: codesArray
+                            }
+                        }
+                    }
                 }
             })
         );

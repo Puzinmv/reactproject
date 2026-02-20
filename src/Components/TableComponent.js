@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button,
     TableSortLabel, TablePagination, Paper, Checkbox, IconButton, Menu, MenuItem,
@@ -53,6 +53,12 @@ const formatField = (field, value) => {
     return value;
 };
 
+const getInitiatorFullName = (user) => {
+    const lastName = user?.last_name || '';
+    const firstName = user?.first_name || '';
+    return `${lastName} ${firstName}`.trim();
+};
+
 const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelect, onCreate }) => {
     const [columns, setColumns] = useState([]);
     const [order, setOrder] = useState('desc');
@@ -79,6 +85,8 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
     const [filterAnchorEl, setFilterAnchorEl] = useState(null);
     const [activeFilterColumn, setActiveFilterColumn] = useState(null);
     const [selectedStatuses, setSelectedStatuses] = useState([]);
+    const [filterSearchValue, setFilterSearchValue] = useState('');
+    const filterSearchInputRef = useRef(null);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -130,7 +138,17 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
     }, []); 
 
     useEffect(() => {
-        if (Array.isArray(UserOption)) setinitiatorOptions(['---', ...UserOption]);
+        if (Array.isArray(UserOption)) {
+            const mappedInitiators = UserOption
+                .filter(user => user?.first_name)
+                .map(user => ({
+                    value: user.id,
+                    label: getInitiatorFullName(user) || user.first_name,
+                }))
+                .sort((a, b) => a.label.localeCompare(b.label, 'ru-RU'));
+
+            setinitiatorOptions([{ value: '---', label: '---' }, ...mappedInitiators]);
+        }
         if (Array.isArray(departamentOption)) setdepartmentOptions(['---', ...new Set(departamentOption.map(item => item.Department))]);
         setstatusOptions(Object.values(STATUS));
     }, [departamentOption, UserOption]);
@@ -199,12 +217,22 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
         event.stopPropagation();
         setFilterAnchorEl(event.currentTarget);
         setActiveFilterColumn(columnId);
+        setFilterSearchValue('');
     };
 
     const handleFilterClose = () => {
         setFilterAnchorEl(null);
         setActiveFilterColumn(null);
+        setFilterSearchValue('');
     };
+
+    useEffect(() => {
+        if (activeFilterColumn === 'initiator' && filterAnchorEl) {
+            setTimeout(() => {
+                filterSearchInputRef.current?.focus();
+            }, 0);
+        }
+    }, [activeFilterColumn, filterAnchorEl]);
 
     const getFilterOptions = (columnId) => {
         switch (columnId) {
@@ -257,12 +285,16 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
             );
         }
 
-        const isSelected = columnSearch[columnId] === option;
+        const optionValue = columnId === 'initiator' ? option.value : option;
+        const optionLabel = columnId === 'initiator' ? option.label : option;
+        const optionKey = columnId === 'initiator' ? `${option.value}-${option.label}` : option;
+        const isSelected = columnSearch[columnId] === optionValue;
+
         return (
             <MenuItem 
-                key={option} 
+                key={optionKey} 
                 onClick={() => {
-                    handleColumnSearchChange({ target: { value: option }}, columnId);
+                    handleColumnSearchChange({ target: { value: optionValue }}, columnId);
                     handleFilterClose();
                 }}
                 selected={isSelected}
@@ -275,7 +307,7 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
                     },
                 }}
             >
-                {option}
+                {optionLabel}
             </MenuItem>
         );
     };
@@ -285,6 +317,23 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
             return selectedStatuses.length > 0;
         }
         return Boolean(columnSearch[columnId]);
+    };
+
+    const getFilteredOptions = (columnId) => {
+        const options = getFilterOptions(columnId);
+        if (columnId !== 'initiator') {
+            return options;
+        }
+
+        const query = filterSearchValue.trim().toLowerCase();
+        if (!query) {
+            return options;
+        }
+
+        return options.filter((option) => {
+            if (option?.value === '---') return true;
+            return String(option?.label || '').toLowerCase().includes(query);
+        });
     };
 
     return (
@@ -482,8 +531,24 @@ const TableComponent = ({ UserOption, departamentOption, CurrentUser, onRowSelec
                     anchorEl={filterAnchorEl}
                     open={Boolean(filterAnchorEl)}
                     onClose={handleFilterClose}
+                    autoFocus={activeFilterColumn !== 'initiator'}
+                    disableAutoFocusItem={activeFilterColumn === 'initiator'}
                 >
-                    {activeFilterColumn && getFilterOptions(activeFilterColumn).map((option) => 
+                    {activeFilterColumn === 'initiator' && (
+                        <Box sx={{ p: 1.5, pb: 0.5 }}>
+                            <TextField
+                                inputRef={filterSearchInputRef}
+                                size="small"
+                                fullWidth
+                                placeholder="Поиск инициатора..."
+                                value={filterSearchValue}
+                                onChange={(event) => setFilterSearchValue(event.target.value)}
+                                onClick={(event) => event.stopPropagation()}
+                                onKeyDown={(event) => event.stopPropagation()}
+                            />
+                        </Box>
+                    )}
+                    {activeFilterColumn && getFilteredOptions(activeFilterColumn).map((option) => 
                         renderFilterMenuItem(option, activeFilterColumn)
                     )}
                 </Menu>

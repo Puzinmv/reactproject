@@ -181,7 +181,7 @@ export const fetchDatanew = async ({
                     if (key === 'initiator') {
                         fieldFilter.push({
                             [key]: {
-                                first_name: { _icontains: value }
+                                id: { _eq: value }
                             }
                         });
                     } else if (key === 'Department') {
@@ -262,7 +262,7 @@ export const fetchInitData = async () => {
     const uniqueInitiatorIds = initiatorIds.map(item => item.initiator).filter(Boolean);
 
     const Users = await directus.request(readUsers({
-        fields: ['id', 'first_name'],
+        fields: ['id', 'first_name', 'last_name'],
         filter: {
             id: {
                 _in: uniqueInitiatorIds

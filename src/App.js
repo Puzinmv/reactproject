@@ -16,7 +16,7 @@ function App() {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
     const [CurrentUser, setCurrentUser] = useState({});
-    const [UserOption, setUserOption] = useState({});
+    const [UserOption, setUserOption] = useState([]);
     const [departament, setdepartament] = useState([]);
     const navigate = useNavigate();
     const location = useLocation();
@@ -45,7 +45,7 @@ function App() {
             // console.log('Users', Users);
             // console.log('departament', Department);
             setdepartament(Department)
-            setUserOption(Users.map(item => item.first_name))
+            setUserOption(Users)
             await fetchCurrentUserData();
         } catch (error) {
             console.error(error);

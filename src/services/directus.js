@@ -207,11 +207,7 @@ export const fetchDatanew = async ({
         if (currentUser) {
             filter._and[3] = {
                 "_or": [
-                    {
-                        initiator: {
-                            first_name: { _icontains: currentUser.first_name }
-                        }
-                    },
+                    {   initiator: { id: { _eq: currentUser.id } } },
                     {
                         Department: {
                             email: { _icontains: currentUser.email }

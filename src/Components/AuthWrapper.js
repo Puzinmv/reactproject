@@ -22,7 +22,7 @@ const theme = createTheme({
     },
 });
 
-function AuthWrapper({ children, isLoginFunc }) {
+function AuthWrapper({ children, isLoginFunc = () => {} }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [savedSearchParams, setSavedSearchParams] = useState('');

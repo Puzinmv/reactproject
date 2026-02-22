@@ -12,7 +12,6 @@ import { sendMessageToAI, getAvailableModels } from '../services/openrouter';
 import { sendMessageToDeepSeek } from '../services/deepseek';
 import AIChatMessage from '../Components/AIChatMessage';
 import AIChatSidebar from '../Components/AIChatSidebar';
-import AuthWrapper from '../Components/AuthWrapper';
 import PromptSettingsModal from '../Components/PromptSettingsModal';
 
 function AIChat() {
@@ -424,7 +423,7 @@ function AIChat() {
     };
 
     return (
-        <AuthWrapper isLoginFunc={loadData}>
+        <>
             <Container maxWidth="xl" sx={{ height: 'calc(100vh - 80px)', py: 2 }}>
                 <Grid container spacing={2} sx={{ height: '100%' }}>
                     <Grid item xs={12} md={3} sx={{ height: '100%' }}>
@@ -557,7 +556,7 @@ function AIChat() {
                 currentUserWrapper={userPromptWrapper}
                 onUpdate={handlePromptSettingsUpdate}
             />
-        </AuthWrapper>
+        </>
     );
 }
 

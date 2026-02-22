@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import AuthWrapper from './Components/AuthWrapper';
 import { fetchInitGrade, updateOrCreateGrade, closeMonthGrades, openMonthGrades } from './services/directus';
 import { 
     Container, 
@@ -221,7 +220,7 @@ function GradeApp() {
     const isMonthClosed = (month) => closedMonths.includes(month);
 
     return (
-        <AuthWrapper isLoginFunc={fetchData}>
+        <>
             <Container maxWidth="lg" sx={{ py: 4 }}>
                 <Typography 
                     variant="h3" 
@@ -404,7 +403,7 @@ function GradeApp() {
                     </Paper>
                 )}
             </Container>
-        </AuthWrapper>
+        </>
     );
 }
 

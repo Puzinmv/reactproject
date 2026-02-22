@@ -7,7 +7,6 @@ import CreateForm from './Components/CreateForm.js';
 import { Update1CField, fetchInitData, getCurrentUser } from './services/directus';
 import getNewCardData from './constants/index.js';
 import { GetUser1C } from './services/1c';
-import AuthWrapper from './Components/AuthWrapper';
 
 
 function App() {
@@ -93,7 +92,7 @@ function App() {
     };
 
     return (
-        <AuthWrapper isLoginFunc={onLogin}>
+        <>
             <div className="App">
                 <TableComponent
                     UserOption={UserOption}
@@ -126,7 +125,7 @@ function App() {
                     />
                 )}
             </div>
-        </AuthWrapper>
+        </>
     );
 }
 

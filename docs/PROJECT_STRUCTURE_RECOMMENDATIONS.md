@@ -1,100 +1,160 @@
-# Аудит структуры проекта и предложения по улучшению
+# Аудит структуры проекта и обновлённые рекомендации по архитектуре
+
+## Короткий ответ на вопрос
+
+Текущий предложенный вариант (`app/pages/features/shared/services`) **частично подходит**, но в вашем случае его нужно расширить под **платформу из нескольких независимых приложений**.
+
+Почему:
+
+- У вас уже есть несколько отдельных приложений (`App`, `GradeApp`, `AnalyticsApp`, `AIChat`, `AnketaKII`).
+- Количество приложений будет расти.
+- Для разных приложений могут быть **разные политики авторизации** (без авторизации / `AuthWrapper` / другой UI логина).
+
+Если оставить «просто pages/features», есть риск, что логика конкретных приложений снова смешается в общих папках.
 
 ## Что есть сейчас
 
-Текущая структура уже разделяет код по базовым слоям (`pages`, `Components`, `services`, `hooks`, `context`, `styles`), что хорошо для старта.
+Плюсы:
 
-Проблемы, которые видно по дереву:
+- Есть базовое разделение на `pages`, `Components`, `services`, `hooks`, `context`, `styles`.
+
+Проблемы:
 
 1. **Смешение уровней абстракции в `src/Components`**
-   - В одной папке лежат и UI-элементы (например, `ModalForm`), и более «бизнесовые» блоки (`TableJobOnTrip`, `TemplatePanel`).
-2. **Несогласованный нейминг**
-   - Папка `Components` в PascalCase, остальные папки в lower-case.
-   - В `services` есть файл `1c.js`, который отличается по стилю именования и ухудшает переносимость.
-3. **Несколько app-entry файлов на одном уровне**
-   - `App.js`, `AnalyticsApp.js`, `GradeApp.js` лежат рядом, но не очевидно, где главный вход и как выбирать приложение.
-4. **Тесты только в общей папке `src/__tests__`**
-   - Это усложняет поддержку при росте: тесты оторваны от модулей.
-5. **Пустой/неинформативный README**
-   - Нет документации по структуре, запуску и соглашениям.
+   - В одной папке и базовый UI, и доменные блоки.
+2. **Нейминг не унифицирован**
+   - `Components` vs lower-case папки; `1c.js` как специальный случай.
+3. **Много app-entry на одном уровне (`App.js`, `GradeApp.js`, `AnalyticsApp.js`)**
+   - Неочевидно, где «shell», где отдельные приложения.
+4. **Авторизация не описана как политика приложения**
+   - Сейчас `AuthWrapper` воспринимается как общий механизм, но в будущем будет несколько вариантов auth UX.
 
-## Рекомендуемая целевая структура
+## Рекомендуемая целевая структура (для multi-app)
 
 ```text
 src/
-  app/
-    index.js                # bootstrap / providers / routing
-    routes.js
-  pages/
+  platform/                     # инфраструктура платформы (общая для всех приложений)
+    bootstrap/
+      index.js                  # единая точка старта
+      appRegistry.js            # реестр доступных приложений
+    routing/
+      rootRouter.js
+    auth/
+      guards/                   # RequireAuth, OptionalAuth, NoAuth
+      providers/                # cookie/jwt/sso и т.п.
+      ui/                       # базовые auth-компоненты платформы
+
+  apps/                         # независимые приложения (вертикальными срезами)
+    main/
+      index.jsx
+      routes.js
+      config.js                 # метаданные приложения (title, authPolicy)
+      pages/
+      features/
+      components/
+    grade/
+      index.jsx
+      routes.js
+      config.js
+      pages/
+      features/
+    analytics/
+      index.jsx
+      routes.js
+      config.js
+      pages/
+      features/
     ai-chat/
       index.jsx
-      components/
+      routes.js
+      config.js
+      pages/
+      features/
     anketa-kii/
       index.jsx
-      components/
-  features/
-    auth/
-      components/
-      hooks/
-      services/
-      index.js
-    tables/
-      components/
-      hooks/
-      index.js
-  shared/
+      routes.js
+      config.js
+      pages/
+      features/
+
+  shared/                       # переиспользуемое между apps
     ui/
-      modal/
-      table/
-      app-bar/
     hooks/
     lib/
     constants/
     styles/
-  services/
+
+  services/                     # клиенты внешних API
     api/
       directus.js
       openproject.js
       openrouter.js
       oneC.js
       deepseek.js
-  context/
+
   tests/
 ```
 
-## Предлагаемый план миграции (без «большого взрыва»)
+## Ключевая идея: реестр приложений + auth policy на уровне app
 
-### Этап 1: стандартизировать имена и документацию
+Для каждого приложения хранить конфигурацию в `apps/<app>/config.js`, например:
 
-- Переименовать `src/Components` → `src/components`.
-- Переименовать `src/services/1c.js` → `src/services/oneC.js`.
-- Добавить/обновить README с описанием структуры и правил нейминга.
+- `id`, `title`, `basePath`
+- `authPolicy`: `none | required | custom`
+- `authRenderer` (опционально) — кастомный UI логина для конкретного app
 
-### Этап 2: улучшить модульность
+Тогда добавление нового приложения = добавить папку в `apps/` + зарегистрировать в `platform/bootstrap/appRegistry.js`.
 
-- Выделить «фичи» (`auth`, `chat`, `tables`) и переместить туда бизнес-компоненты.
-- Оставить в `shared/ui` только переиспользуемые «чистые» компоненты.
+Это снимает жёсткую привязку ко `AuthWrapper` как единственному сценарию.
 
-### Этап 3: упростить точки входа
+## Как связать с текущим `AuthWrapper`
 
-- Создать единый `src/app/index.js` и явную маршрутизацию.
-- `AnalyticsApp` и `GradeApp` оформить как страницы/разделы, а не отдельные root-level app-файлы.
+`AuthWrapper` можно оставить как реализацию политики `required` по умолчанию:
 
-### Этап 4: подтянуть тестирование
+- `none` → рендер без auth
+- `required` → использовать текущий `AuthWrapper`
+- `custom` → использовать app-specific auth flow/UI
 
-- Постепенно переносить тесты ближе к модулям (`Component.test.js` рядом с компонентом) или в `tests/unit` / `tests/integration`.
-- Добавить smoke-тесты для ключевых страниц и сервисов.
+Таким образом, текущий код не ломается, но архитектура уже готова к разным сценариям входа.
 
-## Быстрые улучшения с высокой отдачей
+## План миграции без «большого взрыва»
 
-1. Ввести алиасы импортов (`@/shared`, `@/features`, `@/pages`) через `jsconfig.json`.
-2. Ввести barrel-экспорты (`index.js`) на уровне модулей.
-3. Ограничить прямой импорт между фичами через ESLint-правила (dependency boundaries).
-4. Убрать дубли зависимостей в `dependencies/devDependencies` (например, testing-library пакеты).
+### Этап 1 (безопасный): инфраструктура multi-app
 
-## Definition of Done для рефакторинга структуры
+- Создать `src/platform/bootstrap/appRegistry.js`.
+- Описать существующие приложения в реестре.
+- Добавить поле `authPolicy` для каждого.
 
-- Любой новый компонент попадает в один из слоев: `pages` / `features` / `shared`.
-- Нейминг файлов и папок единообразный (camelCase/PascalCase по договоренности, без исключений вроде `1c.js`).
-- Есть короткий architecture-раздел в README.
-- CI прогоняет сборку и тесты после каждого шага миграции.
+### Этап 2: перенос entrypoint'ов в `apps/*`
+
+- `App.js` → `apps/main/index.jsx`
+- `GradeApp.js` → `apps/grade/index.jsx`
+- `AnalyticsApp.js` → `apps/analytics/index.jsx`
+- `pages/AIChat.js` и `pages/AnketaKII.js` оформить как части соответствующих `apps/*`.
+
+### Этап 3: нормализация shared-кода
+
+- `src/Components` разделить на:
+  - `shared/ui` (чисто переиспользуемые компоненты)
+  - `apps/*/components` (app-specific)
+- Переименовать `1c.js` → `oneC.js`.
+
+### Этап 4: тестирование по слоям
+
+- Unit: `shared` и `apps/*/features`.
+- Integration/smoke: маршрутизация и auth policy для каждого приложения.
+
+## Практические правила для новых приложений
+
+1. Любое новое приложение создаётся только в `src/apps/<new-app>`.
+2. У каждого приложения обязателен `config.js` с `authPolicy`.
+3. Запрещён прямой импорт app-specific кода из одного приложения в другое.
+4. Общее переиспользование — только через `shared` или `services`.
+
+## Definition of Done для структурного рефакторинга
+
+- Новое приложение подключается через реестр, без изменения core-логики роутера.
+- Для каждого приложения явно задана auth policy.
+- `AuthWrapper` остаётся как default-механизм, но не единственный.
+- Нет смешения shared и app-specific компонентов.
+- CI проходит после каждого шага миграции.

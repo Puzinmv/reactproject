@@ -1,0 +1,48 @@
+.honeycomb-cell {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.honeycomb-cell-content {
+    position: relative;
+    width: 90%;
+    height: 90%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid var(--neon-color);
+    border-radius: 12px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    padding: 15px;
+    box-shadow: 
+        0 0 10px var(--neon-color),
+        0 0 20px var(--neon-color),
+        inset 0 0 10px rgba(157, 78, 221, 0.1);
+    transition: all 0.3s ease;
+    word-wrap: break-word;
+    overflow: hidden;
+}
+
+.honeycomb-cell:hover .honeycomb-cell-content {
+    transform: scale(1.05);
+    box-shadow: 
+        0 0 20px var(--neon-color),
+        0 0 40px var(--neon-color),
+        0 0 60px var(--neon-color),
+        inset 0 0 20px rgba(157, 78, 221, 0.2);
+    border-color: var(--neon-color);
+}
+
+.honeycomb-cell:active .honeycomb-cell-content {
+    transform: scale(0.95);
+}

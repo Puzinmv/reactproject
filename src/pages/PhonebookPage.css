@@ -1,5 +1,5 @@
 .phonebook-page {
-    min-height: 100vh;
+    height: 100dvh;
     color: #fff;
     background:
         radial-gradient(circle at 50% 35%, rgba(255, 56, 177, 0.14), transparent 32%),
@@ -7,6 +7,8 @@
         linear-gradient(160deg, #07070c 0%, #040408 65%, #020204 100%);
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .phonebook-page::before {
@@ -27,7 +29,7 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding: 28px 48px 12px;
+    padding: 22px 56px 10px;
     gap: 16px;
 }
 
@@ -72,76 +74,110 @@
 .phonebook-main {
     position: relative;
     z-index: 3;
-    padding: 0 28px 36px;
+    padding: 0 32px 14px;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .phonebook-error {
     width: fit-content;
-    margin: 0 auto 12px;
+    margin: 0;
     padding: 8px 14px;
     border-radius: 10px;
     background: rgba(190, 33, 84, 0.18);
     border: 1px solid rgba(255, 110, 179, 0.45);
     color: #ffd6ec;
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+    z-index: 5;
 }
 
 .phonebook-grid-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-x: auto;
-    padding: 6px 0 26px;
+    overflow-y: hidden;
+    padding: 10px 0 0;
+    display: flex;
 }
 
 .phonebook-grid-container {
-    --hexW: 242px;
-    --hexH: 210px;
-    min-width: 1120px;
-    width: max-content;
+    --gridPadX: clamp(24px, 3.35vw, 64px);
+    --rowOverlapRatio: 0.52;
+    --colGapRatio: 0.5;
+    --availW: calc(100vw - (var(--gridPadX) * 2));
+    --availH: calc(100dvh - 160px);
+    --hexW-byW: calc(var(--availW) / (4 + (3 * var(--colGapRatio))));
+    --hexW-byH: calc((var(--availH) / (7 - (6 * var(--rowOverlapRatio)))) / 0.86);
+    --hexW: clamp(190px, min(var(--hexW-byW), var(--hexW-byH)), 270px);
+    --hexH: calc(var(--hexW) * 0.86);
+    --colGap: calc(var(--hexW) * var(--colGapRatio));
+    --rowLift: calc(var(--hexH) * var(--rowOverlapRatio));
+    --gridWidth: calc((var(--hexW) * 4) + (var(--colGap) * 3));
+    width: 100%;
+    min-width: calc(var(--gridWidth) + (var(--gridPadX) * 2));
+    max-width: 1840px;
     margin: 0 auto;
     position: relative;
-    padding: 8px 20px 8px;
+    padding: 8px var(--gridPadX) 0;
+    box-sizing: border-box;
 }
 
 .phonebook-center-image {
     position: absolute;
     left: 50%;
     top: 50%;
-    transform: translate(-50%, -49%);
-    width: calc(var(--hexW) * 2.26);
-    max-width: 520px;
-    aspect-ratio: 2 / 3;
-    opacity: 0.92;
+    transform: translate(-50%, -50%);
+    width: calc(var(--hexW) * 2.05);
+    max-width: 560px;
+    aspect-ratio: 3 / 4;
+    opacity: 0.9;
     pointer-events: none;
     z-index: 1;
     clip-path: polygon(50% 0%, 92% 25%, 92% 75%, 50% 100%, 8% 75%, 8% 25%);
-    background:
-        radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 124, 199, 0.32) 20%, rgba(255, 60, 174, 0.2) 35%, rgba(85, 15, 108, 0.35) 70%, rgba(16, 8, 33, 0.85) 100%),
-        linear-gradient(155deg, rgba(255, 180, 111, 0.65), rgba(244, 68, 195, 0.75) 48%, rgba(137, 72, 255, 0.78));
+    overflow: hidden;
     box-shadow:
-        inset 0 0 38px rgba(255, 190, 124, 0.44),
-        inset 0 0 72px rgba(255, 75, 189, 0.5),
-        0 0 34px rgba(255, 66, 189, 0.55);
+        0 0 34px rgba(255, 66, 189, 0.45);
+}
+
+.phonebook-center-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
 }
 
 .phonebook-grid {
     position: relative;
     z-index: 2;
-    display: flex;
+    display: fl--rowOverlapRatioex;
     flex-direction: column;
-    gap: calc(var(--hexH) * -0.225);
+    gap: 0;
+    width: var(--gridWidth);
+    margin: 0 auto;
 }
 
 .phonebook-row {
     display: grid;
-    gap: 10px;
+    width: max-content;
+    margin: 0 auto;
+    gap: var(--colGap);
+}
+
+.phonebook-row + .phonebook-row {
+    margin-top: calc(var(--rowLift) * -1);
 }
 
 .phonebook-row-odd {
     grid-template-columns: repeat(3, var(--hexW));
-    justify-content: center;
 }
 
 .phonebook-row-even {
     grid-template-columns: repeat(4, var(--hexW));
-    justify-content: center;
 }
 
 .hex-cell,
@@ -150,7 +186,7 @@
     height: var(--hexH);
     clip-path: polygon(25% 4%, 75% 4%, 98% 50%, 75% 96%, 25% 96%, 2% 50%);
     position: relative;
-    display: flex;
+    display: ыflex;
     align-items: center;
     justify-content: center;
     text-align: center;

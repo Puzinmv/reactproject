@@ -105,7 +105,9 @@ function PhonebookPage() {
 
                 <div className="phonebook-grid-scroll">
                     <section className="phonebook-grid-container">
-                        <div aria-hidden className="phonebook-center-image" />
+                        <div aria-hidden className="phonebook-center-image">
+                            <img src="/image.png" alt="" />
+                        </div>
 
                         <div className="phonebook-grid">
                             {SLOT_ROWS.map((row, rowIndex) => (

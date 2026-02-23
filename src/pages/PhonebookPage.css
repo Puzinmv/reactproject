@@ -100,9 +100,10 @@
     flex: 1 1 auto;
     min-height: 0;
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: auto;
     padding: 10px 0 0;
     display: flex;
+    align-items: flex-start;
 }
 
 .phonebook-grid-container {
@@ -117,10 +118,13 @@
     --hexH: calc(var(--hexW) * 0.86);
     --colGap: calc(var(--hexW) * var(--colGapRatio));
     --rowLift: calc(var(--hexH) * var(--rowOverlapRatio));
+    --gridRows: 7;
     --gridWidth: calc((var(--hexW) * 4) + (var(--colGap) * 3));
+    --gridHeight: calc((var(--hexH) * var(--gridRows)) - (var(--rowLift) * (var(--gridRows) - 1)));
     width: 100%;
     min-width: calc(var(--gridWidth) + (var(--gridPadX) * 2));
     max-width: 1840px;
+    height: calc(var(--gridHeight) + 8px);
     margin: 0 auto;
     position: relative;
     padding: 8px var(--gridPadX) 0;
@@ -138,8 +142,6 @@
     opacity: 0.9;
     pointer-events: none;
     z-index: 1;
-    clip-path: polygon(50% 0%, 92% 25%, 92% 75%, 50% 100%, 8% 75%, 8% 25%);
-    overflow: hidden;
     box-shadow:
         0 0 34px rgba(255, 66, 189, 0.45);
 }
@@ -154,7 +156,7 @@
 .phonebook-grid {
     position: relative;
     z-index: 2;
-    display: fl--rowOverlapRatioex;
+    display: flex;
     flex-direction: column;
     gap: 0;
     width: var(--gridWidth);
@@ -182,11 +184,13 @@
 
 .hex-cell,
 .hex-placeholder {
+    --hex-clip: polygon(25% 4%, 75% 4%, 98% 50%, 75% 96%, 25% 96%, 2% 50%);
     width: var(--hexW);
     height: var(--hexH);
-    clip-path: polygon(25% 4%, 75% 4%, 98% 50%, 75% 96%, 25% 96%, 2% 50%);
+    -webkit-clip-path: var(--hex-clip);
+    clip-path: var(--hex-clip);
     position: relative;
-    display: ыflex;
+    display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
@@ -199,40 +203,50 @@
 }
 
 .hex-cell::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    clip-path: inherit;
-    background: linear-gradient(140deg, rgba(255, 102, 199, 0.95), rgba(143, 67, 255, 0.93));
-    box-shadow:
-        0 0 16px rgba(243, 93, 224, 0.55),
-        0 0 35px rgba(177, 67, 255, 0.3);
+    content: none;
 }
 
 .hex-cell::after {
     content: '';
     position: absolute;
-    inset: 5px;
-    clip-path: inherit;
-    background: rgba(5, 7, 16, 0.93);
-    box-shadow: inset 0 0 15px rgba(93, 28, 151, 0.6);
+    inset: 2px;
+    -webkit-clip-path: var(--hex-clip);
+    clip-path: var(--hex-clip);
+    z-index: 1;
+    background: rgba(5, 7, 16, 0.94);
+    pointer-events: none;
+}
+
+.hex-cell {
+    background: linear-gradient(140deg, rgba(255, 132, 208, 0.98), rgba(180, 78, 255, 0.95));
+    box-shadow:
+        0 0 12px rgba(243, 93, 224, 0.6),
+        0 0 24px rgba(177, 67, 255, 0.35);
+    isolation: isolate;
 }
 
 .hex-cell span {
     position: relative;
     z-index: 3;
-    width: 75%;
+    width: min(68%, calc(100% - 18px));
+    max-width: min(68%, calc(100% - 18px));
+    box-sizing: border-box;
     color: #fff;
-    font-size: 34px;
-    line-height: 1.05;
+    font-size: clamp(14px, calc(var(--hexW) * 0.11), 28px);
+    line-height: 1.12;
     font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
     letter-spacing: 0.02em;
     text-wrap: balance;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     text-shadow: 0 0 8px rgba(255, 130, 220, 0.18);
+    display: block;
+    margin: 0 auto;
 }
 
 .hex-empty {
-    opacity: 0.72;
+    visibility: hidden;
+    pointer-events: none;
 }
 
 .hex-filled {
@@ -264,3 +278,227 @@
         opacity: 0.56;
     }
 }
+
+.phonebook-logo-link {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.phonebook-main-department {
+    padding: 6px 70px 22px;
+}
+
+.phonebook-department-content {
+    width: min(1220px, 100%);
+    margin: 0 auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1 1 auto;
+}
+
+.phonebook-department-content::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 24px;
+    transform: translateX(-50%);
+    width: min(520px, 48%);
+    height: min(72vh, 720px);
+    background:
+        radial-gradient(circle at center, rgba(255, 74, 168, 0.24) 0%, rgba(69, 20, 91, 0.2) 36%, rgba(7, 7, 14, 0) 72%);
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+.phonebook-department-title {
+    position: relative;
+    z-index: 1;
+    border: 2px solid rgba(255, 125, 165, 0.85);
+    border-radius: 12px;
+    min-height: 54px;
+    padding: 8px 26px;
+    font-size: clamp(34px, 3vw, 48px);
+    line-height: 1;
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    letter-spacing: 0.03em;
+    margin-bottom: 30px;
+    background: rgba(6, 6, 18, 0.35);
+}
+
+.phonebook-department-header-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 30px;
+}
+
+.phonebook-back-button {
+    position: relative;
+    z-index: 1;
+    height: 54px;
+    padding: 0 18px;
+    border: 2px solid rgba(255, 125, 165, 0.85);
+    border-radius: 10px;
+    background: rgba(6, 6, 18, 0.5);
+    color: #fff;
+    text-decoration: none;
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    font-size: clamp(22px, 1.8vw, 30px);
+    letter-spacing: 0.03em;
+    display: inline-flex;
+    align-items: center;
+    transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.phonebook-back-button:hover {
+    filter: brightness(1.12);
+    transform: translateY(-1px);
+}
+
+.phonebook-department-header-row .phonebook-department-title {
+    margin-bottom: 0;
+    flex: 1 1 auto;
+}
+
+.phonebook-department-list {
+    position: relative;
+    z-index: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: calc(100dvh - 230px);
+    padding-right: 8px;
+}
+
+.phonebook-department-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.phonebook-department-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.phonebook-department-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 125, 165, 0.7);
+    border-radius: 8px;
+}
+
+.phonebook-contact-row {
+    display: grid;
+    grid-template-columns: 66px 1.25fr 1fr;
+    align-items: center;
+    column-gap: 22px;
+    min-height: 82px;
+    border-bottom: 1px solid rgba(236, 236, 245, 0.7);
+}
+
+.phonebook-contact-avatar {
+    width: 66px;
+    height: 60px;
+    background: rgba(214, 214, 214, 0.95);
+    color: #111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.phonebook-contact-avatar-placeholder {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 4px;
+    box-sizing: border-box;
+    overflow: hidden;
+    font-size: clamp(14px, 1.2vw, 20px);
+    line-height: 1;
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    text-align: center;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.phonebook-contact-avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.phonebook-contact-name,
+.phonebook-contact-position {
+    font-size: clamp(28px, 2vw, 41px);
+    line-height: 1.05;
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    color: #fff;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
+}
+
+.phonebook-contact-position {
+    text-align: left;
+}
+
+.phonebook-department-empty {
+    font-size: clamp(26px, 1.6vw, 34px);
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    color: rgba(255, 255, 255, 0.84);
+    padding: 20px 0;
+}
+
+@media (max-width: 980px) {
+    .phonebook-main-department {
+        padding: 6px 20px 18px;
+    }
+
+    .phonebook-department-title {
+        min-height: 46px;
+        padding: 8px 16px;
+        margin-bottom: 0;
+    }
+
+    .phonebook-department-header-row {
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .phonebook-back-button {
+        height: 46px;
+        padding: 0 12px;
+        font-size: clamp(18px, 4.2vw, 24px);
+    }
+
+    .phonebook-contact-row {
+        grid-template-columns: 52px 1fr;
+        grid-template-areas:
+            'avatar name'
+            'avatar position';
+        min-height: 74px;
+        row-gap: 2px;
+        column-gap: 14px;
+        padding: 7px 0;
+    }
+
+    .phonebook-contact-avatar {
+        grid-area: avatar;
+        width: 52px;
+        height: 52px;
+    }
+
+    .phonebook-contact-name {
+        grid-area: name;
+        font-size: clamp(20px, 4.8vw, 28px);
+    }
+
+    .phonebook-contact-position {
+        grid-area: position;
+        font-size: clamp(18px, 4.4vw, 24px);
+    }
+
+    .phonebook-department-list {
+        max-height: calc(100dvh - 190px);
+        padding-right: 4px;
+    }
+}
+

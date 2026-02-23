@@ -130,6 +130,75 @@ export const fetchPhonebookDepartments = async () => {
     return Array.isArray(data) ? data : [];
 };
 
+export const fetchPhonebookUsersByDepartment = async (departmentId) => {
+    if (!departmentId) {
+        return [];
+    }
+
+    const users = await directus.request(readUsers({
+        fields: ['id', 'first_name', 'last_name', 'middleName', 'title', 'avatar', 'department', 'level'],
+        filter: {
+            department: {
+                _eq: departmentId,
+            },
+        },
+        limit: -1,
+    }));
+
+    if (!Array.isArray(users)) {
+        return [];
+    }
+
+    const collator = new Intl.Collator('ru', { sensitivity: 'base' });
+    const normalizeLevel = (value) => {
+        if (value === null || value === undefined || String(value).trim() === '') {
+            return null;
+        }
+
+        const numeric = Number(value);
+        if (Number.isFinite(numeric)) {
+            return { type: 'number', value: numeric };
+        }
+
+        return { type: 'string', value: String(value).trim() };
+    };
+
+    return [...users].sort((a, b) => {
+        const levelA = normalizeLevel(a?.level);
+        const levelB = normalizeLevel(b?.level);
+
+        if (levelA === null && levelB !== null) {
+            return 1;
+        }
+        if (levelA !== null && levelB === null) {
+            return -1;
+        }
+        if (levelA !== null && levelB !== null) {
+            if (levelA.type === 'number' && levelB.type === 'number' && levelA.value !== levelB.value) {
+                return levelA.value - levelB.value;
+            }
+            if (levelA.type !== 'number' || levelB.type !== 'number') {
+                const levelCompare = collator.compare(String(levelA.value), String(levelB.value));
+                if (levelCompare !== 0) {
+                    return levelCompare;
+                }
+            }
+        }
+
+        const lastNameCompare = collator.compare(a?.last_name || '', b?.last_name || '');
+        if (lastNameCompare !== 0) {
+            return lastNameCompare;
+        }
+
+        const firstNameCompare = collator.compare(a?.first_name || '', b?.first_name || '');
+        if (firstNameCompare !== 0) {
+            return firstNameCompare;
+        }
+
+        return collator.compare(a?.middleName || '', b?.middleName || '');
+    });
+};
+
 export const fetchDatanew = async ({
     page = 1,
     limit = 10,

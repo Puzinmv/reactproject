@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { fetchPhonebookDepartments, fetchPhonebookUsersByDepartment } from '../services/directus';
+import {
+    fetchPhonebookDepartments,
+    fetchPhonebookUserCard,
+    fetchPhonebookUsersByDepartment,
+} from '../services/directus';
 import './PhonebookPage.css';
 
 const SLOT_ROWS = [
@@ -56,12 +60,24 @@ const formatFullName = (user) => {
         .trim();
 };
 
+const toValueOrDash = (value) => {
+    if (value === null || value === undefined) {
+        return '-';
+    }
+
+    const text = String(value).trim();
+    return text ? text : '-';
+};
+
 function PhonebookPage() {
     const { id: departmentId } = useParams();
     const isDepartmentPage = Boolean(departmentId);
 
     const [departments, setDepartments] = useState([]);
     const [users, setUsers] = useState([]);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [selectedUserLoading, setSelectedUserLoading] = useState(false);
+    const [selectedUserError, setSelectedUserError] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -85,6 +101,8 @@ function PhonebookPage() {
 
                     setDepartments(Array.isArray(departmentData) ? departmentData : []);
                     setUsers(Array.isArray(usersData) ? usersData : []);
+                    setSelectedUser(null);
+                    setSelectedUserError('');
                 } else {
                     const departmentData = await fetchPhonebookDepartments();
 
@@ -94,6 +112,8 @@ function PhonebookPage() {
 
                     setDepartments(Array.isArray(departmentData) ? departmentData : []);
                     setUsers([]);
+                    setSelectedUser(null);
+                    setSelectedUserError('');
                 }
             } catch (loadError) {
                 if (!active) {
@@ -103,6 +123,8 @@ function PhonebookPage() {
                 setError('Не удалось загрузить данные телефонного справочника. Попробуйте обновить страницу.');
                 setDepartments([]);
                 setUsers([]);
+                setSelectedUser(null);
+                setSelectedUserError('');
             } finally {
                 if (active) {
                     setLoading(false);
@@ -143,6 +165,25 @@ function PhonebookPage() {
         );
     };
 
+    const handleSelectUser = async (userId) => {
+        setSelectedUserLoading(true);
+        setSelectedUserError('');
+
+        try {
+            const cardUser = await fetchPhonebookUserCard(userId);
+            if (!cardUser) {
+                setSelectedUserError('Не удалось загрузить карточку сотрудника.');
+                return;
+            }
+            setSelectedUser(cardUser);
+        } catch (cardError) {
+            console.error('Phonebook: failed to load user card', cardError);
+            setSelectedUserError('Не удалось загрузить карточку сотрудника.');
+        } finally {
+            setSelectedUserLoading(false);
+        }
+    };
+
     const renderDepartmentPage = () => (
         <main className="phonebook-main phonebook-main-department">
             {error ? <div className="phonebook-error">{error}</div> : null}
@@ -164,13 +205,83 @@ function PhonebookPage() {
                         <div className="phonebook-department-empty">В этом отделе пока нет сотрудников.</div>
                     ) : null}
 
-                    {!loading && users.map((user) => (
-                        <article key={user.id} className="phonebook-contact-row">
+                    {!loading && selectedUserError ? (
+                        <div className="phonebook-department-empty">{selectedUserError}</div>
+                    ) : null}
+
+                    {!loading && !selectedUser && users.map((user) => (
+                        <button
+                            key={user.id}
+                            type="button"
+                            className="phonebook-contact-row phonebook-contact-row-button"
+                            onClick={() => handleSelectUser(user.id)}
+                        >
                             <div className="phonebook-contact-avatar">{renderAvatar(user)}</div>
                             <div className="phonebook-contact-name">{formatFullName(user)}</div>
                             <div className="phonebook-contact-position">{user?.title || ''}</div>
-                        </article>
+                        </button>
                     ))}
+
+                    {!loading && selectedUserLoading ? (
+                        <div className="phonebook-department-empty">Загрузка карточки...</div>
+                    ) : null}
+
+                    {!loading && selectedUser && !selectedUserLoading ? (
+                        <article className="phonebook-user-card">
+                            <button
+                                type="button"
+                                className="phonebook-user-card-back"
+                                onClick={() => {
+                                    setSelectedUser(null);
+                                    setSelectedUserError('');
+                                }}
+                            >
+                                К списку сотрудников
+                            </button>
+
+                            <div className="phonebook-user-card-main">
+                                <div className="phonebook-user-card-avatar">{renderAvatar(selectedUser)}</div>
+
+                                <div className="phonebook-user-card-fields">
+                                    <div className="phonebook-user-card-row">
+                                        <span>Ф.И.О.:</span>
+                                        <span>{toValueOrDash(formatFullName(selectedUser))}</span>
+                                    </div>
+                                    <div className="phonebook-user-card-row">
+                                        <span>Должность:</span>
+                                        <span>{toValueOrDash(selectedUser?.title)}</span>
+                                    </div>
+                                    <div className="phonebook-user-card-row">
+                                        <span>Вн. тел.:</span>
+                                        <span>{toValueOrDash(selectedUser?.phone)}</span>
+                                    </div>
+                                    <div className="phonebook-user-card-row">
+                                        <span>Моб. тел.:</span>
+                                        <span>{toValueOrDash(selectedUser?.mobile)}</span>
+                                    </div>
+                                    <div className="phonebook-user-card-row">
+                                        <span>Эл. почта:</span>
+                                        <span>{toValueOrDash(selectedUser?.email)}</span>
+                                    </div>
+                                    <div className="phonebook-user-card-row">
+                                        <span>Дата рожд.:</span>
+                                        <span>XX.XX.XXXX</span>
+                                    </div>
+                                    <div className="phonebook-user-card-row">
+                                        <span>Руководитель:</span>
+                                        <span>{toValueOrDash(formatFullName(selectedUser?.Head))}</span>
+                                    </div>
+                                    <div className="phonebook-user-card-row">
+                                        <span>Город:</span>
+                                        <span>—</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="phonebook-user-card-extra-title">Доп. сведения:</div>
+                            <div className="phonebook-user-card-extra">{toValueOrDash(selectedUser?.description)}</div>
+                        </article>
+                    ) : null}
                 </div>
             </section>
         </main>

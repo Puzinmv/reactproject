@@ -199,6 +199,40 @@ export const fetchPhonebookUsersByDepartment = async (departmentId) => {
     });
 };
 
+export const fetchPhonebookUserCard = async (userId) => {
+    if (!userId) {
+        return null;
+    }
+
+    const users = await directus.request(readUsers({
+        fields: [
+            'id',
+            'first_name',
+            'last_name',
+            'middleName',
+            'title',
+            'avatar',
+            'phone',
+            'mobile',
+            'email',
+            'description',
+            { Head: ['first_name', 'last_name', 'middleName'] },
+        ],
+        filter: {
+            id: {
+                _eq: userId,
+            },
+        },
+        limit: 1,
+    }));
+
+    if (!Array.isArray(users) || users.length === 0) {
+        return null;
+    }
+
+    return users[0];
+};
+
 export const fetchDatanew = async ({
     page = 1,
     limit = 10,

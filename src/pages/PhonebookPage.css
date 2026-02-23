@@ -395,6 +395,25 @@
     border-bottom: 1px solid rgba(236, 236, 245, 0.7);
 }
 
+.phonebook-contact-row-button {
+    width: 100%;
+    background: transparent;
+    color: inherit;
+    border: 0;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+}
+
+.phonebook-contact-row-button:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.phonebook-contact-row-button:focus-visible {
+    outline: 2px solid rgba(255, 125, 165, 0.85);
+    outline-offset: 2px;
+}
+
 .phonebook-contact-avatar {
     width: 66px;
     height: 60px;
@@ -440,6 +459,85 @@
     text-align: left;
 }
 
+.phonebook-user-card {
+    border-top: 1px solid rgba(236, 236, 245, 0.4);
+    padding-top: 12px;
+}
+
+.phonebook-user-card-back {
+    border: 1px solid rgba(255, 125, 165, 0.85);
+    border-radius: 8px;
+    background: rgba(6, 6, 18, 0.52);
+    color: #fff;
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    font-size: clamp(18px, 1.4vw, 24px);
+    letter-spacing: 0.03em;
+    padding: 6px 12px;
+    margin-bottom: 14px;
+    cursor: pointer;
+}
+
+.phonebook-user-card-main {
+    display: grid;
+    grid-template-columns: minmax(160px, 240px) 1fr;
+    gap: clamp(18px, 2.2vw, 34px);
+}
+
+.phonebook-user-card-avatar {
+    width: 100%;
+    min-height: 300px;
+    background: rgba(214, 214, 214, 0.95);
+}
+
+.phonebook-user-card-avatar .phonebook-contact-avatar-image {
+    width: 100%;
+    height: 100%;
+}
+
+.phonebook-user-card-avatar .phonebook-contact-avatar-placeholder {
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.phonebook-user-card-fields {
+    display: grid;
+    gap: 8px;
+}
+
+.phonebook-user-card-row {
+    display: grid;
+    grid-template-columns: minmax(140px, 200px) 1fr;
+    gap: 18px;
+}
+
+.phonebook-user-card-row span {
+    font-size: clamp(26px, 2vw, 42px);
+    line-height: 1.05;
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    color: #fff;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
+}
+
+.phonebook-user-card-extra-title {
+    margin-top: 10px;
+    margin-bottom: 8px;
+    font-size: clamp(26px, 2vw, 42px);
+    line-height: 1.05;
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+}
+
+.phonebook-user-card-extra {
+    min-height: 126px;
+    border: 1px solid rgba(236, 236, 245, 0.7);
+    background: rgba(6, 6, 18, 0.3);
+    padding: 12px;
+    font-size: clamp(16px, 1.1vw, 22px);
+    line-height: 1.35;
+    white-space: pre-wrap;
+}
+
 .phonebook-department-empty {
     font-size: clamp(26px, 1.6vw, 34px);
     font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
@@ -480,6 +578,10 @@
         padding: 7px 0;
     }
 
+    .phonebook-contact-row-button {
+        display: grid;
+    }
+
     .phonebook-contact-avatar {
         grid-area: avatar;
         width: 52px;
@@ -494,6 +596,34 @@
     .phonebook-contact-position {
         grid-area: position;
         font-size: clamp(18px, 4.4vw, 24px);
+    }
+
+    .phonebook-user-card-main {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .phonebook-user-card-avatar {
+        width: min(240px, 100%);
+        min-height: 220px;
+    }
+
+    .phonebook-user-card-avatar .phonebook-contact-avatar-placeholder {
+        min-height: 220px;
+    }
+
+    .phonebook-user-card-row {
+        grid-template-columns: minmax(100px, 40vw) 1fr;
+        gap: 10px;
+    }
+
+    .phonebook-user-card-row span,
+    .phonebook-user-card-extra-title {
+        font-size: clamp(19px, 5vw, 28px);
+    }
+
+    .phonebook-user-card-extra {
+        min-height: 90px;
     }
 
     .phonebook-department-list {

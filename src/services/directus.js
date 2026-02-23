@@ -120,6 +120,16 @@ export const getCurrentUser = async () => {
         throw e;
     }
 };
+
+export const fetchPhonebookDepartments = async () => {
+    const data = await directus.request(readItems('LADP_departments', {
+        fields: ['id', 'name', 'sort'],
+        limit: -1,
+    }));
+
+    return Array.isArray(data) ? data : [];
+};
+
 export const fetchDatanew = async ({
     page = 1,
     limit = 10,

@@ -1,9 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
     fetchPhonebookDepartments,
     fetchPhonebookUserCard,
     fetchPhonebookUsersByDepartment,
+    getCurrentUser,
+    getToken,
+    logout,
 } from '../services/directus';
 import './PhonebookPage.css';
 
@@ -96,7 +99,9 @@ const getDepartmentNameSizeClass = (name) => {
 
 function PhonebookPage() {
     const { id: departmentId } = useParams();
+    const navigate = useNavigate();
     const isDepartmentPage = Boolean(departmentId);
+    const userMenuRef = useRef(null);
 
     const [departments, setDepartments] = useState([]);
     const [users, setUsers] = useState([]);
@@ -105,6 +110,61 @@ function PhonebookPage() {
     const [selectedUserError, setSelectedUserError] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [currentUser, setCurrentUser] = useState(null);
+    const [isAuthLoading, setIsAuthLoading] = useState(true);
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+    useEffect(() => {
+        let active = true;
+
+        const loadCurrentUser = async () => {
+            setIsAuthLoading(true);
+
+            try {
+                const token = await getToken();
+                if (!token?.data) {
+                    throw new Error('No valid token');
+                }
+
+                const user = await getCurrentUser();
+                if (active) {
+                    setCurrentUser(user || null);
+                }
+            } catch (authError) {
+                if (active) {
+                    setCurrentUser(null);
+                }
+            } finally {
+                if (active) {
+                    setIsAuthLoading(false);
+                }
+            }
+        };
+
+        loadCurrentUser();
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!isUserMenuOpen) {
+            return undefined;
+        }
+
+        const handleClickOutside = (event) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+                setIsUserMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isUserMenuOpen]);
 
     useEffect(() => {
         let active = true;
@@ -124,10 +184,38 @@ function PhonebookPage() {
                         return;
                     }
 
-                    setDepartments(Array.isArray(departmentData) ? departmentData : []);
-                    setUsers(Array.isArray(usersData) ? usersData : []);
+                    const safeDepartments = Array.isArray(departmentData) ? departmentData : [];
+                    const safeUsers = Array.isArray(usersData) ? usersData : [];
+
+                    setDepartments(safeDepartments);
+                    setUsers(safeUsers);
                     setSelectedUser(null);
                     setSelectedUserError('');
+
+                    if (safeUsers.length === 1) {
+                        setSelectedUserLoading(true);
+                        try {
+                            const cardUser = await fetchPhonebookUserCard(safeUsers[0].id);
+                            if (!active) {
+                                return;
+                            }
+                            if (!cardUser) {
+                                setSelectedUserError('Не удалось загрузить карточку сотрудника.');
+                            } else {
+                                setSelectedUser(cardUser);
+                            }
+                        } catch (cardError) {
+                            if (!active) {
+                                return;
+                            }
+                            console.error('Phonebook: failed to load single user card', cardError);
+                            setSelectedUserError('Не удалось загрузить карточку сотрудника.');
+                        } finally {
+                            if (active) {
+                                setSelectedUserLoading(false);
+                            }
+                        }
+                    }
                 } else {
                     const departmentData = await fetchPhonebookDepartments();
 
@@ -206,6 +294,32 @@ function PhonebookPage() {
             setSelectedUserError('Не удалось загрузить карточку сотрудника.');
         } finally {
             setSelectedUserLoading(false);
+        }
+    };
+
+    const getCurrentUserAvatarUrl = () => {
+        const avatarValue = currentUser?.avatar;
+        const avatarId = typeof avatarValue === 'object' ? avatarValue?.id : avatarValue;
+
+        if (!avatarId) {
+            return '';
+        }
+
+        return `${process.env.REACT_APP_API_URL}/assets/${avatarId}`;
+    };
+
+    const handleLoginClick = () => {
+        navigate('/?redirect=/phonebook');
+    };
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+        } catch (logoutError) {
+            console.error('Phonebook: failed to logout', logoutError);
+        } finally {
+            setCurrentUser(null);
+            setIsUserMenuOpen(false);
         }
     };
 
@@ -379,13 +493,68 @@ function PhonebookPage() {
 
     return (
         <div className="phonebook-page">
+
             <header className="phonebook-header">
                 <Link to="/phonebook" className="phonebook-logo-link">
                     <img src="/logo.png" alt="Астерит" className="phonebook-logo" />
                 </Link>
-                <div className="phonebook-search-wrap" aria-hidden>
-                    <input className="phonebook-search" placeholder="Поиск" readOnly />
-                    <span className="phonebook-search-arrow">➜</span>
+                <div className="phonebook-header-actions">
+                    <div className="phonebook-search-wrap" aria-hidden>
+                        <input className="phonebook-search" placeholder="Поиск" readOnly />
+                        <span className="phonebook-search-arrow">➜</span>
+                    </div>
+
+                    {!isAuthLoading && !currentUser ? (
+                        <button
+                            type="button"
+                            className="phonebook-auth-button"
+                            onClick={handleLoginClick}
+                            aria-label="Войти в аккаунт"
+                            title="Войти"
+                        >
+                            <span className="phonebook-auth-icon" aria-hidden>
+                                ◯
+                            </span>
+                        </button>
+                    ) : null}
+
+                    {!isAuthLoading && currentUser ? (
+                        <div className="phonebook-user-menu" ref={userMenuRef}>
+                            <button
+                                type="button"
+                                className="phonebook-user-avatar-button"
+                                onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                                aria-haspopup="menu"
+                                aria-expanded={isUserMenuOpen}
+                                aria-label="Меню пользователя"
+                            >
+                                {getCurrentUserAvatarUrl() ? (
+                                    <img
+                                        src={getCurrentUserAvatarUrl()}
+                                        alt="Аватар пользователя"
+                                        className="phonebook-user-avatar-image"
+                                    />
+                                ) : (
+                                    <span className="phonebook-user-avatar-fallback">
+                                        {(currentUser?.first_name || '?').slice(0, 1).toUpperCase()}
+                                    </span>
+                                )}
+                            </button>
+
+                            {isUserMenuOpen ? (
+                                <div className="phonebook-user-dropdown" role="menu">
+                                    <button
+                                        type="button"
+                                        className="phonebook-user-dropdown-item"
+                                        role="menuitem"
+                                        onClick={handleLogout}
+                                    >
+                                        Выход
+                                    </button>
+                                </div>
+                            ) : null}
+                        </div>
+                    ) : null}
                 </div>
             </header>
 
@@ -395,3 +564,4 @@ function PhonebookPage() {
 }
 
 export default PhonebookPage;
+

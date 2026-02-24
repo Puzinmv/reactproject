@@ -4,6 +4,7 @@ import LoginForm from './LoginForm';
 import { CircularProgress } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import ResponsiveAppBar from './ResponsiveAppBar';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const theme = createTheme({
     typography: {
@@ -26,20 +27,27 @@ function AuthWrapper({ children, isLoginFunc }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [savedSearchParams, setSavedSearchParams] = useState('');
+    const navigate = useNavigate();
+    const location = useLocation();
+    const redirectPath = new URLSearchParams(location.search).get('redirect');
 
     const checkAuthAndGetUser = useCallback(async () => {
         try {
-            // Проверяем токен
+            // РџСЂРѕРІРµСЂСЏРµРј С‚РѕРєРµРЅ
             const token = await getToken();
             if (!token?.data) {
                 throw new Error('No valid token');
             }
 
-            // Получаем данные пользователя
+            // РџРѕР»СѓС‡Р°РµРј РґР°РЅРЅС‹Рµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
             const userData = await getCurrentUser();
             if (userData) {
                 setCurrentUser(userData);
-                // Восстанавливаем параметры URL после успешной авторизации
+                if (redirectPath) {
+                    navigate(redirectPath, { replace: true });
+                    return true;
+                }
+                // Р’РѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј РїР°СЂР°РјРµС‚СЂС‹ URL РїРѕСЃР»Рµ СѓСЃРїРµС€РЅРѕР№ Р°РІС‚РѕСЂРёР·Р°С†РёРё
                 if (savedSearchParams && window.location.search === '') {
                     window.history.replaceState({}, '', savedSearchParams);
                 }
@@ -52,7 +60,7 @@ function AuthWrapper({ children, isLoginFunc }) {
         } finally {
             setIsLoading(false);
         }
-    }, [savedSearchParams]);
+    }, [navigate, redirectPath, savedSearchParams]);
 
     useEffect(() => {
         setSavedSearchParams(window.location.search);
@@ -83,6 +91,10 @@ function AuthWrapper({ children, isLoginFunc }) {
                 const userData = await getCurrentUser();
                 if (userData) {
                     setCurrentUser(userData);
+                    if (redirectPath) {
+                        navigate(redirectPath, { replace: true });
+                        return true;
+                    }
                     if (savedSearchParams) {
                         window.history.replaceState({}, '', savedSearchParams);
                     }

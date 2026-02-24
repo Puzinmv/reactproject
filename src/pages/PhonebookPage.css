@@ -44,8 +44,14 @@
     object-fit: contain;
 }
 
+.phonebook-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .phonebook-search-wrap {
-    min-width: 196px;
+    width: 196px;
     height: 40px;
     border: 2px solid rgba(238, 238, 255, 0.7);
     display: flex;
@@ -53,6 +59,22 @@
     justify-content: space-between;
     padding: 0 10px;
     background: rgba(5, 5, 12, 0.65);
+    margin-left: auto;
+    transition:
+        width 0.28s ease,
+        border-color 0.28s ease,
+        box-shadow 0.28s ease,
+        background-color 0.28s ease;
+}
+
+.phonebook-search-wrap:hover,
+.phonebook-search-wrap:focus-within {
+    width: 258px;
+    border-color: rgba(255, 174, 224, 0.95);
+    background: rgba(10, 8, 24, 0.82);
+    box-shadow:
+        0 0 0 1px rgba(255, 174, 224, 0.22),
+        0 0 18px rgba(255, 126, 214, 0.34);
 }
 
 .phonebook-search {
@@ -64,6 +86,13 @@
     font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
     letter-spacing: 0.04em;
     width: 100%;
+    transition: color 0.28s ease, text-shadow 0.28s ease;
+}
+
+.phonebook-search-wrap:hover .phonebook-search,
+.phonebook-search-wrap:focus-within .phonebook-search {
+    color: #fff;
+    text-shadow: 0 0 10px rgba(255, 163, 230, 0.45);
 }
 
 .phonebook-search::placeholder {
@@ -74,6 +103,90 @@
     margin-left: 10px;
     font-size: 18px;
     line-height: 1;
+}
+
+.phonebook-auth-button,
+.phonebook-user-avatar-button {
+    width: 40px;
+    height: 40px;
+    border: 2px solid rgba(238, 238, 255, 0.7);
+    background: rgba(5, 5, 12, 0.65);
+    color: rgba(255, 255, 255, 0.95);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition:
+        border-color 0.22s ease,
+        box-shadow 0.22s ease,
+        background-color 0.22s ease,
+        transform 0.22s ease;
+}
+
+.phonebook-auth-button:hover,
+.phonebook-auth-button:focus-visible,
+.phonebook-user-avatar-button:hover,
+.phonebook-user-avatar-button:focus-visible {
+    border-color: rgba(255, 174, 224, 0.95);
+    background: rgba(10, 8, 24, 0.82);
+    box-shadow: 0 0 16px rgba(255, 126, 214, 0.28);
+    transform: translateY(-1px);
+}
+
+.phonebook-auth-button:focus-visible,
+.phonebook-user-avatar-button:focus-visible {
+    outline: none;
+}
+
+.phonebook-auth-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.phonebook-user-menu {
+    position: relative;
+}
+
+.phonebook-user-avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.phonebook-user-avatar-fallback {
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.phonebook-user-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    min-width: 108px;
+    background: rgba(6, 6, 18, 0.96);
+    border: 1px solid rgba(255, 174, 224, 0.62);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 6;
+}
+
+.phonebook-user-dropdown-item {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    text-align: left;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.02em;
+}
+
+.phonebook-user-dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .phonebook-main {
@@ -608,6 +721,30 @@
 }
 
 @media (max-width: 980px) {
+    .phonebook-header {
+        padding: 16px 20px 8px;
+    }
+
+    .phonebook-header-actions {
+        gap: 8px;
+    }
+
+    .phonebook-search-wrap {
+        width: 170px;
+        height: 36px;
+    }
+
+    .phonebook-search-wrap:hover,
+    .phonebook-search-wrap:focus-within {
+        width: 210px;
+    }
+
+    .phonebook-auth-button,
+    .phonebook-user-avatar-button {
+        width: 36px;
+        height: 36px;
+    }
+
     .phonebook-main-department {
         padding: 6px 20px 18px;
     }

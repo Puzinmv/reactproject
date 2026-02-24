@@ -203,7 +203,30 @@
 }
 
 .hex-cell::before {
-    content: none;
+    content: '';
+    position: absolute;
+    inset: 0;
+    -webkit-clip-path: var(--hex-clip);
+    clip-path: var(--hex-clip);
+    padding: var(--hexGhostStroke);
+    background: linear-gradient(
+        150deg,
+        rgba(255, 188, 238, 0.72),
+        rgba(188, 146, 255, 0.65)
+    );
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: 0.85;
+    filter: blur(0.2px);
+    mix-blend-mode: screen;
+    pointer-events: none;
+    z-index: 2;
 }
 
 .hex-cell::after {

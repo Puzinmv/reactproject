@@ -69,6 +69,31 @@ const toValueOrDash = (value) => {
     return text ? text : '-';
 };
 
+const getDepartmentNameSizeClass = (name) => {
+    const text = String(name || '').trim();
+    if (!text) {
+        return '';
+    }
+
+    const maxWordLength = text
+        .split(/\s+/)
+        .reduce((max, word) => Math.max(max, word.length), 0);
+
+    if (maxWordLength >= 22) {
+        return 'hex-label-xxs';
+    }
+
+    if (maxWordLength >= 18) {
+        return 'hex-label-xs';
+    }
+
+    if (maxWordLength >= 14) {
+        return 'hex-label-sm';
+    }
+
+    return '';
+};
+
 function PhonebookPage() {
     const { id: departmentId } = useParams();
     const isDepartmentPage = Boolean(departmentId);
@@ -189,6 +214,10 @@ function PhonebookPage() {
             {error ? <div className="phonebook-error">{error}</div> : null}
 
             <section className="phonebook-department-content">
+                <div aria-hidden className="phonebook-center-image phonebook-center-image-faded">
+                    <img src="/background-center.png" alt="" />
+                </div>
+
                 <div className="phonebook-department-header-row">
                     <Link to="/phonebook" className="phonebook-back-button">
                         Назад
@@ -294,7 +323,13 @@ function PhonebookPage() {
             <div className="phonebook-grid-scroll">
                 <section className="phonebook-grid-container">
                     <div aria-hidden className="phonebook-center-image">
-                        <img src="/image.png" alt="" />
+                        <img src="/background-center.png" alt="" />
+                        <div className="phonebook-center-text">
+                            <span>ИНДИВИДУАЛЬНЫЕ</span>
+                            <span>СТРАТЕГИИ</span>
+                            <span>ИНФОРМАЦИОННОЙ</span>
+                            <span>БЕЗОПАСНОСТИ</span>
+                        </div>
                     </div>
 
                     <div className="phonebook-grid">
@@ -330,7 +365,7 @@ function PhonebookPage() {
                                             to={`/phonebook/${department.id}`}
                                             className="hex-cell hex-filled"
                                         >
-                                            <span>{department.name}</span>
+                                            <span className={getDepartmentNameSizeClass(department.name)}>{department.name}</span>
                                         </Link>
                                     );
                                 })}

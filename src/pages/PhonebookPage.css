@@ -1,10 +1,23 @@
+@font-face {
+    font-family: 'Bebas Neue';
+    src: url('../assets/fonts/Bebas Neue Pro Regular.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Bebas Neue';
+    src: url('../assets/fonts/Bebas Neue Pro Bold.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+}
+
 .phonebook-page {
     height: 100dvh;
     color: #fff;
-    background:
-        radial-gradient(circle at 50% 35%, rgba(255, 56, 177, 0.14), transparent 32%),
-        radial-gradient(circle at 50% 50%, rgba(70, 5, 92, 0.45), transparent 60%),
-        linear-gradient(160deg, #07070c 0%, #040408 65%, #020204 100%);
+    background: #050411;
     position: relative;
     overflow: hidden;
     display: flex;
@@ -12,15 +25,7 @@
 }
 
 .phonebook-page::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background-image:
-        linear-gradient(rgba(180, 90, 255, 0.07) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(180, 90, 255, 0.07) 1px, transparent 1px);
-    background-size: 62px 62px;
-    opacity: 0.18;
+    content: none;
 }
 
 .phonebook-header {
@@ -139,17 +144,46 @@
     width: calc(var(--hexW) * 2.05);
     max-width: 560px;
     aspect-ratio: 3 / 4;
-    opacity: 0.9;
+    opacity: 1;
     pointer-events: none;
     z-index: 1;
-    box-shadow:
-        0 0 34px rgba(255, 66, 189, 0.45);
+    box-shadow: none;
 }
 
 .phonebook-center-image img {
     width: 100%;
     height: 100%;
     object-fit: contain;
+    display: block;
+}
+
+.phonebook-center-image-faded {
+    opacity: 0.14;
+    z-index: 0;
+}
+
+.phonebook-center-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.1em;
+    padding: 18% 10%;
+    text-align: center;
+    z-index: 2;
+    pointer-events: none;
+    color: #ffffff;
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    font-size: clamp(33px, calc(var(--hexW) * 0.165), 57px);
+    font-weight: 700;
+    line-height: 0.95;
+    letter-spacing: 0.03em;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.35);
+}
+
+.phonebook-center-text span {
     display: block;
 }
 
@@ -249,22 +283,37 @@
 }
 
 .hex-cell span {
+    --hex-label-scale: 1;
     position: relative;
     z-index: 3;
     width: min(68%, calc(100% - 18px));
     max-width: min(68%, calc(100% - 18px));
     box-sizing: border-box;
     color: #fff;
-    font-size: clamp(14px, calc(var(--hexW) * 0.11), 28px);
+    font-size: clamp(12px, calc(var(--hexW) * 0.11 * var(--hex-label-scale)), 28px);
     line-height: 1.12;
     font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
     letter-spacing: 0.02em;
+    white-space: normal;
     text-wrap: balance;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
     text-shadow: 0 0 8px rgba(255, 130, 220, 0.18);
     display: block;
     margin: 0 auto;
+}
+
+.hex-cell span.hex-label-sm {
+    --hex-label-scale: 0.9;
+}
+
+.hex-cell span.hex-label-xs {
+    --hex-label-scale: 0.8;
+}
+
+.hex-cell span.hex-label-xxs {
+    --hex-label-scale: 0.72;
 }
 
 .hex-empty {
@@ -323,17 +372,7 @@
 }
 
 .phonebook-department-content::before {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 24px;
-    transform: translateX(-50%);
-    width: min(520px, 48%);
-    height: min(72vh, 720px);
-    background:
-        radial-gradient(circle at center, rgba(255, 74, 168, 0.24) 0%, rgba(69, 20, 91, 0.2) 36%, rgba(7, 7, 14, 0) 72%);
-    opacity: 0.8;
-    pointer-events: none;
+    content: none;
 }
 
 .phonebook-department-title {

@@ -7,6 +7,8 @@ import {
     getCurrentUser,
     getToken,
     logout,
+    updatePhonebookUserCard,
+    uploadPhonebookUserAvatar,
 } from '../services/directus';
 import './PhonebookPage.css';
 
@@ -21,6 +23,9 @@ const SLOT_ROWS = [
 ];
 
 const RESERVED_SLOTS = new Set([9, 12, 13, 16]);
+const PHONEBOOK_DND_ROLE_ID = '6a4f07d3-0f93-4d19-8dd1-5205703334bb';
+const MAX_AVATAR_SIZE_BYTES = 8 * 1024 * 1024;
+const getUserRoleId = (user) => (typeof user?.role === 'object' ? user?.role?.id : user?.role);
 
 const buildSlotsMap = (departments) => {
     const map = new Map();
@@ -72,6 +77,24 @@ const toValueOrDash = (value) => {
     return text ? text : '-';
 };
 
+const formatBirthDate = (value) => {
+    if (value === null || value === undefined) {
+        return '-';
+    }
+
+    const text = String(value).trim();
+    if (!text) {
+        return '-';
+    }
+
+    const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+        return `${isoMatch[3]}.${isoMatch[2]}.${isoMatch[1]}`;
+    }
+
+    return text;
+};
+
 const getDepartmentNameSizeClass = (name) => {
     const text = String(name || '').trim();
     if (!text) {
@@ -113,6 +136,10 @@ function PhonebookPage() {
     const [currentUser, setCurrentUser] = useState(null);
     const [isAuthLoading, setIsAuthLoading] = useState(true);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const [descriptionDraft, setDescriptionDraft] = useState('');
+    const [levelDraft, setLevelDraft] = useState('');
+    const [isSavingUserCard, setIsSavingUserCard] = useState(false);
+    const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
     useEffect(() => {
         let active = true;
@@ -253,6 +280,12 @@ function PhonebookPage() {
     }, [departmentId, isDepartmentPage]);
 
     const slotsMap = useMemo(() => buildSlotsMap(departments), [departments]);
+    const canEditSelectedUser = useMemo(
+        () => !isAuthLoading
+            && Boolean(currentUser)
+            && String(getUserRoleId(currentUser)) === PHONEBOOK_DND_ROLE_ID,
+        [currentUser, isAuthLoading],
+    );
     const activeDepartment = useMemo(
         () => departments.find((department) => String(department.id) === String(departmentId)),
         [departments, departmentId],
@@ -294,6 +327,109 @@ function PhonebookPage() {
             setSelectedUserError('Не удалось загрузить карточку сотрудника.');
         } finally {
             setSelectedUserLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        setDescriptionDraft(selectedUser?.description || '');
+    }, [selectedUser?.id, selectedUser?.description]);
+
+    useEffect(() => {
+        const rawLevel = selectedUser?.level;
+        if (rawLevel === null || rawLevel === undefined || String(rawLevel).trim() === '') {
+            setLevelDraft('');
+            return;
+        }
+
+        setLevelDraft(String(rawLevel));
+    }, [selectedUser?.id, selectedUser?.level]);
+
+    const handleLevelDraftChange = (event) => {
+        const nextValue = event.target.value;
+        if (/^-?\d*$/.test(nextValue)) {
+            setLevelDraft(nextValue);
+        }
+    };
+
+    const handleUserCardSave = async () => {
+        if (!canEditSelectedUser || !selectedUser?.id || isSavingUserCard) {
+            return;
+        }
+
+        setSelectedUserError('');
+        setIsSavingUserCard(true);
+
+        try {
+            const normalizedLevel = levelDraft.trim() === '' ? null : parseInt(levelDraft, 10);
+
+            if (levelDraft.trim() !== '' && Number.isNaN(normalizedLevel)) {
+                setSelectedUserError('Укажите целое число для уровня.');
+                return;
+            }
+
+            await updatePhonebookUserCard(selectedUser.id, {
+                description: descriptionDraft,
+                level: normalizedLevel,
+            });
+            setSelectedUser((prevUser) => (
+                prevUser
+                    ? {
+                        ...prevUser,
+                        description: descriptionDraft,
+                        level: normalizedLevel,
+                    }
+                    : prevUser
+            ));
+        } catch (saveError) {
+            console.error('Phonebook: failed to save user card', saveError);
+            setSelectedUserError('Не удалось сохранить доп. сведения.');
+        } finally {
+            setIsSavingUserCard(false);
+        }
+    };
+
+    const handleAvatarUpload = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+
+        if (!file || !canEditSelectedUser || !selectedUser?.id) {
+            return;
+        }
+
+        if (!String(file.type || '').startsWith('image/')) {
+            setSelectedUserError('Можно загрузить только изображение.');
+            return;
+        }
+
+        if (file.size > MAX_AVATAR_SIZE_BYTES) {
+            setSelectedUserError('Файл слишком большой. Максимальный размер: 8 МБ.');
+            return;
+        }
+
+        setSelectedUserError('');
+        setIsUploadingAvatar(true);
+
+        try {
+            const uploadedAvatar = await uploadPhonebookUserAvatar(file);
+            const avatarId = typeof uploadedAvatar === 'object' ? uploadedAvatar?.id : uploadedAvatar;
+
+            if (!avatarId) {
+                throw new Error('No avatar id returned');
+            }
+
+            await updatePhonebookUserCard(selectedUser.id, { avatar: avatarId });
+
+            setSelectedUser((prevUser) => (prevUser ? { ...prevUser, avatar: avatarId } : prevUser));
+            setUsers((prevUsers) => prevUsers.map((user) => (
+                String(user.id) === String(selectedUser.id)
+                    ? { ...user, avatar: avatarId }
+                    : user
+            )));
+        } catch (uploadError) {
+            console.error('Phonebook: failed to update avatar', uploadError);
+            setSelectedUserError('Не удалось обновить фото сотрудника.');
+        } finally {
+            setIsUploadingAvatar(false);
         }
     };
 
@@ -383,7 +519,22 @@ function PhonebookPage() {
                             </button>
 
                             <div className="phonebook-user-card-main">
-                                <div className="phonebook-user-card-avatar">{renderAvatar(selectedUser)}</div>
+                                <div className="phonebook-user-card-avatar-wrap">
+                                    <div className="phonebook-user-card-avatar">{renderAvatar(selectedUser)}</div>
+                                    {canEditSelectedUser ? (
+                                        <div className="phonebook-user-card-avatar-actions">
+                                            <label className={`phonebook-user-card-action-button${isUploadingAvatar ? ' is-disabled' : ''}`}>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleAvatarUpload}
+                                                    disabled={isUploadingAvatar || isSavingUserCard}
+                                                />
+                                                <span>{isUploadingAvatar ? 'Загрузка фото...' : 'Загрузить фото'}</span>
+                                            </label>
+                                        </div>
+                                    ) : null}
+                                </div>
 
                                 <div className="phonebook-user-card-fields">
                                     <div className="phonebook-user-card-row">
@@ -408,7 +559,7 @@ function PhonebookPage() {
                                     </div>
                                     <div className="phonebook-user-card-row">
                                         <span>Дата рожд.:</span>
-                                        <span>XX.XX.XXXX</span>
+                                        <span>{toValueOrDash(formatBirthDate(selectedUser?.date_birthd))}</span>
                                     </div>
                                     <div className="phonebook-user-card-row">
                                         <span>Руководитель:</span>
@@ -416,13 +567,50 @@ function PhonebookPage() {
                                     </div>
                                     <div className="phonebook-user-card-row">
                                         <span>Город:</span>
-                                        <span>—</span>
+                                        <span>-</span>
                                     </div>
+                                    {canEditSelectedUser ? (
+                                        <div className="phonebook-user-card-row">
+                                            <span>Уровень:</span>
+                                            <div className="phonebook-user-card-level-edit">
+                                                <input
+                                                    type="number"
+                                                    step="1"
+                                                    className="phonebook-user-card-level-input"
+                                                    value={levelDraft}
+                                                    onChange={handleLevelDraftChange}
+                                                    disabled={isSavingUserCard || isUploadingAvatar}
+                                                    placeholder="-"
+                                                    aria-label="Уровень"
+                                                />
+                                            </div>
+                                        </div>
+                                    ) : null}
                                 </div>
                             </div>
 
                             <div className="phonebook-user-card-extra-title">Доп. сведения:</div>
-                            <div className="phonebook-user-card-extra">{toValueOrDash(selectedUser?.description)}</div>
+                            {canEditSelectedUser ? (
+                                <div className="phonebook-user-card-extra-edit">
+                                    <textarea
+                                        className="phonebook-user-card-extra-input"
+                                        value={descriptionDraft}
+                                        onChange={(event) => setDescriptionDraft(event.target.value)}
+                                        disabled={isSavingUserCard || isUploadingAvatar}
+                                        placeholder="Введите доп. сведения"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="phonebook-user-card-action-button"
+                                        onClick={handleUserCardSave}
+                                        disabled={isSavingUserCard || isUploadingAvatar}
+                                    >
+                                        {isSavingUserCard ? 'Сохранение...' : 'Сохранить'}
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="phonebook-user-card-extra">{toValueOrDash(selectedUser?.description)}</div>
+                            )}
                         </article>
                     ) : null}
                 </div>
@@ -493,7 +681,6 @@ function PhonebookPage() {
 
     return (
         <div className="phonebook-page">
-
             <header className="phonebook-header">
                 <Link to="/phonebook" className="phonebook-logo-link">
                     <img src="/logo.png" alt="Астерит" className="phonebook-logo" />
@@ -564,4 +751,3 @@ function PhonebookPage() {
 }
 
 export default PhonebookPage;
-

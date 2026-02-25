@@ -6,7 +6,7 @@ const LINKS ={
     USER: 'Catalog_РџРѕР»СЊР·РѕРІР°С‚РµР»Рё'
  }
 const API_KEY = '0J7QsdC80LXQvTpuRTZ6YW1hcA=='
-const THRESHOLD = 0.3 // Чем ниже, тем более строгий поиск
+const THRESHOLD = 0.3 
 const normalizeSearchValue = (value) => String(value || '')
     .toLowerCase()
     .trim()

@@ -1,10 +1,12 @@
 import {
     createDirectus, authentication,  rest,
     readItems, readUsers, updateItem, readMe, readFile, readItem,
-    uploadFiles, deleteFile, createItem, updateMe, deleteItem
+    uploadFiles, deleteFile, createItem, updateMe, deleteItem, updateUser
 } from "@directus/sdk";
 
-export const directus = createDirectus(process.env.REACT_APP_API_URL)
+const directusBaseUrl = new URL(process.env.REACT_APP_API_URL || '', window.location.origin).toString();
+
+export const directus = createDirectus(directusBaseUrl)
     .with(authentication('session', { credentials: 'include', autoRefresh: true }))
     .with(rest({ credentials: 'include' }))
     ;
@@ -216,6 +218,8 @@ export const fetchPhonebookUserCard = async (userId) => {
             'mobile',
             'email',
             'description',
+            'level',
+            'date_birthd',
             { Head: ['first_name', 'last_name', 'middleName'] },
         ],
         filter: {
@@ -231,6 +235,48 @@ export const fetchPhonebookUserCard = async (userId) => {
     }
 
     return users[0];
+};
+
+export const uploadPhonebookUserAvatar = async (file) => {
+    if (!file) {
+        throw new Error('Avatar file is required');
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await directus.request(uploadFiles(formData));
+
+    if (Array.isArray(response)) {
+        return response[0] || null;
+    }
+
+    return response;
+};
+
+export const updatePhonebookUserCard = async (userId, { description, avatar, level } = {}) => {
+    if (!userId) {
+        throw new Error('User id is required');
+    }
+
+    const payload = {};
+
+    if (description !== undefined) {
+        payload.description = description;
+    }
+
+    if (avatar !== undefined) {
+        payload.avatar = avatar;
+    }
+
+    if (level !== undefined) {
+        payload.level = level;
+    }
+
+    if (Object.keys(payload).length === 0) {
+        return null;
+    }
+
+    return directus.request(updateUser(userId, payload));
 };
 
 export const fetchDatanew = async ({

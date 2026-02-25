@@ -146,6 +146,8 @@
 
 .phonebook-user-menu {
     position: relative;
+    display: flex;
+    align-items: center;
 }
 
 .phonebook-user-avatar-image {
@@ -439,9 +441,30 @@
     cursor: pointer;
 }
 
+.hex-draggable {
+    cursor: grab;
+}
+
+.hex-draggable:active,
+.hex-dragging {
+    cursor: grabbing;
+}
+
 .hex-filled:hover {
     transform: translateY(-2px) scale(1.015);
     filter: saturate(1.2) brightness(1.08);
+}
+
+.hex-dragging {
+    opacity: 0.72;
+    transform: scale(0.98);
+}
+
+.hex-drag-over {
+    filter: saturate(1.35) brightness(1.14);
+    box-shadow:
+        0 0 16px rgba(243, 93, 224, 0.8),
+        0 0 30px rgba(177, 67, 255, 0.5);
 }
 
 .hex-loading {
@@ -664,6 +687,11 @@
     background: rgba(214, 214, 214, 0.95);
 }
 
+.phonebook-user-card-avatar-wrap {
+    display: grid;
+    gap: 10px;
+}
+
 .phonebook-user-card-avatar .phonebook-contact-avatar-image {
     width: 100%;
     height: 100%;
@@ -674,6 +702,40 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.phonebook-user-card-avatar-actions {
+    display: flex;
+}
+
+.phonebook-user-card-action-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 125, 165, 0.85);
+    border-radius: 8px;
+    background: rgba(6, 6, 18, 0.52);
+    color: #fff;
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    font-size: clamp(18px, 1.4vw, 24px);
+    letter-spacing: 0.03em;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.phonebook-user-card-action-button:hover {
+    background: rgba(255, 125, 165, 0.2);
+}
+
+.phonebook-user-card-action-button:disabled,
+.phonebook-user-card-action-button.is-disabled {
+    opacity: 0.6;
+    cursor: default;
+    pointer-events: none;
+}
+
+.phonebook-user-card-action-button input[type='file'] {
+    display: none;
 }
 
 .phonebook-user-card-fields {
@@ -695,6 +757,28 @@
     text-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
 }
 
+.phonebook-user-card-level-edit {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.phonebook-user-card-level-input {
+    width: min(220px, 100%);
+    min-height: 42px;
+    border: 1px solid rgba(236, 236, 245, 0.7);
+    background: rgba(6, 6, 18, 0.3);
+    color: #fff;
+    padding: 4px 10px;
+    font-size: clamp(22px, 1.7vw, 32px);
+    line-height: 1.05;
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+}
+
+.phonebook-user-card-level-input::placeholder {
+    color: rgba(255, 255, 255, 0.8);
+}
+
 .phonebook-user-card-extra-title {
     margin-top: 10px;
     margin-bottom: 8px;
@@ -711,6 +795,23 @@
     font-size: clamp(16px, 1.1vw, 22px);
     line-height: 1.35;
     white-space: pre-wrap;
+}
+
+.phonebook-user-card-extra-edit {
+    display: grid;
+    gap: 10px;
+}
+
+.phonebook-user-card-extra-input {
+    width: 100%;
+    min-height: 126px;
+    border: 1px solid rgba(236, 236, 245, 0.7);
+    background: rgba(6, 6, 18, 0.3);
+    color: #fff;
+    padding: 12px;
+    font-size: clamp(16px, 1.1vw, 22px);
+    line-height: 1.35;
+    resize: vertical;
 }
 
 .phonebook-department-empty {
@@ -821,6 +922,14 @@
         font-size: clamp(19px, 5vw, 28px);
     }
 
+    .phonebook-user-card-level-edit {
+        flex-wrap: wrap;
+    }
+
+    .phonebook-user-card-level-input {
+        width: 100%;
+    }
+
     .phonebook-user-card-extra {
         min-height: 90px;
     }
@@ -829,5 +938,11 @@
         max-height: calc(100dvh - 190px);
         padding-right: 4px;
     }
+}
+
+
+.phonebook-user-card-form-actions {
+    display: flex;
+    justify-content: flex-end;
 }
 

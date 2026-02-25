@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
     fetchPhonebookDepartments,
     fetchPhonebookUserCard,
@@ -130,6 +130,7 @@ const getDepartmentNameSizeClass = (name) => {
 
 function PhonebookPage() {
     const { id: departmentId } = useParams();
+    const location = useLocation();
     const navigate = useNavigate();
     const isDepartmentPage = Boolean(departmentId);
     const userMenuRef = useRef(null);
@@ -150,6 +151,16 @@ function PhonebookPage() {
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchUsers, setSearchUsers] = useState([]);
+    const searchResultUserId = useMemo(() => {
+        const userId = location.state?.openUserId;
+
+        if (userId === null || userId === undefined) {
+            return '';
+        }
+
+        return String(userId);
+    }, [location.state]);
+
     useEffect(() => {
         let active = true;
 
@@ -231,10 +242,15 @@ function PhonebookPage() {
                     setSelectedUser(null);
                     setSelectedUserError('');
 
-                    if (safeUsers.length === 1) {
+                    const requestedUser = searchResultUserId
+                        ? safeUsers.find((user) => String(user?.id) === searchResultUserId)
+                        : null;
+                    const autoOpenUser = requestedUser || (safeUsers.length === 1 ? safeUsers[0] : null);
+
+                    if (autoOpenUser?.id) {
                         setSelectedUserLoading(true);
                         try {
-                            const cardUser = await fetchPhonebookUserCard(safeUsers[0].id);
+                            const cardUser = await fetchPhonebookUserCard(autoOpenUser.id);
                             if (!active) {
                                 return;
                             }
@@ -294,7 +310,7 @@ function PhonebookPage() {
         return () => {
             active = false;
         };
-    }, [departmentId, isDepartmentPage]);
+    }, [departmentId, isDepartmentPage, searchResultUserId]);
 
     const slotsMap = useMemo(() => buildSlotsMap(departments), [departments]);
     const canEditSelectedUser = useMemo(
@@ -516,23 +532,31 @@ function PhonebookPage() {
     };
 
     const handleSearchResultClick = (user) => {
-        if (!user?.department?.id) {
+        const targetDepartmentId = String(user?.department?.id || '').trim();
+        const targetUserId = user?.id;
+
+        if (!targetDepartmentId || !targetUserId) {
             return;
         }
 
         setSearchQuery('');
-        navigate(`/phonebook/${user.department.id}`);
-    };
 
-    const getSearchUserSubtitle = (user) => {
-        const title = String(user?.title || '').trim();
-        const location = String(user?.location || '').trim();
-
-        if (title && location) {
-            return `${title} | ${location}`;
+        if (isDepartmentPage && String(departmentId) === targetDepartmentId) {
+            handleSelectUser(targetUserId);
+            return;
         }
 
-        return title || location || '-';
+        navigate(`/phonebook/${targetDepartmentId}`, { state: { openUserId: targetUserId } });
+    };
+
+    const getSearchUserTitle = (user) => {
+        const title = String(user?.title || '').trim();
+        return title || '-';
+    };
+
+    const getSearchUserCity = (user) => {
+        const city = String(user?.location || '').trim();
+        return city || '-';
     };
 
     const renderSearchResults = () => (
@@ -561,16 +585,23 @@ function PhonebookPage() {
                     {!loading && groupedSearchResults.map((group) => (
                         <section key={group.departmentId || group.departmentName} className="phonebook-search-group">
                             <div className="phonebook-search-group-title">{group.departmentName}</div>
+                            <div className="phonebook-search-columns" aria-hidden>
+                                <div />
+                                <div className="phonebook-search-column-cell">{'\u0424\u0418\u041e'}</div>
+                                <div className="phonebook-search-column-cell">{'\u0414\u043e\u043b\u0436\u043d\u043e\u0441\u0442\u044c'}</div>
+                                <div className="phonebook-search-column-cell">{'\u0413\u043e\u0440\u043e\u0434'}</div>
+                            </div>
                             {group.users.map((user) => (
                                 <button
                                     key={user.id}
                                     type="button"
-                                    className="phonebook-contact-row phonebook-contact-row-button"
+                                    className="phonebook-contact-row phonebook-contact-row-button phonebook-contact-row-search"
                                     onClick={() => handleSearchResultClick(user)}
                                 >
                                     <div className="phonebook-contact-avatar">{renderAvatar(user)}</div>
                                     <div className="phonebook-contact-name">{formatFullName(user)}</div>
-                                    <div className="phonebook-contact-position">{getSearchUserSubtitle(user)}</div>
+                                    <div className="phonebook-contact-position">{getSearchUserTitle(user)}</div>
+                                    <div className="phonebook-contact-city">{getSearchUserCity(user)}</div>
                                 </button>
                             ))}
                         </section>

@@ -645,7 +645,8 @@
 }
 
 .phonebook-contact-name,
-.phonebook-contact-position {
+.phonebook-contact-position,
+.phonebook-contact-city {
     font-size: clamp(28px, 2vw, 41px);
     line-height: 1.05;
     font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
@@ -655,6 +656,31 @@
 
 .phonebook-contact-position {
     text-align: left;
+}
+
+.phonebook-contact-city {
+    text-align: left;
+}
+
+.phonebook-contact-row-search {
+    grid-template-columns: 66px minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
+}
+
+.phonebook-search-columns {
+    display: grid;
+    grid-template-columns: 66px minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
+    align-items: center;
+    column-gap: 22px;
+    min-height: 42px;
+    border-bottom: 1px solid rgba(236, 236, 245, 0.28);
+}
+
+.phonebook-search-column-cell {
+    font-size: clamp(18px, 1.2vw, 24px);
+    line-height: 1;
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    letter-spacing: 0.03em;
+    color: rgba(255, 255, 255, 0.74);
 }
 
 .phonebook-user-card {
@@ -922,6 +948,23 @@
 
     .phonebook-contact-position {
         grid-area: position;
+        font-size: clamp(18px, 4.4vw, 24px);
+    }
+
+    .phonebook-search-columns {
+        display: none;
+    }
+
+    .phonebook-contact-row.phonebook-contact-row-search {
+        grid-template-columns: 52px 1fr;
+        grid-template-areas:
+            'avatar name'
+            'avatar position'
+            'avatar city';
+    }
+
+    .phonebook-contact-row-search .phonebook-contact-city {
+        grid-area: city;
         font-size: clamp(18px, 4.4vw, 24px);
     }
 

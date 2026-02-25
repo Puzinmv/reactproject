@@ -103,6 +103,36 @@ const formatBirthDate = (value) => {
     return text;
 };
 
+const getRelatedUserId = (user) => {
+    if (!user) {
+        return '';
+    }
+
+    if (typeof user === 'object') {
+        return String(user?.id || '').trim();
+    }
+
+    return String(user).trim();
+};
+
+const getRelatedDepartmentId = (user) => {
+    if (!user || typeof user !== 'object') {
+        return '';
+    }
+
+    const department = user?.department;
+
+    if (!department) {
+        return '';
+    }
+
+    if (typeof department === 'object') {
+        return String(department?.id || '').trim();
+    }
+
+    return String(department).trim();
+};
+
 const getDepartmentNameSizeClass = (name) => {
     const text = String(name || '').trim();
     if (!text) {
@@ -559,6 +589,31 @@ function PhonebookPage() {
         return city || '-';
     };
 
+    const handleRelatedUserCardOpen = (user) => {
+        const targetUserId = getRelatedUserId(user);
+        if (!targetUserId) {
+            return;
+        }
+
+        const targetDepartmentId = getRelatedDepartmentId(user);
+
+        if (targetDepartmentId && isDepartmentPage && String(departmentId) === targetDepartmentId) {
+            handleSelectUser(targetUserId);
+            return;
+        }
+
+        if (targetDepartmentId) {
+            navigate(`/phonebook/${targetDepartmentId}`, { state: { openUserId: targetUserId } });
+            return;
+        }
+
+        handleSelectUser(targetUserId);
+    };
+
+    const selectedUserEmail = String(selectedUser?.email || '').trim();
+    const selectedUserHeadName = formatFullName(selectedUser?.Head);
+    const selectedUserHeadId = getRelatedUserId(selectedUser?.Head);
+
     const renderSearchResults = () => (
         <main className="phonebook-main phonebook-main-department">
             {error ? <div className="phonebook-error">{error}</div> : null}
@@ -707,7 +762,17 @@ function PhonebookPage() {
                                     </div>
                                     <div className="phonebook-user-card-row">
                                         <span>Эл. почта:</span>
-                                        <span>{toValueOrDash(selectedUser?.email)}</span>
+                                        <span>
+                                            {selectedUserEmail ? (
+                                                <a
+                                                    href={`mailto:${selectedUserEmail}`}
+                                                    className="phonebook-user-card-value-link"
+                                                    title={`mailto:${selectedUserEmail}`}
+                                                >
+                                                    {selectedUserEmail}
+                                                </a>
+                                            ) : '-'}
+                                        </span>
                                     </div>
                                     <div className="phonebook-user-card-row">
                                         <span>Дата рожд.:</span>
@@ -715,7 +780,18 @@ function PhonebookPage() {
                                     </div>
                                     <div className="phonebook-user-card-row">
                                         <span>Руководитель:</span>
-                                        <span>{toValueOrDash(formatFullName(selectedUser?.Head))}</span>
+                                        <span>
+                                            {selectedUserHeadName && selectedUserHeadId ? (
+                                                <button
+                                                    type="button"
+                                                    className="phonebook-user-card-value-link phonebook-user-card-value-link-button"
+                                                    onClick={() => handleRelatedUserCardOpen(selectedUser?.Head)}
+                                                    title="Открыть карточку руководителя"
+                                                >
+                                                    {selectedUserHeadName}
+                                                </button>
+                                            ) : toValueOrDash(selectedUserHeadName)}
+                                        </span>
                                     </div>
                                     <div className="phonebook-user-card-row">
                                         <span>Город:</span>

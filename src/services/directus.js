@@ -269,7 +269,7 @@ export const fetchPhonebookUserCard = async (userId) => {
             'level',
             'date_birthd',
             'location',
-            { Head: ['first_name', 'last_name', 'middleName'] },
+            { Head: ['id', 'first_name', 'last_name', 'middleName', { department: ['id'] }] },
         ],
         filter: {
             id: {

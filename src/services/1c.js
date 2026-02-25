@@ -6,11 +6,20 @@ const LINKS ={
     USER: 'Catalog_Пользователи'
  }
 const API_KEY = '0J7QsdC80LXQvTpuRTZ6YW1hcA=='
-const THRESHOLD = 0.3 // Чем ниже, тем более строгий поиск
+const THRESHOLD = 0.3 // ��� ����, ��� ����� ������� �����
+const normalizeSearchValue = (value) => String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
 
 
-export const GetUser1C = async (first_name) => {
+export const GetUser1C = async (fullNameQuery) => {
     try {
+        const normalizedQuery = normalizeSearchValue(fullNameQuery);
+        if (!normalizedQuery) {
+            return null;
+        }
+
         const config = {
             method: 'get',
             url: `${LINKS.MAIN}Catalog_Пользователи?$format=json&$select=Description,Ref_Key`,
@@ -27,9 +36,9 @@ export const GetUser1C = async (first_name) => {
             const fuse = new Fuse(response.data.value, {
                 keys: ['Description'],
                 includeScore: true,
-                threshold: THRESHOLD,  
+                threshold: THRESHOLD,
             });
-            const result = fuse.search(first_name.toLowerCase());
+            const result = fuse.search(normalizedQuery);
             if (result.length > 0) {
                 const bestMatch = result[0].item;
                 console.log(`Найден пользователь: ${bestMatch.Description}`);

@@ -25,8 +25,11 @@ function App() {
         try {
             const user = await getCurrentUser();
             setCurrentUser(user);
-            if (user?.first_name) {
-                const user1C = await GetUser1C(user.first_name)
+            if (user?.first_name || user?.last_name) {
+                const userSearchName = [user?.last_name, user?.first_name]
+                    .filter(Boolean)
+                    .join(' ');
+                const user1C = await GetUser1C(userSearchName)
                 if (user1C && user1C !== user?.RefKey_1C) {
                     const upduser = await Update1CField(user1C)
                     if (upduser) {

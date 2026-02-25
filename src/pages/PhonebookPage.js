@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
     fetchPhonebookDepartments,
     fetchPhonebookUserCard,
+    fetchPhonebookUsersForSearch,
     fetchPhonebookUsersByDepartment,
     getCurrentUser,
     getToken,
@@ -25,6 +26,7 @@ const SLOT_ROWS = [
 const RESERVED_SLOTS = new Set([9, 12, 13, 16]);
 const PHONEBOOK_DND_ROLE_ID = '6a4f07d3-0f93-4d19-8dd1-5205703334bb';
 const MAX_AVATAR_SIZE_BYTES = 8 * 1024 * 1024;
+const SEARCH_RESULTS_LIMIT = 70;
 const getUserRoleId = (user) => (typeof user?.role === 'object' ? user?.role?.id : user?.role);
 
 const buildSlotsMap = (departments) => {
@@ -67,6 +69,12 @@ const formatFullName = (user) => {
         .join(' ')
         .trim();
 };
+
+const normalizeSearchText = (value) => String(value || '')
+    .toLocaleLowerCase('ru')
+    .replace(/\u0451/g, '\u0435')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const toValueOrDash = (value) => {
     if (value === null || value === undefined) {
@@ -125,7 +133,7 @@ function PhonebookPage() {
     const navigate = useNavigate();
     const isDepartmentPage = Boolean(departmentId);
     const userMenuRef = useRef(null);
-
+    
     const [departments, setDepartments] = useState([]);
     const [users, setUsers] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
@@ -140,7 +148,8 @@ function PhonebookPage() {
     const [levelDraft, setLevelDraft] = useState('');
     const [isSavingUserCard, setIsSavingUserCard] = useState(false);
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchUsers, setSearchUsers] = useState([]);
     useEffect(() => {
         let active = true;
 
@@ -202,9 +211,10 @@ function PhonebookPage() {
 
             try {
                 if (isDepartmentPage) {
-                    const [departmentData, usersData] = await Promise.all([
+                    const [departmentData, usersData, allUsersData] = await Promise.all([
                         fetchPhonebookDepartments(),
                         fetchPhonebookUsersByDepartment(departmentId),
+                        fetchPhonebookUsersForSearch(),
                     ]);
 
                     if (!active) {
@@ -213,9 +223,11 @@ function PhonebookPage() {
 
                     const safeDepartments = Array.isArray(departmentData) ? departmentData : [];
                     const safeUsers = Array.isArray(usersData) ? usersData : [];
+                    const safeSearchUsers = Array.isArray(allUsersData) ? allUsersData : [];
 
                     setDepartments(safeDepartments);
                     setUsers(safeUsers);
+                    setSearchUsers(safeSearchUsers);
                     setSelectedUser(null);
                     setSelectedUserError('');
 
@@ -244,13 +256,17 @@ function PhonebookPage() {
                         }
                     }
                 } else {
-                    const departmentData = await fetchPhonebookDepartments();
+                    const [departmentData, allUsersData] = await Promise.all([
+                        fetchPhonebookDepartments(),
+                        fetchPhonebookUsersForSearch(),
+                    ]);
 
                     if (!active) {
                         return;
                     }
 
                     setDepartments(Array.isArray(departmentData) ? departmentData : []);
+                    setSearchUsers(Array.isArray(allUsersData) ? allUsersData : []);
                     setUsers([]);
                     setSelectedUser(null);
                     setSelectedUserError('');
@@ -263,6 +279,7 @@ function PhonebookPage() {
                 setError('Не удалось загрузить данные телефонного справочника. Попробуйте обновить страницу.');
                 setDepartments([]);
                 setUsers([]);
+                setSearchUsers([]);
                 setSelectedUser(null);
                 setSelectedUserError('');
             } finally {
@@ -290,6 +307,45 @@ function PhonebookPage() {
         () => departments.find((department) => String(department.id) === String(departmentId)),
         [departments, departmentId],
     );
+    const normalizedQuery = useMemo(() => normalizeSearchText(searchQuery), [searchQuery]);
+    const hasSearchQuery = normalizedQuery.length > 0;
+    const searchResults = useMemo(() => {
+        if (!hasSearchQuery) {
+            return [];
+        }
+
+        return searchUsers
+            .filter((user) => {
+                const fullName = normalizeSearchText(formatFullName(user));
+                const title = normalizeSearchText(user?.title);
+                const location = normalizeSearchText(user?.location);
+
+                return fullName.includes(normalizedQuery)
+                    || title.includes(normalizedQuery)
+                    || location.includes(normalizedQuery);
+            })
+            .slice(0, SEARCH_RESULTS_LIMIT);
+    }, [hasSearchQuery, normalizedQuery, searchUsers]);
+    const groupedSearchResults = useMemo(() => {
+        const groups = new Map();
+
+        searchResults.forEach((user) => {
+            const departmentIdKey = String(user?.department?.id || '');
+            const departmentName = user?.department?.name || 'Без отдела';
+
+            if (!groups.has(departmentIdKey)) {
+                groups.set(departmentIdKey, {
+                    departmentId: departmentIdKey,
+                    departmentName,
+                    users: [],
+                });
+            }
+
+            groups.get(departmentIdKey).users.push(user);
+        });
+
+        return Array.from(groups.values());
+    }, [searchResults]);
 
     const departmentTitle = activeDepartment?.name || 'Отдел';
 
@@ -459,6 +515,71 @@ function PhonebookPage() {
         }
     };
 
+    const handleSearchResultClick = (user) => {
+        if (!user?.department?.id) {
+            return;
+        }
+
+        setSearchQuery('');
+        navigate(`/phonebook/${user.department.id}`);
+    };
+
+    const getSearchUserSubtitle = (user) => {
+        const title = String(user?.title || '').trim();
+        const location = String(user?.location || '').trim();
+
+        if (title && location) {
+            return `${title} | ${location}`;
+        }
+
+        return title || location || '-';
+    };
+
+    const renderSearchResults = () => (
+        <main className="phonebook-main phonebook-main-department">
+            {error ? <div className="phonebook-error">{error}</div> : null}
+
+            <section className="phonebook-department-content">
+                <div aria-hidden className="phonebook-center-image phonebook-center-image-faded">
+                    <img src="/background-center.png" alt="" />
+                </div>
+
+                <div className="phonebook-department-header-row">
+                    {isDepartmentPage ? (
+                        <Link to="/phonebook" className="phonebook-back-button">
+                            {'\u041d\u0430\u0437\u0430\u0434'}
+                        </Link>
+                    ) : null}
+                    <div className="phonebook-department-title">{'\u0420\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u044b \u043f\u043e\u0438\u0441\u043a\u0430'}</div>
+                </div>
+
+                <div className="phonebook-department-list">
+                    {!loading && groupedSearchResults.length === 0 ? (
+                        <div className="phonebook-department-empty">{'\u041d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e.'}</div>
+                    ) : null}
+
+                    {!loading && groupedSearchResults.map((group) => (
+                        <section key={group.departmentId || group.departmentName} className="phonebook-search-group">
+                            <div className="phonebook-search-group-title">{group.departmentName}</div>
+                            {group.users.map((user) => (
+                                <button
+                                    key={user.id}
+                                    type="button"
+                                    className="phonebook-contact-row phonebook-contact-row-button"
+                                    onClick={() => handleSearchResultClick(user)}
+                                >
+                                    <div className="phonebook-contact-avatar">{renderAvatar(user)}</div>
+                                    <div className="phonebook-contact-name">{formatFullName(user)}</div>
+                                    <div className="phonebook-contact-position">{getSearchUserSubtitle(user)}</div>
+                                </button>
+                            ))}
+                        </section>
+                    ))}
+                </div>
+            </section>
+        </main>
+    );
+
     const renderDepartmentPage = () => (
         <main className="phonebook-main phonebook-main-department">
             {error ? <div className="phonebook-error">{error}</div> : null}
@@ -470,7 +591,7 @@ function PhonebookPage() {
 
                 <div className="phonebook-department-header-row">
                     <Link to="/phonebook" className="phonebook-back-button">
-                        Назад
+                        {'\u041d\u0430\u0437\u0430\u0434'}
                     </Link>
                     <div className="phonebook-department-title">{departmentTitle}</div>
                 </div>
@@ -567,7 +688,7 @@ function PhonebookPage() {
                                     </div>
                                     <div className="phonebook-user-card-row">
                                         <span>Город:</span>
-                                        <span>-</span>
+                                        <span>{toValueOrDash(selectedUser?.location)}</span>
                                     </div>
                                     {canEditSelectedUser ? (
                                         <div className="phonebook-user-card-row">
@@ -686,8 +807,14 @@ function PhonebookPage() {
                     <img src="/logo.png" alt="Астерит" className="phonebook-logo" />
                 </Link>
                 <div className="phonebook-header-actions">
-                    <div className="phonebook-search-wrap" aria-hidden>
-                        <input className="phonebook-search" placeholder="Поиск" readOnly />
+                    <div className="phonebook-search-wrap">
+                        <input
+                            className="phonebook-search"
+                            placeholder="Поиск"
+                            value={searchQuery}
+                            onChange={(event) => setSearchQuery(event.target.value)}
+                            aria-label="Поиск по телефонному справочнику"
+                        />
                         <span className="phonebook-search-arrow">➜</span>
                     </div>
 
@@ -745,9 +872,10 @@ function PhonebookPage() {
                 </div>
             </header>
 
-            {isDepartmentPage ? renderDepartmentPage() : renderDepartmentsGrid()}
+            {hasSearchQuery ? renderSearchResults() : (isDepartmentPage ? renderDepartmentPage() : renderDepartmentsGrid())}
         </div>
     );
 }
 
 export default PhonebookPage;
+

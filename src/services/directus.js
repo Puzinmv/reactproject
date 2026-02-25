@@ -201,6 +201,54 @@ export const fetchPhonebookUsersByDepartment = async (departmentId) => {
     });
 };
 
+export const fetchPhonebookUsersForSearch = async () => {
+    const users = await directus.request(readUsers({
+        fields: [
+            'id',
+            'first_name',
+            'last_name',
+            'middleName',
+            'title',
+            'location',
+            { department: ['id', 'name'] },
+        ],
+        filter: {
+            department: {
+                _nnull: true,
+            },
+        },
+        limit: -1,
+    }));
+
+    if (!Array.isArray(users)) {
+        return [];
+    }
+
+    const collator = new Intl.Collator('ru', { sensitivity: 'base' });
+
+    return [...users].sort((a, b) => {
+        const departmentNameCompare = collator.compare(
+            a?.department?.name || '',
+            b?.department?.name || '',
+        );
+        if (departmentNameCompare !== 0) {
+            return departmentNameCompare;
+        }
+
+        const lastNameCompare = collator.compare(a?.last_name || '', b?.last_name || '');
+        if (lastNameCompare !== 0) {
+            return lastNameCompare;
+        }
+
+        const firstNameCompare = collator.compare(a?.first_name || '', b?.first_name || '');
+        if (firstNameCompare !== 0) {
+            return firstNameCompare;
+        }
+
+        return collator.compare(a?.middleName || '', b?.middleName || '');
+    });
+};
+
 export const fetchPhonebookUserCard = async (userId) => {
     if (!userId) {
         return null;
@@ -220,6 +268,7 @@ export const fetchPhonebookUserCard = async (userId) => {
             'description',
             'level',
             'date_birthd',
+            'location',
             { Head: ['first_name', 'last_name', 'middleName'] },
         ],
         filter: {

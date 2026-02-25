@@ -812,6 +812,20 @@
     font-size: clamp(16px, 1.1vw, 22px);
     line-height: 1.35;
     resize: vertical;
+    transition:
+        border-color 0.22s ease,
+        box-shadow 0.22s ease,
+        background-color 0.22s ease;
+}
+
+.phonebook-user-card-extra-input:focus,
+.phonebook-user-card-extra-input:focus-visible {
+    outline: none;
+    border-color: rgba(255, 174, 224, 0.95);
+    background: rgba(10, 8, 24, 0.82);
+    box-shadow:
+        0 0 0 1px rgba(255, 174, 224, 0.22),
+        0 0 18px rgba(255, 126, 214, 0.34);
 }
 
 .phonebook-department-empty {

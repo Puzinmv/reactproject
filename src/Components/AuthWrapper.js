@@ -30,6 +30,8 @@ function AuthWrapper({ children, isLoginFunc }) {
     const navigate = useNavigate();
     const location = useLocation();
     const redirectPath = new URLSearchParams(location.search).get('redirect');
+    const authTheme = new URLSearchParams(location.search).get('authTheme');
+    const isPhonebookAuthTheme = authTheme === 'phonebook' && redirectPath === '/phonebook';
 
     const checkAuthAndGetUser = useCallback(async () => {
         try {
@@ -111,7 +113,7 @@ function AuthWrapper({ children, isLoginFunc }) {
 
     return (
         <ThemeProvider theme={theme}>
-            <ResponsiveAppBar handleLogout={handleLogout} current={currentUser} />
+            {!isPhonebookAuthTheme ? <ResponsiveAppBar handleLogout={handleLogout} current={currentUser} /> : null}
             {isLoading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
                     <CircularProgress />
@@ -119,7 +121,7 @@ function AuthWrapper({ children, isLoginFunc }) {
             ) : currentUser ? (
                 children
             ) : (
-                <LoginForm onLogin={handleLogin} />
+                <LoginForm onLogin={handleLogin} isPhonebookTheme={isPhonebookAuthTheme} />
             )}
         </ThemeProvider>
     );

@@ -1,0 +1,74 @@
+.login-form-root-phonebook {
+    color: #fff;
+    position: relative;
+}
+
+.login-form-root-phonebook::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background:
+        radial-gradient(circle at 18% 20%, rgba(255, 136, 206, 0.12), transparent 42%),
+        radial-gradient(circle at 82% 24%, rgba(130, 188, 255, 0.11), transparent 40%),
+        linear-gradient(140deg, #050411 0%, #090720 44%, #060515 100%);
+}
+
+.login-form-card-phonebook {
+    width: 100%;
+    padding: 28px 24px 20px;
+    border: 1px solid rgba(255, 174, 224, 0.5);
+    background: rgba(7, 7, 18, 0.84);
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.38);
+    backdrop-filter: blur(2px);
+}
+
+.login-form-title-phonebook {
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    letter-spacing: 0.03em;
+}
+
+.login-form-root-phonebook .login-form-input-phonebook .MuiInputLabel-root,
+.login-form-root-phonebook .login-form-switch-phonebook .MuiTypography-root,
+.login-form-root-phonebook .login-form-input-phonebook .MuiInputBase-input {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.login-form-root-phonebook .login-form-input-phonebook .MuiOutlinedInput-notchedOutline {
+    border-color: rgba(238, 238, 255, 0.55);
+}
+
+.login-form-root-phonebook .login-form-input-phonebook .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline,
+.login-form-root-phonebook .login-form-input-phonebook .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-color: rgba(255, 174, 224, 0.95);
+    box-shadow: 0 0 14px rgba(255, 126, 214, 0.24);
+}
+
+.login-form-root-phonebook .login-form-switch-phonebook .MuiSwitch-switchBase.Mui-checked {
+    color: rgba(255, 174, 224, 1);
+}
+
+.login-form-root-phonebook .login-form-switch-phonebook .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track {
+    background-color: rgba(255, 174, 224, 0.6);
+}
+
+.login-form-alert-phonebook.MuiAlert-root {
+    background: rgba(190, 33, 84, 0.2);
+    border: 1px solid rgba(255, 110, 179, 0.6);
+    color: #ffd6ec;
+}
+
+.login-form-alert-phonebook .MuiAlert-icon {
+    color: #ff8dc8;
+}
+
+.login-form-button-phonebook.MuiButton-contained {
+    border: 1px solid rgba(255, 174, 224, 0.6);
+    background: rgba(17, 16, 44, 0.95);
+    color: #fff;
+}
+
+.login-form-button-phonebook.MuiButton-contained:hover {
+    background: rgba(28, 24, 62, 0.95);
+    box-shadow: 0 0 16px rgba(255, 126, 214, 0.28);
+}

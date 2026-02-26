@@ -607,7 +607,7 @@ function PhonebookPage() {
     };
 
     const handleLoginClick = () => {
-        navigate('/?redirect=/phonebook');
+        navigate('/?redirect=/phonebook&authTheme=phonebook');
     };
 
     const handleLogout = async () => {

@@ -327,7 +327,12 @@ export const uploadPhonebookUserAvatar = async (file) => {
     return response;
 };
 
-export const updatePhonebookUserCard = async (userId, { description, avatar, level } = {}) => {
+export const updatePhonebookUserCard = async (userId, {
+    description,
+    avatar,
+    level,
+    date_birthd,
+} = {}) => {
     if (!userId) {
         throw new Error('User id is required');
     }
@@ -344,6 +349,10 @@ export const updatePhonebookUserCard = async (userId, { description, avatar, lev
 
     if (level !== undefined) {
         payload.level = level;
+    }
+
+    if (date_birthd !== undefined) {
+        payload.date_birthd = date_birthd;
     }
 
     if (Object.keys(payload).length === 0) {

@@ -109,6 +109,88 @@ const formatBirthDate = (value) => {
     return text;
 };
 
+const getDaysInMonth = (month, year) => new Date(year, month, 0).getDate();
+
+const normalizeBirthDateDraft = (rawValue) => {
+    const text = String(rawValue ?? '').trim();
+
+    if (!text) {
+        return { normalizedValue: null, error: '' };
+    }
+
+    let dayText = '';
+    let monthText = '';
+    let yearChunk = '';
+
+    const matchWithSeparators = text.match(/^(\d{1,2})\s*[.\-/ ]\s*(\d{1,2})(?:\s*[.\-/ ]\s*(\d{2}|\d{4}))?$/);
+    if (matchWithSeparators) {
+        dayText = matchWithSeparators[1];
+        monthText = matchWithSeparators[2];
+        yearChunk = matchWithSeparators[3] || '';
+    } else {
+        const digitsOnly = text.replace(/\D/g, '');
+        if (/^\d{4}$/.test(digitsOnly)) {
+            dayText = digitsOnly.slice(0, 2);
+            monthText = digitsOnly.slice(2, 4);
+        } else if (/^\d{6}$/.test(digitsOnly)) {
+            dayText = digitsOnly.slice(0, 2);
+            monthText = digitsOnly.slice(2, 4);
+            yearChunk = digitsOnly.slice(4, 6);
+        } else if (/^\d{8}$/.test(digitsOnly)) {
+            dayText = digitsOnly.slice(0, 2);
+            monthText = digitsOnly.slice(2, 4);
+            yearChunk = digitsOnly.slice(4, 8);
+        } else {
+            return { normalizedValue: null, error: 'Дата рождения: используйте ДД.ММ, ДД.ММ.ГГ или ДД.ММ.ГГГГ.' };
+        }
+    }
+
+    const day = Number(dayText);
+    const month = Number(monthText);
+
+    if (month < 1 || month > 12) {
+        return { normalizedValue: null, error: 'Дата рождения: месяц должен быть от 01 до 12.' };
+    }
+
+    let fullYear = null;
+    if (yearChunk) {
+        if (yearChunk.length === 2) {
+            const shortYear = Number(yearChunk);
+            const currentYear = new Date().getFullYear();
+            const currentCentury = Math.floor(currentYear / 100) * 100;
+            let candidateYear = currentCentury + shortYear;
+            if (candidateYear > currentYear) {
+                candidateYear -= 100;
+            }
+            fullYear = candidateYear;
+        } else {
+            fullYear = Number(yearChunk);
+        }
+
+        if (fullYear < 1900 || fullYear > 2100) {
+            return { normalizedValue: null, error: 'Дата рождения: год должен быть в диапазоне 1900-2100.' };
+        }
+    }
+
+    const validationYear = fullYear ?? 2000;
+    const maxDay = getDaysInMonth(month, validationYear);
+    if (day < 1 || day > maxDay) {
+        return { normalizedValue: null, error: 'Дата рождения: неверный день для указанного месяца.' };
+    }
+
+    if (!fullYear) {
+        return {
+            normalizedValue: `${String(day).padStart(2, '0')}.${String(month).padStart(2, '0')}`,
+            error: '',
+        };
+    }
+
+    return {
+        normalizedValue: `${String(day).padStart(2, '0')}.${String(month).padStart(2, '0')}.${String(fullYear).padStart(4, '0')}`,
+        error: '',
+    };
+};
+
 const getRelatedUserId = (user) => {
     if (!user) {
         return '';
@@ -184,6 +266,8 @@ function PhonebookPage() {
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [descriptionDraft, setDescriptionDraft] = useState('');
     const [levelDraft, setLevelDraft] = useState('');
+    const [birthDateDraft, setBirthDateDraft] = useState('');
+    const [birthDateValidationError, setBirthDateValidationError] = useState('');
     const [isSavingUserCard, setIsSavingUserCard] = useState(false);
     const [isSavingLevel, setIsSavingLevel] = useState(false);
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -451,6 +535,12 @@ function PhonebookPage() {
     }, [selectedUser?.id, selectedUser?.description]);
 
     useEffect(() => {
+        const formatted = formatBirthDate(selectedUser?.date_birthd);
+        setBirthDateDraft(formatted === '-' ? '' : formatted);
+        setBirthDateValidationError('');
+    }, [selectedUser?.id, selectedUser?.date_birthd]);
+
+    useEffect(() => {
         const rawLevel = selectedUser?.level;
         if (rawLevel === null || rawLevel === undefined || String(rawLevel).trim() === '') {
             setLevelDraft('');
@@ -527,18 +617,27 @@ function PhonebookPage() {
             return;
         }
 
+        const { normalizedValue: normalizedBirthDate, error: birthDateError } = normalizeBirthDateDraft(birthDateDraft);
+        if (birthDateError) {
+            setBirthDateValidationError(birthDateError);
+            return;
+        }
+
+        setBirthDateValidationError('');
         setSelectedUserError('');
         setIsSavingUserCard(true);
 
         try {
             await updatePhonebookUserCard(selectedUser.id, {
                 description: descriptionDraft,
+                date_birthd: normalizedBirthDate,
             });
             setSelectedUser((prevUser) => (
                 prevUser
                     ? {
                         ...prevUser,
                         description: descriptionDraft,
+                        date_birthd: normalizedBirthDate,
                     }
                     : prevUser
             ));
@@ -836,8 +935,29 @@ function PhonebookPage() {
                                     </div>
                                     <div className="phonebook-user-card-row">
                                         <span>Дата рожд.:</span>
-                                        <span>{toValueOrDash(formatBirthDate(selectedUser?.date_birthd))}</span>
+                                        {canEditSelectedUser ? (
+                                            <input
+                                                type="text"
+                                                className="phonebook-user-card-level-input"
+                                                value={birthDateDraft}
+                                                onChange={(event) => {
+                                                    setBirthDateDraft(event.target.value);
+                                                    if (birthDateValidationError) {
+                                                        setBirthDateValidationError('');
+                                                    }
+                                                }}
+                                                disabled={isSavingUserCard || isUploadingAvatar}
+                                                placeholder="1.2 / 01.02 / 01.02.2000"
+                                                aria-label="Дата рождения"
+                                                inputMode="numeric"
+                                            />
+                                        ) : (
+                                            <span>{toValueOrDash(formatBirthDate(selectedUser?.date_birthd))}</span>
+                                        )}
                                     </div>
+                                    {canEditSelectedUser && birthDateValidationError ? (
+                                        <div className="phonebook-user-card-level-saving">{birthDateValidationError}</div>
+                                    ) : null}
                                     <div className="phonebook-user-card-row">
                                         <span>Руководитель:</span>
                                         <span>

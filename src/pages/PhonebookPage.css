@@ -295,7 +295,7 @@
     font-weight: 700;
     line-height: 0.95;
     letter-spacing: 0.03em;
-    text-shadow: 0 0 8px rgba(0, 0, 0, 0.35);
+    text-shadow: 7px 7px 8px #000000;
 }
 
 .phonebook-center-text span {

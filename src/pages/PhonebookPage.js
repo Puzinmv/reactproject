@@ -25,7 +25,7 @@ const SLOT_ROWS = [
 ];
 
 const RESERVED_SLOTS = new Set([9, 12, 13, 16]);
-const PHONEBOOK_DND_ROLE_ID = '6a4f07d3-0f93-4d19-8dd1-5205703334bb';
+const PHONEBOOK_DND_POLICY_ID = '50ac7177-9859-4991-a5b8-4c931414c283';
 const MAX_AVATAR_SIZE_BYTES = 8 * 1024 * 1024;
 const SEARCH_RESULTS_LIMIT = 70;
 const AVATAR_SIZES = {
@@ -33,7 +33,30 @@ const AVATAR_SIZES = {
     card: { width: 480, height: 600 },
     currentUser: { width: 80, height: 80 },
 };
-const getUserRoleId = (user) => (typeof user?.role === 'object' ? user?.role?.id : user?.role);
+const hasPolicy = (user, policyId) => {
+    const normalizedPolicyId = String(policyId || '').trim();
+    if (!normalizedPolicyId) {
+        return false;
+    }
+
+    const userPolicies = user?.policies;
+    if (!Array.isArray(userPolicies) || userPolicies.length === 0) {
+        return false;
+    }
+
+    return userPolicies.some((policy) => {
+        if (!policy) {
+            return false;
+        }
+
+        if (typeof policy === 'string') {
+            return policy === normalizedPolicyId;
+        }
+
+        const candidateId = policy?.id || policy?.policy || policy?.policies_id || policy?.directus_policies_id;
+        return String(candidateId || '').trim() === normalizedPolicyId;
+    });
+};
 
 const buildSlotsMap = (departments) => {
     const map = new Map();
@@ -444,7 +467,7 @@ function PhonebookPage() {
     const canEditSelectedUser = useMemo(
         () => !isAuthLoading
             && Boolean(currentUser)
-            && String(getUserRoleId(currentUser)) === PHONEBOOK_DND_ROLE_ID,
+            && hasPolicy(currentUser, PHONEBOOK_DND_POLICY_ID),
         [currentUser, isAuthLoading],
     );
     const activeDepartment = useMemo(

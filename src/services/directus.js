@@ -292,8 +292,8 @@ export const uploadPhonebookUserAvatar = async (file) => {
     }
 
     const formData = new FormData();
-    formData.append('file', file);
     formData.append('folder', '6b1c5409-c44e-48c3-871a-e058bbac1934');
+    formData.append('file', file);
     const response = await directus.request(uploadFiles(formData));
 
     if (Array.isArray(response)) {

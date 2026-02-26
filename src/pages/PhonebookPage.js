@@ -200,6 +200,12 @@ function PhonebookPage() {
     }, [location.state]);
 
     useEffect(() => {
+        if (/^\/phonebook\/?$/.test(location.pathname)) {
+            document.title = '\u0422\u0435\u043b\u0435\u0444\u043e\u043d\u043d\u0430\u044f \u043a\u043d\u0438\u0433\u0430';
+        }
+    }, [location.pathname]);
+
+    useEffect(() => {
         let active = true;
 
         const loadCurrentUser = async () => {

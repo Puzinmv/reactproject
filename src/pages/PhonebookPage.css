@@ -834,6 +834,11 @@
     color: rgba(255, 255, 255, 0.8);
 }
 
+.phonebook-user-card-level-saving {
+    font-size: clamp(14px, 1vw, 18px);
+    color: rgba(255, 255, 255, 0.8);
+}
+
 .phonebook-user-card-extra-title {
     margin-top: 10px;
     margin-bottom: 8px;

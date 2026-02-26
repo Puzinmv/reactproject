@@ -11,6 +11,29 @@ export const directus = createDirectus(directusBaseUrl)
     .with(rest({ credentials: 'include' }))
     ;
 
+export const getDirectusAssetUrl = (fileId, { width, height, fit = 'cover' } = {}) => {
+    if (!fileId) {
+        return '';
+    }
+
+    const normalizedBaseUrl = String(directusBaseUrl || '').replace(/\/+$/, '');
+    const assetUrl = new URL(`${normalizedBaseUrl}/assets/${fileId}`);
+
+    if (Number.isFinite(width) && width > 0) {
+        assetUrl.searchParams.set('width', String(Math.trunc(width)));
+    }
+
+    if (Number.isFinite(height) && height > 0) {
+        assetUrl.searchParams.set('height', String(Math.trunc(height)));
+    }
+
+    if (fit) {
+        assetUrl.searchParams.set('fit', fit);
+    }
+
+    return assetUrl.toString();
+};
+
 // Вспомогательные функции для сортировки
 const extractGroupNumber = (activityName) => {
     if (!activityName || typeof activityName !== 'string') {
@@ -209,6 +232,7 @@ export const fetchPhonebookUsersForSearch = async () => {
             'last_name',
             'middleName',
             'title',
+            'avatar',
             'location',
             { department: ['id', 'name'] },
         ],

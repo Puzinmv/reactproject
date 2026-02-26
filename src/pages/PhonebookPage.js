@@ -5,6 +5,7 @@ import {
     fetchPhonebookUserCard,
     fetchPhonebookUsersForSearch,
     fetchPhonebookUsersByDepartment,
+    getDirectusAssetUrl,
     getCurrentUser,
     getToken,
     logout,
@@ -27,6 +28,11 @@ const RESERVED_SLOTS = new Set([9, 12, 13, 16]);
 const PHONEBOOK_DND_ROLE_ID = '6a4f07d3-0f93-4d19-8dd1-5205703334bb';
 const MAX_AVATAR_SIZE_BYTES = 8 * 1024 * 1024;
 const SEARCH_RESULTS_LIMIT = 70;
+const AVATAR_SIZES = {
+    list: { width: 132, height: 120 },
+    card: { width: 480, height: 600 },
+    currentUser: { width: 80, height: 80 },
+};
 const getUserRoleId = (user) => (typeof user?.role === 'object' ? user?.role?.id : user?.role);
 
 const buildSlotsMap = (departments) => {
@@ -164,6 +170,7 @@ function PhonebookPage() {
     const navigate = useNavigate();
     const isDepartmentPage = Boolean(departmentId);
     const userMenuRef = useRef(null);
+    const latestLevelSaveRequestRef = useRef(0);
     
     const [departments, setDepartments] = useState([]);
     const [users, setUsers] = useState([]);
@@ -178,6 +185,7 @@ function PhonebookPage() {
     const [descriptionDraft, setDescriptionDraft] = useState('');
     const [levelDraft, setLevelDraft] = useState('');
     const [isSavingUserCard, setIsSavingUserCard] = useState(false);
+    const [isSavingLevel, setIsSavingLevel] = useState(false);
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchUsers, setSearchUsers] = useState([]);
@@ -395,7 +403,7 @@ function PhonebookPage() {
 
     const departmentTitle = activeDepartment?.name || 'Отдел';
 
-    const renderAvatar = (user) => {
+    const renderAvatar = (user, size = AVATAR_SIZES.list) => {
         const avatarValue = user?.avatar;
         const avatarId = typeof avatarValue === 'object' ? avatarValue?.id : avatarValue;
 
@@ -405,7 +413,7 @@ function PhonebookPage() {
 
         return (
             <img
-                src={`${process.env.REACT_APP_API_URL}/assets/${avatarId}`}
+                src={getDirectusAssetUrl(avatarId, size)}
                 alt={`${user?.last_name || ''} ${user?.first_name || ''}`.trim() || 'Фото сотрудника'}
                 className="phonebook-contact-avatar-image"
                 loading="lazy"
@@ -446,10 +454,65 @@ function PhonebookPage() {
         setLevelDraft(String(rawLevel));
     }, [selectedUser?.id, selectedUser?.level]);
 
+    useEffect(() => {
+        setIsSavingLevel(false);
+        latestLevelSaveRequestRef.current = 0;
+    }, [selectedUser?.id]);
+
+    const normalizeLevelValue = (rawValue) => {
+        const text = String(rawValue ?? '').trim();
+        if (!text) {
+            return null;
+        }
+
+        const parsed = parseInt(text, 10);
+        return Number.isNaN(parsed) ? null : parsed;
+    };
+
+    const handleLevelAutoSave = async (nextLevelDraft) => {
+        if (!canEditSelectedUser || !selectedUser?.id) {
+            return;
+        }
+
+        const normalizedLevel = normalizeLevelValue(nextLevelDraft);
+        const normalizedCurrentLevel = normalizeLevelValue(selectedUser?.level);
+
+        if (normalizedLevel === normalizedCurrentLevel) {
+            return;
+        }
+
+        const userId = selectedUser.id;
+        const requestId = latestLevelSaveRequestRef.current + 1;
+        latestLevelSaveRequestRef.current = requestId;
+        setIsSavingLevel(true);
+        setSelectedUserError('');
+
+        try {
+            await updatePhonebookUserCard(userId, { level: normalizedLevel });
+
+            setSelectedUser((prevUser) => (
+                prevUser && String(prevUser.id) === String(userId)
+                    ? { ...prevUser, level: normalizedLevel }
+                    : prevUser
+            ));
+        } catch (saveError) {
+            console.error('Phonebook: failed to auto-save user level', saveError);
+
+            if (latestLevelSaveRequestRef.current === requestId) {
+                setSelectedUserError('Не удалось сохранить уровень.');
+            }
+        } finally {
+            if (latestLevelSaveRequestRef.current === requestId) {
+                setIsSavingLevel(false);
+            }
+        }
+    };
+
     const handleLevelDraftChange = (event) => {
         const nextValue = event.target.value;
         if (/^-?\d*$/.test(nextValue)) {
             setLevelDraft(nextValue);
+            void handleLevelAutoSave(nextValue);
         }
     };
 
@@ -462,23 +525,14 @@ function PhonebookPage() {
         setIsSavingUserCard(true);
 
         try {
-            const normalizedLevel = levelDraft.trim() === '' ? null : parseInt(levelDraft, 10);
-
-            if (levelDraft.trim() !== '' && Number.isNaN(normalizedLevel)) {
-                setSelectedUserError('Укажите целое число для уровня.');
-                return;
-            }
-
             await updatePhonebookUserCard(selectedUser.id, {
                 description: descriptionDraft,
-                level: normalizedLevel,
             });
             setSelectedUser((prevUser) => (
                 prevUser
                     ? {
                         ...prevUser,
                         description: descriptionDraft,
-                        level: normalizedLevel,
                     }
                     : prevUser
             ));
@@ -543,7 +597,7 @@ function PhonebookPage() {
             return '';
         }
 
-        return `${process.env.REACT_APP_API_URL}/assets/${avatarId}`;
+        return getDirectusAssetUrl(avatarId, AVATAR_SIZES.currentUser);
     };
 
     const handleLoginClick = () => {
@@ -727,7 +781,7 @@ function PhonebookPage() {
 
                             <div className="phonebook-user-card-main">
                                 <div className="phonebook-user-card-avatar-wrap">
-                                    <div className="phonebook-user-card-avatar">{renderAvatar(selectedUser)}</div>
+                                    <div className="phonebook-user-card-avatar">{renderAvatar(selectedUser, AVATAR_SIZES.card)}</div>
                                     {canEditSelectedUser ? (
                                         <div className="phonebook-user-card-avatar-actions">
                                             <label className={`phonebook-user-card-action-button${isUploadingAvatar ? ' is-disabled' : ''}`}>
@@ -807,10 +861,11 @@ function PhonebookPage() {
                                                     className="phonebook-user-card-level-input"
                                                     value={levelDraft}
                                                     onChange={handleLevelDraftChange}
-                                                    disabled={isSavingUserCard || isUploadingAvatar}
+                                                    disabled={isUploadingAvatar}
                                                     placeholder="-"
                                                     aria-label="Уровень"
                                                 />
+                                                {isSavingLevel ? <span className="phonebook-user-card-level-saving">Сохранение...</span> : null}
                                             </div>
                                         </div>
                                     ) : null}
@@ -985,4 +1040,3 @@ function PhonebookPage() {
 }
 
 export default PhonebookPage;
-

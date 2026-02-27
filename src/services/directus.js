@@ -163,9 +163,18 @@ export const fetchPhonebookUsersByDepartment = async (departmentId) => {
     const users = await directus.request(readUsers({
         fields: ['id', 'first_name', 'last_name', 'middleName', 'title', 'avatar', 'department', 'level'],
         filter: {
-            department: {
-                _eq: departmentId,
-            },
+            _and: [
+                {
+                    status: {
+                        _eq: 'active',
+                    },
+                },
+                {
+                    department: {
+                        _eq: departmentId,
+                    },
+                },
+            ],
         },
         limit: -1,
     }));
@@ -237,9 +246,18 @@ export const fetchPhonebookUsersForSearch = async () => {
             { department: ['id', 'name'] },
         ],
         filter: {
-            department: {
-                _nnull: true,
-            },
+            _and: [
+                {
+                    status: {
+                        _eq: 'active',
+                    },
+                },
+                {
+                    department: {
+                        _nnull: true,
+                    },
+                },
+            ],
         },
         limit: -1,
     }));
@@ -296,9 +314,18 @@ export const fetchPhonebookUserCard = async (userId) => {
             { Head: ['id', 'first_name', 'last_name', 'middleName', { department: ['id'] }] },
         ],
         filter: {
-            id: {
-                _eq: userId,
-            },
+            _and: [
+                {
+                    id: {
+                        _eq: userId,
+                    },
+                },
+                {
+                    status: {
+                        _eq: 'active',
+                    },
+                },
+            ],
         },
         limit: 1,
     }));

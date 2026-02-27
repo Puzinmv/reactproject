@@ -868,6 +868,11 @@ function PhonebookPage() {
         }
 
         if (selectedUser) {
+            if (isDepartmentPage && users.length === 1) {
+                navigate('/phonebook');
+                return;
+            }
+
             setSelectedUser(null);
             setSelectedUserError('');
             return;

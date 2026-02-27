@@ -296,6 +296,7 @@ function PhonebookPage() {
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchUsers, setSearchUsers] = useState([]);
+    const [userCardBackStack, setUserCardBackStack] = useState([]);
     const searchResultUserId = useMemo(() => {
         const userId = location.state?.openUserId;
 
@@ -534,7 +535,35 @@ function PhonebookPage() {
         );
     };
 
-    const handleSelectUser = async (userId) => {
+    const getCurrentViewSnapshot = () => ({
+        departmentId: isDepartmentPage ? String(departmentId || '') : '',
+        userId: selectedUser?.id ? String(selectedUser.id) : '',
+    });
+
+    const isSameView = (left, right) => (
+        String(left?.departmentId || '') === String(right?.departmentId || '')
+        && String(left?.userId || '') === String(right?.userId || '')
+    );
+
+    const pushCurrentViewToBackStack = () => {
+        setUserCardBackStack((prevStack) => {
+            const currentView = getCurrentViewSnapshot();
+            const lastView = prevStack[prevStack.length - 1];
+
+            if (isSameView(lastView, currentView)) {
+                return prevStack;
+            }
+
+            return [...prevStack, currentView];
+        });
+    };
+
+    const handleSelectUser = async (userId, options = {}) => {
+        const { rememberCurrentView = false } = options;
+        if (rememberCurrentView) {
+            pushCurrentViewToBackStack();
+        }
+
         setSelectedUserLoading(true);
         setSelectedUserError('');
 
@@ -754,10 +783,11 @@ function PhonebookPage() {
         setSearchQuery('');
 
         if (isDepartmentPage && String(departmentId) === targetDepartmentId) {
-            handleSelectUser(targetUserId);
+            handleSelectUser(targetUserId, { rememberCurrentView: true });
             return;
         }
 
+        pushCurrentViewToBackStack();
         navigate(`/phonebook/${targetDepartmentId}`, { state: { openUserId: targetUserId } });
     };
 
@@ -779,17 +809,76 @@ function PhonebookPage() {
 
         const targetDepartmentId = getRelatedDepartmentId(user);
 
+        if (selectedUser?.id && String(selectedUser.id) === targetUserId && (!targetDepartmentId || String(departmentId) === targetDepartmentId)) {
+            return;
+        }
+
         if (targetDepartmentId && isDepartmentPage && String(departmentId) === targetDepartmentId) {
-            handleSelectUser(targetUserId);
+            handleSelectUser(targetUserId, { rememberCurrentView: true });
             return;
         }
 
         if (targetDepartmentId) {
+            if (selectedUser) {
+                pushCurrentViewToBackStack();
+            }
             navigate(`/phonebook/${targetDepartmentId}`, { state: { openUserId: targetUserId } });
             return;
         }
 
-        handleSelectUser(targetUserId);
+        handleSelectUser(targetUserId, { rememberCurrentView: true });
+    };
+
+    const restoreView = (view) => {
+        const targetDepartmentId = String(view?.departmentId || '');
+        const targetUserId = String(view?.userId || '');
+
+        if (!targetDepartmentId) {
+            setSelectedUser(null);
+            setSelectedUserError('');
+            navigate('/phonebook');
+            return;
+        }
+
+        if (targetDepartmentId !== String(departmentId)) {
+            if (targetUserId) {
+                navigate(`/phonebook/${targetDepartmentId}`, { state: { openUserId: targetUserId } });
+            } else {
+                navigate(`/phonebook/${targetDepartmentId}`);
+            }
+            return;
+        }
+
+        if (targetUserId) {
+            handleSelectUser(targetUserId);
+            return;
+        }
+
+        setSelectedUser(null);
+        setSelectedUserError('');
+    };
+
+    const handleBackClick = () => {
+        const previousView = userCardBackStack[userCardBackStack.length - 1];
+
+        if (previousView) {
+            setUserCardBackStack((prevStack) => prevStack.slice(0, -1));
+            restoreView(previousView);
+            return;
+        }
+
+        if (selectedUser) {
+            setSelectedUser(null);
+            setSelectedUserError('');
+            return;
+        }
+
+        if (isDepartmentPage) {
+            navigate('/phonebook');
+            return;
+        }
+
+        setUserCardBackStack([]);
     };
 
     const selectedUserEmail = String(selectedUser?.email || '').trim();
@@ -807,9 +896,9 @@ function PhonebookPage() {
 
                 <div className="phonebook-department-header-row">
                     {isDepartmentPage ? (
-                        <Link to="/phonebook" className="phonebook-back-button">
+                        <button type="button" className="phonebook-back-button" onClick={handleBackClick}>
                             {'\u041d\u0430\u0437\u0430\u0434'}
-                        </Link>
+                        </button>
                     ) : null}
                     <div className="phonebook-department-title">{'\u0420\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u044b \u043f\u043e\u0438\u0441\u043a\u0430'}</div>
                 </div>
@@ -858,9 +947,9 @@ function PhonebookPage() {
                 </div>
 
                 <div className="phonebook-department-header-row">
-                    <Link to="/phonebook" className="phonebook-back-button">
+                    <button type="button" className="phonebook-back-button" onClick={handleBackClick}>
                         {'\u041d\u0430\u0437\u0430\u0434'}
-                    </Link>
+                    </button>
                     <div className="phonebook-department-title">{departmentTitle}</div>
                 </div>
 
@@ -882,7 +971,7 @@ function PhonebookPage() {
                             key={user.id}
                             type="button"
                             className="phonebook-contact-row phonebook-contact-row-button"
-                            onClick={() => handleSelectUser(user.id)}
+                            onClick={() => handleSelectUser(user.id, { rememberCurrentView: true })}
                         >
                             <div className="phonebook-contact-avatar">{renderAvatar(user)}</div>
                             <div className="phonebook-contact-name">{formatFullName(user)}</div>
@@ -896,16 +985,6 @@ function PhonebookPage() {
 
                     {!loading && selectedUser && !selectedUserLoading ? (
                         <article className="phonebook-user-card">
-                            <button
-                                type="button"
-                                className="phonebook-user-card-back"
-                                onClick={() => {
-                                    setSelectedUser(null);
-                                    setSelectedUserError('');
-                                }}
-                            >
-                                К списку сотрудников
-                            </button>
 
                             <div className="phonebook-user-card-main">
                                 <div className="phonebook-user-card-avatar-wrap">
@@ -1098,6 +1177,7 @@ function PhonebookPage() {
                                             key={slotNumber}
                                             to={`/phonebook/${department.id}`}
                                             className="hex-cell hex-filled"
+                                            onClick={pushCurrentViewToBackStack}
                                         >
                                             <span className={getDepartmentNameSizeClass(department.name)}>{department.name}</span>
                                         </Link>

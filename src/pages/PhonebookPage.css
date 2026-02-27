@@ -536,15 +536,16 @@
 .phonebook-back-button {
     position: relative;
     z-index: 1;
-    height: 54px;
-    padding: 0 18px;
+    min-height: 54px;
+    padding: 8px 18px;
     border: 2px solid rgba(255, 125, 165, 0.85);
     border-radius: 10px;
     background: rgba(6, 6, 18, 0.5);
     color: #fff;
     text-decoration: none;
     font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
-    font-size: clamp(22px, 1.8vw, 30px);
+    font-size: clamp(34px, 3vw, 48px);
+    line-height: 1;
     letter-spacing: 0.03em;
     display: inline-flex;
     align-items: center;
@@ -686,19 +687,6 @@
 .phonebook-user-card {
     border-top: 1px solid rgba(236, 236, 245, 0.4);
     padding-top: 12px;
-}
-
-.phonebook-user-card-back {
-    border: 1px solid rgba(255, 125, 165, 0.85);
-    border-radius: 8px;
-    background: rgba(6, 6, 18, 0.52);
-    color: #fff;
-    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
-    font-size: clamp(18px, 1.4vw, 24px);
-    letter-spacing: 0.03em;
-    padding: 6px 12px;
-    margin-bottom: 14px;
-    cursor: pointer;
 }
 
 .phonebook-user-card-main {
@@ -949,9 +937,10 @@
     }
 
     .phonebook-back-button {
-        height: 46px;
-        padding: 0 12px;
-        font-size: clamp(18px, 4.2vw, 24px);
+        min-height: 46px;
+        padding: 8px 12px;
+        font-size: clamp(34px, 3vw, 48px);
+        line-height: 1;
     }
 
     .phonebook-contact-row {
@@ -1049,4 +1038,3 @@
     display: flex;
     justify-content: flex-end;
 }
-

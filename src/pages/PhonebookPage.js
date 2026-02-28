@@ -887,6 +887,22 @@ function PhonebookPage() {
     };
 
     const selectedUserEmail = String(selectedUser?.email || '').trim();
+    const selectedUserPhone = String(selectedUser?.phone || '').trim();
+    const selectedUserPhoneForTrueConf = selectedUserPhone.replace(/[^\d+]/g, '');
+    const selectedUserPhoneTrueConfHref = selectedUserPhoneForTrueConf
+        ? `trueconf:#tel:${selectedUserPhoneForTrueConf}`
+        : '';
+    const selectedUserMobile = String(selectedUser?.mobile || '').trim();
+    const selectedUserMobileForTrueConf = selectedUserMobile.replace(/[^\d+]/g, '');
+    const selectedUserMobileTrueConfHref = selectedUserMobileForTrueConf
+        ? `trueconf:#tel:${selectedUserMobileForTrueConf}`
+        : '';
+    const selectedUserTrueConfUser = selectedUserEmail.includes('@')
+        ? selectedUserEmail.split('@')[0].trim()
+        : '';
+    const selectedUserTrueConfHref = selectedUserTrueConfUser
+        ? `trueconf:${selectedUserTrueConfUser}`
+        : '';
     const selectedUserHeadName = formatFullName(selectedUser?.Head);
     const selectedUserHeadId = getRelatedUserId(selectedUser?.Head);
 
@@ -1020,11 +1036,45 @@ function PhonebookPage() {
                                     </div>
                                     <div className="phonebook-user-card-row">
                                         <span>Вн. тел.:</span>
-                                        <span>{toValueOrDash(selectedUser?.phone)}</span>
+                                        <span>
+                                            {selectedUserPhoneTrueConfHref ? (
+                                                <a
+                                                    href={selectedUserPhoneTrueConfHref}
+                                                    className="phonebook-user-card-value-link"
+                                                    title={selectedUserPhoneTrueConfHref}
+                                                >
+                                                    {selectedUserPhone}
+                                                </a>
+                                            ) : '-'}
+                                        </span>
                                     </div>
                                     <div className="phonebook-user-card-row">
                                         <span>Моб. тел.:</span>
-                                        <span>{toValueOrDash(selectedUser?.mobile)}</span>
+                                        <span>
+                                            {selectedUserMobileTrueConfHref ? (
+                                                <a
+                                                    href={selectedUserMobileTrueConfHref}
+                                                    className="phonebook-user-card-value-link"
+                                                    title={selectedUserMobileTrueConfHref}
+                                                >
+                                                    {selectedUserMobile}
+                                                </a>
+                                            ) : '-'}
+                                        </span>
+                                    </div>
+                                    <div className="phonebook-user-card-row">
+                                        <span>TrueConf:</span>
+                                        <span>
+                                            {selectedUserTrueConfHref ? (
+                                                <a
+                                                    href={selectedUserTrueConfHref}
+                                                    className="phonebook-user-card-value-link"
+                                                    title={selectedUserTrueConfHref}
+                                                >
+                                                    Позвонить в TrueConf
+                                                </a>
+                                            ) : '-'}
+                                        </span>
                                     </div>
                                     <div className="phonebook-user-card-row">
                                         <span>Эл. почта:</span>

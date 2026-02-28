@@ -25,7 +25,7 @@ const SLOT_ROWS = [
 ];
 
 const RESERVED_SLOTS = new Set([9, 12, 13, 16]);
-const PHONEBOOK_DND_POLICY_ID = 'cbe47741-88e9-48f5-9078-7f0d9a1d3325';
+const PHONEBOOK_DND_POLICY_NAME = 'HR';
 const MAX_AVATAR_SIZE_BYTES = 8 * 1024 * 1024;
 const SEARCH_RESULTS_LIMIT = 70;
 const AVATAR_SIZES = {
@@ -33,9 +33,11 @@ const AVATAR_SIZES = {
     card: { width: 480, height: 600 },
     currentUser: { width: 80, height: 80 },
 };
-const hasPolicy = (user, policyId) => {
+const hasPolicy = (user, { policyId = '', policyName = '' } = {}) => {
     const normalizedPolicyId = String(policyId || '').trim();
-    if (!normalizedPolicyId) {
+    const normalizedPolicyName = String(policyName || '').trim().toLocaleLowerCase('ru');
+
+    if (!normalizedPolicyId && !normalizedPolicyName) {
         return false;
     }
 
@@ -50,11 +52,51 @@ const hasPolicy = (user, policyId) => {
         }
 
         if (typeof policy === 'string') {
-            return policy === normalizedPolicyId;
+            const candidate = policy.trim();
+            if (normalizedPolicyId && candidate === normalizedPolicyId) {
+                return true;
+            }
+
+            if (normalizedPolicyName && candidate.toLocaleLowerCase('ru') === normalizedPolicyName) {
+                return true;
+            }
+
+            return false;
         }
 
-        const candidateId = policy?.id || policy?.policy || policy?.policies_id || policy?.directus_policies_id;
-        return String(candidateId || '').trim() === normalizedPolicyId;
+        if (typeof policy !== 'object') {
+            return false;
+        }
+
+        const nestedPolicy =
+            (policy?.directus_policies_id && typeof policy.directus_policies_id === 'object' && policy.directus_policies_id)
+            || (policy?.policies_id && typeof policy.policies_id === 'object' && policy.policies_id)
+            || (policy?.policy && typeof policy.policy === 'object' && policy.policy)
+            || null;
+
+        const candidateId = String(
+            policy?.id
+            || policy?.policy
+            || policy?.policies_id
+            || policy?.directus_policies_id
+            || nestedPolicy?.id
+            || '',
+        ).trim();
+        const candidateName = String(
+            policy?.name
+            || nestedPolicy?.name
+            || '',
+        ).trim().toLocaleLowerCase('ru');
+
+        if (normalizedPolicyId && candidateId === normalizedPolicyId) {
+            return true;
+        }
+
+        if (normalizedPolicyName && candidateName === normalizedPolicyName) {
+            return true;
+        }
+
+        return false;
     });
 };
 
@@ -468,7 +510,7 @@ function PhonebookPage() {
     const canEditSelectedUser = useMemo(
         () => !isAuthLoading
             && Boolean(currentUser)
-            && hasPolicy(currentUser, PHONEBOOK_DND_POLICY_ID),
+            && hasPolicy(currentUser, { policyName: PHONEBOOK_DND_POLICY_NAME }),
         [currentUser, isAuthLoading],
     );
     const activeDepartment = useMemo(

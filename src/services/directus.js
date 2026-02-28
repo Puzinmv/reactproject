@@ -133,13 +133,124 @@ export const getToken = async () => {
     }
 };
 
+const normalizePolicyId = (value) => String(value ?? '').trim();
+const normalizePolicyName = (value) => String(value ?? '').trim();
+
+const extractPolicyCandidate = (policy) => {
+    if (!policy) {
+        return null;
+    }
+
+    if (typeof policy === 'string' || typeof policy === 'number') {
+        const id = normalizePolicyId(policy);
+        return id ? { id, name: '' } : null;
+    }
+
+    if (typeof policy !== 'object') {
+        return null;
+    }
+
+    const nestedPolicy =
+        (policy?.directus_policies_id && typeof policy.directus_policies_id === 'object' && policy.directus_policies_id)
+        || (policy?.policies_id && typeof policy.policies_id === 'object' && policy.policies_id)
+        || (policy?.policy && typeof policy.policy === 'object' && policy.policy)
+        || null;
+
+    const rawId = policy?.id
+        ?? policy?.policy
+        ?? policy?.policies_id
+        ?? policy?.directus_policies_id
+        ?? nestedPolicy?.id
+        ?? '';
+    const rawName = policy?.name
+        ?? nestedPolicy?.name
+        ?? '';
+
+    const id = normalizePolicyId(rawId);
+    const name = normalizePolicyName(rawName);
+
+    if (!id && !name) {
+        return null;
+    }
+
+    return { id, name };
+};
+
+const mergePolicyCandidate = (map, candidate) => {
+    if (!candidate || (!candidate.id && !candidate.name)) {
+        return;
+    }
+
+    const key = candidate.id || `name:${candidate.name.toLocaleLowerCase('ru')}`;
+    const existing = map.get(key);
+
+    if (!existing) {
+        map.set(key, {
+            id: candidate.id || '',
+            name: candidate.name || '',
+        });
+        return;
+    }
+
+    if (!existing.id && candidate.id) {
+        existing.id = candidate.id;
+    }
+
+    if (!existing.name && candidate.name) {
+        existing.name = candidate.name;
+    }
+};
+
+const normalizeUserPolicies = async (user) => {
+    const policies = Array.isArray(user?.policies) ? user.policies : [];
+    const policyMap = new Map();
+
+    policies.forEach((policy) => {
+        mergePolicyCandidate(policyMap, extractPolicyCandidate(policy));
+    });
+
+    const idsWithoutName = Array.from(policyMap.values())
+        .filter((item) => item.id && !item.name)
+        .map((item) => item.id);
+
+    if (idsWithoutName.length > 0) {
+        try {
+            const resolvedPolicies = await directus.request(readItems('directus_policies', {
+                fields: ['id', 'name'],
+                filter: {
+                    id: {
+                        _in: idsWithoutName,
+                    },
+                },
+                limit: -1,
+            }));
+
+            if (Array.isArray(resolvedPolicies)) {
+                resolvedPolicies.forEach((policy) => {
+                    mergePolicyCandidate(policyMap, {
+                        id: normalizePolicyId(policy?.id),
+                        name: normalizePolicyName(policy?.name),
+                    });
+                });
+            }
+        } catch (error) {
+            console.warn('Directus: failed to resolve policy names for current user', error);
+        }
+    }
+
+    return {
+        ...user,
+        policies: Array.from(policyMap.values()),
+    };
+};
+
 export const getCurrentUser = async () => {
     try {
         const user = await directus.request(readMe());
         if (!user) {
             throw new Error('Failed to get user data');
         }
-        return user;
+        return await normalizeUserPolicies(user);
     } catch (e) {
         console.error(e);
         throw e;

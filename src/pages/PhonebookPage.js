@@ -7,6 +7,7 @@ import {
     fetchPhonebookUsersByDepartment,
     getDirectusAssetUrl,
     getCurrentUser,
+    isUserInPolicyByName,
     getToken,
     logout,
     updatePhonebookUserCard,
@@ -32,72 +33,6 @@ const AVATAR_SIZES = {
     list: { width: 132, height: 120 },
     card: { width: 480, height: 600 },
     currentUser: { width: 80, height: 80 },
-};
-const hasPolicy = (user, { policyId = '', policyName = '' } = {}) => {
-    const normalizedPolicyId = String(policyId || '').trim();
-    const normalizedPolicyName = String(policyName || '').trim().toLocaleLowerCase('ru');
-
-    if (!normalizedPolicyId && !normalizedPolicyName) {
-        return false;
-    }
-
-    const userPolicies = user?.policies;
-    if (!Array.isArray(userPolicies) || userPolicies.length === 0) {
-        return false;
-    }
-
-    return userPolicies.some((policy) => {
-        if (!policy) {
-            return false;
-        }
-
-        if (typeof policy === 'string') {
-            const candidate = policy.trim();
-            if (normalizedPolicyId && candidate === normalizedPolicyId) {
-                return true;
-            }
-
-            if (normalizedPolicyName && candidate.toLocaleLowerCase('ru') === normalizedPolicyName) {
-                return true;
-            }
-
-            return false;
-        }
-
-        if (typeof policy !== 'object') {
-            return false;
-        }
-
-        const nestedPolicy =
-            (policy?.directus_policies_id && typeof policy.directus_policies_id === 'object' && policy.directus_policies_id)
-            || (policy?.policies_id && typeof policy.policies_id === 'object' && policy.policies_id)
-            || (policy?.policy && typeof policy.policy === 'object' && policy.policy)
-            || null;
-
-        const candidateId = String(
-            policy?.id
-            || policy?.policy
-            || policy?.policies_id
-            || policy?.directus_policies_id
-            || nestedPolicy?.id
-            || '',
-        ).trim();
-        const candidateName = String(
-            policy?.name
-            || nestedPolicy?.name
-            || '',
-        ).trim().toLocaleLowerCase('ru');
-
-        if (normalizedPolicyId && candidateId === normalizedPolicyId) {
-            return true;
-        }
-
-        if (normalizedPolicyName && candidateName === normalizedPolicyName) {
-            return true;
-        }
-
-        return false;
-    });
 };
 
 const buildSlotsMap = (departments) => {
@@ -328,6 +263,7 @@ function PhonebookPage() {
     const [error, setError] = useState('');
     const [currentUser, setCurrentUser] = useState(null);
     const [isAuthLoading, setIsAuthLoading] = useState(true);
+    const [hasPhonebookEditPolicy, setHasPhonebookEditPolicy] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [descriptionDraft, setDescriptionDraft] = useState('');
     const [levelDraft, setLevelDraft] = useState('');
@@ -368,12 +304,18 @@ function PhonebookPage() {
                 }
 
                 const user = await getCurrentUser();
+                const canEditByPolicy = user?.id
+                    ? await isUserInPolicyByName(user.id, PHONEBOOK_DND_POLICY_NAME)
+                    : false;
+
                 if (active) {
                     setCurrentUser(user || null);
+                    setHasPhonebookEditPolicy(Boolean(canEditByPolicy));
                 }
             } catch (authError) {
                 if (active) {
                     setCurrentUser(null);
+                    setHasPhonebookEditPolicy(false);
                 }
             } finally {
                 if (active) {
@@ -510,8 +452,8 @@ function PhonebookPage() {
     const canEditSelectedUser = useMemo(
         () => !isAuthLoading
             && Boolean(currentUser)
-            && hasPolicy(currentUser, { policyName: PHONEBOOK_DND_POLICY_NAME }),
-        [currentUser, isAuthLoading],
+            && hasPhonebookEditPolicy,
+        [currentUser, hasPhonebookEditPolicy, isAuthLoading],
     );
     const activeDepartment = useMemo(
         () => departments.find((department) => String(department.id) === String(departmentId)),

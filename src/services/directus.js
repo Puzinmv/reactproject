@@ -1,6 +1,6 @@
 import {
     createDirectus, authentication,  rest,
-    readItems, readUsers, updateItem, readMe, readFile, readItem,
+    customEndpoint, readItems, readUsers, updateItem, readMe, readFile, readItem,
     uploadFiles, deleteFile, createItem, updateMe, deleteItem, updateUser
 } from "@directus/sdk";
 
@@ -215,14 +215,18 @@ const normalizeUserPolicies = async (user) => {
 
     if (idsWithoutName.length > 0) {
         try {
-            const resolvedPolicies = await directus.request(readItems('directus_policies', {
-                fields: ['id', 'name'],
-                filter: {
-                    id: {
-                        _in: idsWithoutName,
+            const resolvedPolicies = await directus.request(customEndpoint({
+                path: '/policies',
+                method: 'GET',
+                params: {
+                    fields: ['id', 'name'],
+                    filter: {
+                        id: {
+                            _in: idsWithoutName,
+                        },
                     },
+                    limit: -1,
                 },
-                limit: -1,
             }));
 
             if (Array.isArray(resolvedPolicies)) {

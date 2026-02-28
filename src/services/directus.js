@@ -161,7 +161,7 @@ export const isUserInPolicyByName = async (userId, policyName) => {
             path: '/policies',
             method: 'GET',
             params: {
-                fields: ['id', 'name', 'users'],
+                fields: ['id', 'name', { users: ['user'] }],
                 filter: {
                     name: {
                         _eq: normalizedPolicyName,
@@ -178,7 +178,7 @@ export const isUserInPolicyByName = async (userId, policyName) => {
 
             return policyUsers.some((policyUser) => {
                 const candidateUserId = typeof policyUser === 'object'
-                    ? policyUser?.id
+                    ? (policyUser?.user?.id || policyUser?.user || policyUser?.id)
                     : policyUser;
 
                 return normalizeStringValue(candidateUserId) === normalizedUserId;

@@ -22,6 +22,7 @@ const getDefaultTrueConfBaseUrl = () => {
 const TRUECONF_BASE_URL = String(process.env.REACT_APP_TRUECONF_BASE_URL || getDefaultTrueConfBaseUrl())
     .trim()
     .replace(/\/+$/, '');
+const TRUECONF_PROD_OAUTH_TOKEN_URL = '/api/trueconf/oauth/token';
 const TRUECONF_CLIENT_ID = process.env.REACT_APP_TRUECONF_CLIENT_ID || 'trueconf_server_users';
 const TRUECONF_TOKEN_STORAGE_KEY = 'asterit.trueconf.tokens.v1';
 const TRUECONF_ACCESS_TOKEN_SKEW_MS = 60 * 1000;
@@ -41,6 +42,36 @@ const buildTrueConfUrl = (path) => {
 
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
     return `${origin}${TRUECONF_BASE_URL}${normalizedPath}`;
+};
+
+const isLocalhostHost = () => (
+    typeof window !== 'undefined'
+    && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+);
+
+const getTrueConfOauthTokenUrl = () => (
+    isLocalhostHost()
+        ? buildTrueConfUrl('/oauth2/v1/token')
+        : TRUECONF_PROD_OAUTH_TOKEN_URL
+);
+
+const toFormUrlEncoded = (payload = {}) => {
+    const params = new URLSearchParams();
+
+    Object.entries(payload).forEach(([key, value]) => {
+        if (value === null || value === undefined) {
+            return;
+        }
+
+        const normalized = String(value).trim();
+        if (!normalized) {
+            return;
+        }
+
+        params.set(key, normalized);
+    });
+
+    return params.toString();
 };
 
 const isLocalTrueConfProxy = () => (
@@ -234,7 +265,7 @@ const warmupTrueConfSession = async () => {
     try {
         await fetch(buildTrueConfUrl('/'), {
             method: 'GET',
-            credentials: 'include',
+            credentials: 'same-origin',
             cache: 'no-store',
         });
     } catch (error) {
@@ -243,14 +274,14 @@ const warmupTrueConfSession = async () => {
 };
 
 const requestTrueConfToken = async (payload, { allowRetry = true } = {}) => {
-    const response = await fetch(buildTrueConfUrl('/oauth2/v1/token'), {
+    const response = await fetch(getTrueConfOauthTokenUrl(), {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
         },
-        credentials: 'include',
-        body: JSON.stringify(payload),
+        credentials: 'same-origin',
+        body: toFormUrlEncoded(payload),
     });
 
     let responseBody = null;
@@ -260,7 +291,7 @@ const requestTrueConfToken = async (payload, { allowRetry = true } = {}) => {
         responseBody = null;
     }
 
-    if (response.status === 403 && allowRetry) {
+    if (response.status === 403 && allowRetry && isLocalhostHost()) {
         await warmupTrueConfSession();
         return requestTrueConfToken(payload, { allowRetry: false });
     }

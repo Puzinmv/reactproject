@@ -23,6 +23,7 @@ const TRUECONF_BASE_URL = String(process.env.REACT_APP_TRUECONF_BASE_URL || getD
     .trim()
     .replace(/\/+$/, '');
 const TRUECONF_PROD_OAUTH_TOKEN_URL = '/api/trueconf/oauth/token';
+const TRUECONF_PROD_API_BASE_URL = '/api/trueconf/api/v3.11';
 const TRUECONF_CLIENT_ID = process.env.REACT_APP_TRUECONF_CLIENT_ID || 'trueconf_server_users';
 const TRUECONF_TOKEN_STORAGE_KEY = 'asterit.trueconf.tokens.v1';
 const TRUECONF_ACCESS_TOKEN_SKEW_MS = 60 * 1000;
@@ -54,6 +55,24 @@ const getTrueConfOauthTokenUrl = () => (
         ? buildTrueConfUrl('/oauth2/v1/token')
         : TRUECONF_PROD_OAUTH_TOKEN_URL
 );
+
+const getTrueConfApiBaseUrl = () => (
+    isLocalhostHost()
+        ? buildTrueConfUrl('/api/v3.11')
+        : TRUECONF_PROD_API_BASE_URL
+);
+
+const buildTrueConfApiUrl = (path) => {
+    const baseUrl = String(getTrueConfApiBaseUrl() || '').replace(/\/+$/, '');
+    const normalizedPath = `/${String(path || '').replace(/^\/+/, '')}`;
+
+    if (isAbsoluteUrl(baseUrl)) {
+        return `${baseUrl}${normalizedPath}`;
+    }
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    return `${origin}${baseUrl}${normalizedPath}`;
+};
 
 const toFormUrlEncoded = (payload = {}) => {
     const params = new URLSearchParams();
@@ -439,7 +458,7 @@ const requestTrueConfAddressBookContact = async ({
     contactId,
 }) => {
     const requestUrl = new URL(
-        buildTrueConfUrl(`/api/v3.11/users/${encodeURIComponent(userId)}/addressbook/${encodeURIComponent(contactId)}`),
+        buildTrueConfApiUrl(`/users/${encodeURIComponent(userId)}/addressbook/${encodeURIComponent(contactId)}`),
     );
     requestUrl.searchParams.set('access_token', accessToken);
 
@@ -449,7 +468,7 @@ const requestTrueConfAddressBookContact = async ({
             'Accept': 'application/json',
             'Content-Type': 'application/json',
         },
-        credentials: 'include',
+        credentials: 'same-origin',
     });
 
     const payload = await parseTrueConfResponseJson(response);

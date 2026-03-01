@@ -11,6 +11,506 @@ export const directus = createDirectus(directusBaseUrl)
     .with(rest({ credentials: 'include' }))
     ;
 
+const getDefaultTrueConfBaseUrl = () => {
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+        return '/trueconf';
+    }
+
+    return 'https://trueconf.asterit.ru';
+};
+
+const TRUECONF_BASE_URL = String(process.env.REACT_APP_TRUECONF_BASE_URL || getDefaultTrueConfBaseUrl())
+    .trim()
+    .replace(/\/+$/, '');
+const TRUECONF_CLIENT_ID = process.env.REACT_APP_TRUECONF_CLIENT_ID || 'trueconf_server_users';
+const TRUECONF_TOKEN_STORAGE_KEY = 'asterit.trueconf.tokens.v1';
+const TRUECONF_ACCESS_TOKEN_SKEW_MS = 60 * 1000;
+
+let trueConfRefreshPromise = null;
+let trueConfLocalProxyMetaPromise = null;
+let hasLoggedTrueConfLocalProxyDisabled = false;
+
+const isAbsoluteUrl = (value) => /^https?:\/\//i.test(String(value || ''));
+
+const buildTrueConfUrl = (path) => {
+    const normalizedPath = `/${String(path || '').replace(/^\/+/, '')}`;
+
+    if (isAbsoluteUrl(TRUECONF_BASE_URL)) {
+        return `${TRUECONF_BASE_URL}${normalizedPath}`;
+    }
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    return `${origin}${TRUECONF_BASE_URL}${normalizedPath}`;
+};
+
+const isLocalTrueConfProxy = () => (
+    typeof window !== 'undefined'
+    && window.location.hostname === 'localhost'
+    && !isAbsoluteUrl(TRUECONF_BASE_URL)
+);
+
+const readTrueConfLocalProxyMeta = async () => {
+    if (!isLocalTrueConfProxy()) {
+        return { enabled: true, proxyCookieConfigured: true };
+    }
+
+    if (!trueConfLocalProxyMetaPromise) {
+        trueConfLocalProxyMetaPromise = fetch('/trueconf-proxy/meta', {
+            method: 'GET',
+            cache: 'no-store',
+            headers: {
+                'Accept': 'application/json',
+            },
+        })
+            .then(async (response) => {
+                if (!response.ok) {
+                    return { enabled: false, proxyCookieConfigured: false };
+                }
+
+                try {
+                    const meta = await response.json();
+                    return {
+                        enabled: Boolean(meta?.enabled),
+                        proxyCookieConfigured: Boolean(meta?.proxyCookieConfigured),
+                    };
+                } catch (error) {
+                    return { enabled: false, proxyCookieConfigured: false };
+                }
+            })
+            .catch(() => ({ enabled: false, proxyCookieConfigured: false }));
+    }
+
+    return trueConfLocalProxyMetaPromise;
+};
+
+const canUseTrueConfApi = async () => {
+    const proxyMeta = await readTrueConfLocalProxyMeta();
+    const isEnabled = Boolean(proxyMeta?.enabled) && Boolean(proxyMeta?.proxyCookieConfigured);
+
+    if (!isEnabled && isLocalTrueConfProxy() && !hasLoggedTrueConfLocalProxyDisabled) {
+        hasLoggedTrueConfLocalProxyDisabled = true;
+        console.warn('TrueConf: local proxy cookie is not configured, TrueConf API calls are disabled');
+    }
+
+    return isEnabled;
+};
+
+const getTrueConfStorage = () => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    try {
+        return window.localStorage;
+    } catch (error) {
+        return null;
+    }
+};
+
+const sanitizeStoredTrueConfTokens = (rawValue) => {
+    if (!rawValue || typeof rawValue !== 'object') {
+        return null;
+    }
+
+    const accessToken = String(rawValue.access_token || '').trim();
+    if (!accessToken) {
+        return null;
+    }
+
+    const refreshToken = String(rawValue.refresh_token || '').trim();
+    const tokenType = String(rawValue.token_type || '').trim();
+    const scope = String(rawValue.scope || '').trim();
+    const expiresIn = Number(rawValue.expires_in);
+    const expiresAt = Number(rawValue.expires_at);
+
+    return {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        token_type: tokenType,
+        scope,
+        expires_in: Number.isFinite(expiresIn) ? expiresIn : null,
+        expires_at: Number.isFinite(expiresAt) ? expiresAt : 0,
+    };
+};
+
+const buildTrueConfTokenRecord = (tokenPayload, previousTokens = null) => {
+    if (!tokenPayload || typeof tokenPayload !== 'object') {
+        return null;
+    }
+
+    const accessToken = String(tokenPayload.access_token || '').trim();
+    if (!accessToken) {
+        return null;
+    }
+
+    const rawRefreshToken = String(tokenPayload.refresh_token || '').trim();
+    const previousRefreshToken = String(previousTokens?.refresh_token || '').trim();
+    const refreshToken = rawRefreshToken || previousRefreshToken;
+
+    const tokenType = String(tokenPayload.token_type || '').trim();
+    const scope = String(tokenPayload.scope || '').trim();
+    const expiresIn = Number(tokenPayload.expires_in);
+    const expiresAt = Number.isFinite(expiresIn) && expiresIn > 0
+        ? Date.now() + (expiresIn * 1000)
+        : Date.now();
+
+    return {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        token_type: tokenType,
+        scope,
+        expires_in: Number.isFinite(expiresIn) ? expiresIn : null,
+        expires_at: expiresAt,
+    };
+};
+
+const readStoredTrueConfTokens = () => {
+    const storage = getTrueConfStorage();
+    if (!storage) {
+        return null;
+    }
+
+    try {
+        const serializedValue = storage.getItem(TRUECONF_TOKEN_STORAGE_KEY);
+        if (!serializedValue) {
+            return null;
+        }
+
+        const parsedValue = JSON.parse(serializedValue);
+        return sanitizeStoredTrueConfTokens(parsedValue);
+    } catch (error) {
+        console.warn('TrueConf: failed to read token from storage', error);
+        return null;
+    }
+};
+
+const writeTrueConfTokens = (tokenRecord) => {
+    const storage = getTrueConfStorage();
+    if (!storage || !tokenRecord) {
+        return;
+    }
+
+    try {
+        storage.setItem(TRUECONF_TOKEN_STORAGE_KEY, JSON.stringify(tokenRecord));
+    } catch (error) {
+        console.warn('TrueConf: failed to save token to storage', error);
+    }
+};
+
+export const clearTrueConfTokens = () => {
+    const storage = getTrueConfStorage();
+    if (!storage) {
+        return;
+    }
+
+    try {
+        storage.removeItem(TRUECONF_TOKEN_STORAGE_KEY);
+    } catch (error) {
+        console.warn('TrueConf: failed to clear token from storage', error);
+    }
+};
+
+const normalizeTrueConfUsername = (rawValue) => {
+    const text = String(rawValue || '').trim();
+    if (!text) {
+        return '';
+    }
+
+    const pathParts = text.split(/[/\\]/);
+    const withoutPath = String(pathParts[pathParts.length - 1] || '').trim();
+
+    if (!withoutPath) {
+        return '';
+    }
+
+    if (withoutPath.includes('@')) {
+        return String(withoutPath.split('@')[0] || '').trim();
+    }
+
+    return withoutPath;
+};
+
+const warmupTrueConfSession = async () => {
+    try {
+        await fetch(buildTrueConfUrl('/'), {
+            method: 'GET',
+            credentials: 'include',
+            cache: 'no-store',
+        });
+    } catch (error) {
+        // Ignore warmup errors; the next token request will surface the real cause.
+    }
+};
+
+const requestTrueConfToken = async (payload, { allowRetry = true } = {}) => {
+    const response = await fetch(buildTrueConfUrl('/oauth2/v1/token'), {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+    });
+
+    let responseBody = null;
+    try {
+        responseBody = await response.json();
+    } catch (parseError) {
+        responseBody = null;
+    }
+
+    if (response.status === 403 && allowRetry) {
+        await warmupTrueConfSession();
+        return requestTrueConfToken(payload, { allowRetry: false });
+    }
+
+    if (!response.ok) {
+        const error = new Error('TrueConf token request failed');
+        error.status = response.status;
+        error.payload = responseBody;
+        throw error;
+    }
+
+    return responseBody;
+};
+
+const isTrueConfAccessTokenValid = (tokens) => {
+    if (!tokens?.access_token) {
+        return false;
+    }
+
+    const expiresAt = Number(tokens.expires_at);
+    if (!Number.isFinite(expiresAt) || expiresAt <= 0) {
+        return false;
+    }
+
+    return (expiresAt - TRUECONF_ACCESS_TOKEN_SKEW_MS) > Date.now();
+};
+
+export const loginTrueConf = async (username, password) => {
+    if (!(await canUseTrueConfApi())) {
+        clearTrueConfTokens();
+        return null;
+    }
+
+    const normalizedUsername = normalizeTrueConfUsername(username);
+    const normalizedPassword = String(password || '');
+
+    if (!normalizedUsername || !normalizedPassword) {
+        clearTrueConfTokens();
+        return null;
+    }
+
+    const responsePayload = await requestTrueConfToken({
+        grant_type: 'password',
+        username: normalizedUsername,
+        password: normalizedPassword,
+        client_id: TRUECONF_CLIENT_ID,
+    });
+
+    const tokenRecord = buildTrueConfTokenRecord(responsePayload);
+    if (!tokenRecord) {
+        throw new Error('TrueConf token response does not contain access_token');
+    }
+
+    writeTrueConfTokens(tokenRecord);
+    return tokenRecord;
+};
+
+const refreshTrueConfTokens = async () => {
+    const currentTokens = readStoredTrueConfTokens();
+    const refreshToken = String(currentTokens?.refresh_token || '').trim();
+    if (!refreshToken) {
+        return null;
+    }
+
+    const responsePayload = await requestTrueConfToken({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: TRUECONF_CLIENT_ID,
+    });
+
+    const refreshedTokens = buildTrueConfTokenRecord(responsePayload, currentTokens);
+    if (!refreshedTokens) {
+        throw new Error('TrueConf refresh response does not contain access_token');
+    }
+
+    writeTrueConfTokens(refreshedTokens);
+    return refreshedTokens;
+};
+
+export const getTrueConfAccessToken = async ({ forceRefresh = false } = {}) => {
+    if (!(await canUseTrueConfApi())) {
+        return null;
+    }
+
+    const storedTokens = readStoredTrueConfTokens();
+
+    if (!forceRefresh && isTrueConfAccessTokenValid(storedTokens)) {
+        return storedTokens.access_token;
+    }
+
+    if (!storedTokens?.refresh_token) {
+        return null;
+    }
+
+    if (!trueConfRefreshPromise) {
+        trueConfRefreshPromise = refreshTrueConfTokens()
+            .catch((error) => {
+                clearTrueConfTokens();
+                throw error;
+            })
+            .finally(() => {
+                trueConfRefreshPromise = null;
+            });
+    }
+
+    try {
+        const refreshedTokens = await trueConfRefreshPromise;
+        return refreshedTokens?.access_token || null;
+    } catch (error) {
+        console.warn('TrueConf: failed to refresh token', error);
+        return null;
+    }
+};
+
+const normalizeTrueConfIdentifier = (value) => String(value ?? '').trim();
+
+const toUniqueTrueConfIdentifiers = (values = []) => {
+    const result = [];
+    const seen = new Set();
+
+    values.forEach((value) => {
+        const normalizedValue = normalizeTrueConfIdentifier(value);
+        if (!normalizedValue || seen.has(normalizedValue)) {
+            return;
+        }
+
+        seen.add(normalizedValue);
+        result.push(normalizedValue);
+    });
+
+    return result;
+};
+
+const parseTrueConfResponseJson = async (response) => {
+    try {
+        return await response.json();
+    } catch (error) {
+        return null;
+    }
+};
+
+const requestTrueConfAddressBookContact = async ({
+    accessToken,
+    userId,
+    contactId,
+}) => {
+    const requestUrl = new URL(
+        buildTrueConfUrl(`/api/v3.11/users/${encodeURIComponent(userId)}/addressbook/${encodeURIComponent(contactId)}`),
+    );
+    requestUrl.searchParams.set('access_token', accessToken);
+
+    const response = await fetch(requestUrl.toString(), {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+    });
+
+    const payload = await parseTrueConfResponseJson(response);
+
+    if (!response.ok) {
+        const error = new Error('TrueConf addressbook request failed');
+        error.status = response.status;
+        error.payload = payload;
+        throw error;
+    }
+
+    return payload?.contact || null;
+};
+
+export const fetchTrueConfAddressBookContact = async ({
+    userIds = [],
+    contactIds = [],
+} = {}) => {
+    if (!(await canUseTrueConfApi())) {
+        return null;
+    }
+
+    const normalizedUserIds = toUniqueTrueConfIdentifiers(userIds);
+    const normalizedContactIds = toUniqueTrueConfIdentifiers(contactIds);
+
+    if (!normalizedUserIds.length || !normalizedContactIds.length) {
+        return null;
+    }
+
+    const runRequestCycle = async (accessToken) => {
+        for (const userId of normalizedUserIds) {
+            for (const contactId of normalizedContactIds) {
+                try {
+                    const contact = await requestTrueConfAddressBookContact({
+                        accessToken,
+                        userId,
+                        contactId,
+                    });
+
+                    if (contact) {
+                        return { contact, userId, contactId };
+                    }
+                } catch (error) {
+                    const status = Number(error?.status);
+                    if (status === 401) {
+                        const unauthorizedError = new Error('TRUECONF_UNAUTHORIZED');
+                        unauthorizedError.code = 'TRUECONF_UNAUTHORIZED';
+                        throw unauthorizedError;
+                    }
+
+                    if (status === 400 || status === 403 || status === 404) {
+                        continue;
+                    }
+
+                    throw error;
+                }
+            }
+        }
+
+        return null;
+    };
+
+    const accessToken = await getTrueConfAccessToken();
+    if (!accessToken) {
+        return null;
+    }
+
+    try {
+        return await runRequestCycle(accessToken);
+    } catch (error) {
+        if (error?.code !== 'TRUECONF_UNAUTHORIZED') {
+            throw error;
+        }
+    }
+
+    const refreshedAccessToken = await getTrueConfAccessToken({ forceRefresh: true });
+    if (!refreshedAccessToken) {
+        return null;
+    }
+
+    try {
+        return await runRequestCycle(refreshedAccessToken);
+    } catch (error) {
+        if (error?.code === 'TRUECONF_UNAUTHORIZED') {
+            clearTrueConfTokens();
+            return null;
+        }
+
+        throw error;
+    }
+};
+
 export const getDirectusAssetUrl = (fileId, { width, height, fit = 'cover' } = {}) => {
     if (!fileId) {
         return '';
@@ -70,7 +570,54 @@ const compareVersionNumbers = (a, b) => {
 
 export const loginEmail = async (email, password) => {
     try {
-        const user = await directus.login(email, password);
+        clearTrueConfTokens();
+        const isLocalhost = window.location.hostname === 'localhost';
+        let user = null;
+
+        if (isLocalhost) {
+            const response = await fetch(process.env.REACT_APP_API_URL + '/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    email,
+                    password,
+                    mode: 'json',
+                }),
+            });
+
+            if (!response.ok) {
+                return null;
+            }
+
+            const result = await response.json();
+            const accessToken = String(
+                result?.data?.access_token
+                || result?.data?.token
+                || result?.access_token
+                || '',
+            ).trim();
+
+            if (!accessToken) {
+                console.error('Directus: loginEmail on localhost succeeded, but access_token is missing', result);
+                return null;
+            }
+
+            directus.setToken(accessToken);
+            user = result;
+        } else {
+            user = await directus.login(email, password);
+        }
+
+        try {
+            await loginTrueConf(email, password);
+        } catch (trueConfError) {
+            clearTrueConfTokens();
+            console.warn('TrueConf: failed to create token after loginEmail', trueConfError);
+        }
+
         return user;
     } catch (e) {
         console.error(e)
@@ -80,6 +627,10 @@ export const loginEmail = async (email, password) => {
 
 export const loginAD = async (login, password) => {
     try {
+        clearTrueConfTokens();
+        const isLocalhost = window.location.hostname === 'localhost';
+        const authMode = isLocalhost ? 'json' : 'session';
+
         //const user = await directus.login(email, password);
         const response = await fetch(process.env.REACT_APP_API_URL +'/auth/login/ldap', {
             method: 'POST',
@@ -90,15 +641,35 @@ export const loginAD = async (login, password) => {
             body: JSON.stringify({
                 identifier: login,
                 password: password,
-                mode: "session"
+                mode: authMode,
             })
         });
         if (response.ok) {
             const result = await response.json();
-            if (window.location.hostname === 'localhost') {
-                directus.setToken(result.data.access_token);
+            if (isLocalhost) {
+                const accessToken = String(
+                    result?.data?.access_token
+                    || result?.data?.token
+                    || result?.access_token
+                    || '',
+                ).trim();
+
+                if (!accessToken) {
+                    console.error('Directus: loginAD on localhost succeeded, but access_token is missing', result);
+                    return null;
+                }
+
+                directus.setToken(accessToken);
                 console.log('localhost',result)
             }
+
+            try {
+                await loginTrueConf(login, password);
+            } catch (trueConfError) {
+                clearTrueConfTokens();
+                console.warn('TrueConf: failed to create token after loginAD', trueConfError);
+            }
+
             //const token = await getToken()
             return true;
         } else {
@@ -114,6 +685,22 @@ export const loginAD = async (login, password) => {
 
 export const getToken = async () => {
     try {
+        // For localhost development we may work with token mode (no refresh cookie).
+        if (window.location.hostname === 'localhost') {
+            try {
+                const directusToken = await directus.getToken?.();
+                if (directusToken) {
+                    return {
+                        data: {
+                            access_token: directusToken,
+                        },
+                    };
+                }
+            } catch (tokenReadError) {
+                // Ignore and continue with refresh attempt below.
+            }
+        }
+
         const response = await fetch(process.env.REACT_APP_API_URL+'/auth/refresh', {
             method: 'POST',
             credentials: 'include', 
@@ -122,13 +709,21 @@ export const getToken = async () => {
         });
         
         if (!response.ok) {
-            throw new Error('Token refresh failed');
+            if (response.status === 400 || response.status === 401) {
+                return null;
+            }
+
+            const error = new Error('Token refresh failed');
+            error.status = response.status;
+            throw error;
         }
         
         const data = await response.json();
         return data;
     } catch (e) {
-        console.error(e);
+        if (e?.status !== 400 && e?.status !== 401) {
+            console.error(e);
+        }
         throw e;
     }
 };
@@ -342,19 +937,7 @@ export const fetchPhonebookUserCard = async (userId) => {
 
     const users = await directus.request(readUsers({
         fields: [
-            'id',
-            'first_name',
-            'last_name',
-            'middleName',
-            'title',
-            'avatar',
-            'phone',
-            'mobile',
-            'email',
-            'description',
-            'level',
-            'date_birthd',
-            'location',
+            '*',
             { Head: ['id', 'first_name', 'last_name', 'middleName', { department: ['id'] }] },
         ],
         filter: {
@@ -859,6 +1442,7 @@ export const CreateItemDirectus = async (data, token) => {
 
 
 export const logout = async () => {
+    clearTrueConfTokens();
     const result = await directus.logout();
     return result;
 };

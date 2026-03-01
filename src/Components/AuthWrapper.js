@@ -36,9 +36,10 @@ function AuthWrapper({ children, isLoginFunc }) {
     const checkAuthAndGetUser = useCallback(async () => {
         try {
             // РџСЂРѕРІРµСЂСЏРµРј С‚РѕРєРµРЅ
-            const token = await getToken();
-            if (!token?.data) {
-                throw new Error('No valid token');
+            try {
+                await getToken();
+            } catch (refreshError) {
+                // Ignore and continue.
             }
 
             // РџРѕР»СѓС‡Р°РµРј РґР°РЅРЅС‹Рµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ

@@ -121,6 +121,29 @@ const formatBirthDate = (value) => {
     return text;
 };
 
+const normalizeHidenValue = (value) => {
+    if (value === true || value === false) {
+        return value;
+    }
+
+    if (value === null || value === undefined) {
+        return null;
+    }
+
+    const text = String(value).trim().toLowerCase();
+    if (text === 'true' || text === '1') {
+        return true;
+    }
+
+    if (text === 'false' || text === '0') {
+        return false;
+    }
+
+    return null;
+};
+
+const canShowUserByHidenFlag = (user) => normalizeHidenValue(user?.hiden) !== false;
+
 const getDaysInMonth = (month, year) => new Date(year, month, 0).getDate();
 
 const normalizeBirthDateDraft = (rawValue) => {
@@ -351,6 +374,7 @@ function PhonebookPage() {
     const [birthDateDraft, setBirthDateDraft] = useState('');
     const [birthDateValidationError, setBirthDateValidationError] = useState('');
     const [isSavingUserCard, setIsSavingUserCard] = useState(false);
+    const [isSavingHidenFlag, setIsSavingHidenFlag] = useState(false);
     const [isSavingLevel, setIsSavingLevel] = useState(false);
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const [isDeletingAvatar, setIsDeletingAvatar] = useState(false);
@@ -437,7 +461,12 @@ function PhonebookPage() {
     }, [isUserMenuOpen]);
 
     useEffect(() => {
+        if (isAuthLoading) {
+            return undefined;
+        }
+
         let active = true;
+        const includeHidden = hasPhonebookEditPolicy;
 
         const loadData = async () => {
             setLoading(true);
@@ -447,8 +476,8 @@ function PhonebookPage() {
                 if (isDepartmentPage) {
                     const [departmentData, usersData, allUsersData] = await Promise.all([
                         fetchPhonebookDepartments(),
-                        fetchPhonebookUsersByDepartment(departmentId),
-                        fetchPhonebookUsersForSearch(),
+                        fetchPhonebookUsersByDepartment(departmentId, { includeHidden }),
+                        fetchPhonebookUsersForSearch({ includeHidden }),
                     ]);
 
                     if (!active) {
@@ -473,7 +502,7 @@ function PhonebookPage() {
                     if (autoOpenUser?.id) {
                         setSelectedUserLoading(true);
                         try {
-                            const cardUser = await fetchPhonebookUserCard(autoOpenUser.id);
+                            const cardUser = await fetchPhonebookUserCard(autoOpenUser.id, { includeHidden });
                             if (!active) {
                                 return;
                             }
@@ -497,7 +526,7 @@ function PhonebookPage() {
                 } else {
                     const [departmentData, allUsersData] = await Promise.all([
                         fetchPhonebookDepartments(),
-                        fetchPhonebookUsersForSearch(),
+                        fetchPhonebookUsersForSearch({ includeHidden }),
                     ]);
 
                     if (!active) {
@@ -533,7 +562,7 @@ function PhonebookPage() {
         return () => {
             active = false;
         };
-    }, [departmentId, isDepartmentPage, searchResultUserId]);
+    }, [departmentId, hasPhonebookEditPolicy, isAuthLoading, isDepartmentPage, searchResultUserId]);
 
     const slotsMap = useMemo(() => buildSlotsMap(departments), [departments]);
     const canEditSelectedUser = useMemo(
@@ -546,6 +575,14 @@ function PhonebookPage() {
         () => departments.find((department) => String(department.id) === String(departmentId)),
         [departments, departmentId],
     );
+    const visibleDepartmentUsers = useMemo(
+        () => (hasPhonebookEditPolicy ? users : users.filter(canShowUserByHidenFlag)),
+        [hasPhonebookEditPolicy, users],
+    );
+    const visibleSearchUsers = useMemo(
+        () => (hasPhonebookEditPolicy ? searchUsers : searchUsers.filter(canShowUserByHidenFlag)),
+        [hasPhonebookEditPolicy, searchUsers],
+    );
     const normalizedQuery = useMemo(() => normalizeSearchText(searchQuery), [searchQuery]);
     const hasSearchQuery = normalizedQuery.length > 0;
     const searchResults = useMemo(() => {
@@ -553,7 +590,7 @@ function PhonebookPage() {
             return [];
         }
 
-        return searchUsers
+        return visibleSearchUsers
             .filter((user) => {
                 const fullName = normalizeSearchText(formatFullName(user));
                 const title = normalizeSearchText(user?.title);
@@ -564,7 +601,7 @@ function PhonebookPage() {
                     || location.includes(normalizedQuery);
             })
             .slice(0, SEARCH_RESULTS_LIMIT);
-    }, [hasSearchQuery, normalizedQuery, searchUsers]);
+    }, [hasSearchQuery, normalizedQuery, visibleSearchUsers]);
     const groupedSearchResults = useMemo(() => {
         const groups = new Map();
 
@@ -647,7 +684,7 @@ function PhonebookPage() {
         setSelectedUserError('');
 
         try {
-            const cardUser = await fetchPhonebookUserCard(userId);
+            const cardUser = await fetchPhonebookUserCard(userId, { includeHidden: hasPhonebookEditPolicy });
             if (!cardUser) {
                 setSelectedUserError('Не удалось загрузить карточку сотрудника.');
                 return;
@@ -813,8 +850,46 @@ function PhonebookPage() {
         }
     };
 
+    const handleHidenFlagChange = async (event) => {
+        if (!canEditSelectedUser || !selectedUser?.id || isSavingHidenFlag) {
+            return;
+        }
+
+        const nextHidenValue = Boolean(event.target.checked);
+        setSelectedUserError('');
+        setIsSavingHidenFlag(true);
+
+        try {
+            await updatePhonebookUserCard(selectedUser.id, { hiden: nextHidenValue });
+
+            setSelectedUser((prevUser) => (
+                prevUser
+                    ? {
+                        ...prevUser,
+                        hiden: nextHidenValue,
+                    }
+                    : prevUser
+            ));
+            setUsers((prevUsers) => prevUsers.map((user) => (
+                String(user.id) === String(selectedUser.id)
+                    ? { ...user, hiden: nextHidenValue }
+                    : user
+            )));
+            setSearchUsers((prevUsers) => prevUsers.map((user) => (
+                String(user.id) === String(selectedUser.id)
+                    ? { ...user, hiden: nextHidenValue }
+                    : user
+            )));
+        } catch (saveError) {
+            console.error('Phonebook: failed to save hiden flag', saveError);
+            setSelectedUserError('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0431\u043d\u043e\u0432\u0438\u0442\u044c \u0432\u0438\u0434\u0438\u043c\u043e\u0441\u0442\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f.');
+        } finally {
+            setIsSavingHidenFlag(false);
+        }
+    };
+
     const handleUserCardSave = async () => {
-        if (!canEditSelectedUser || !selectedUser?.id || isSavingUserCard) {
+        if (!canEditSelectedUser || !selectedUser?.id || isSavingUserCard || isSavingHidenFlag) {
             return;
         }
 
@@ -854,7 +929,7 @@ function PhonebookPage() {
         const file = event.target.files?.[0];
         event.target.value = '';
 
-        if (!file || !canEditSelectedUser || !selectedUser?.id || isDeletingAvatar) {
+        if (!file || !canEditSelectedUser || !selectedUser?.id || isDeletingAvatar || isSavingHidenFlag) {
             return;
         }
 
@@ -896,7 +971,7 @@ function PhonebookPage() {
     };
 
     const handleAvatarDelete = async () => {
-        if (!canEditSelectedUser || !selectedUser?.id || isUploadingAvatar || isDeletingAvatar || isSavingUserCard) {
+        if (!canEditSelectedUser || !selectedUser?.id || isUploadingAvatar || isDeletingAvatar || isSavingUserCard || isSavingHidenFlag) {
             return;
         }
 
@@ -956,6 +1031,7 @@ function PhonebookPage() {
             console.error('Phonebook: failed to logout', logoutError);
         } finally {
             setCurrentUser(null);
+            setHasPhonebookEditPolicy(false);
             setIsUserMenuOpen(false);
         }
     };
@@ -1056,7 +1132,7 @@ function PhonebookPage() {
         }
 
         if (selectedUser) {
-            if (isDepartmentPage && users.length === 1) {
+            if (isDepartmentPage && visibleDepartmentUsers.length === 1) {
                 navigate('/phonebook');
                 return;
             }
@@ -1085,7 +1161,10 @@ function PhonebookPage() {
         ? selectedUserAvatarValue?.id
         : selectedUserAvatarValue;
     const hasSelectedUserAvatar = Boolean(selectedUserAvatarId);
-    const isAvatarActionInProgress = isUploadingAvatar || isDeletingAvatar || isSavingUserCard;
+    const selectedUserHidenValue = normalizeHidenValue(selectedUser?.hiden);
+    const isSelectedUserVisibleForRegularUsers = selectedUserHidenValue !== false;
+    const isAvatarActionInProgress = isUploadingAvatar || isDeletingAvatar || isSavingUserCard || isSavingHidenFlag;
+    const isHidenToggleDisabled = isSavingHidenFlag || isSavingUserCard || isUploadingAvatar || isDeletingAvatar;
     const selectedUserMobile = String(selectedUser?.mobile || '').trim();
     const selectedUserMobileForTrueConf = selectedUserMobile.replace(/[^\d+]/g, '');
     const selectedUserMobileTrueConfHref = selectedUserMobileForTrueConf
@@ -1190,7 +1269,7 @@ function PhonebookPage() {
                         <div className="phonebook-department-empty">Загрузка...</div>
                     ) : null}
 
-                    {!loading && users.length === 0 && !error ? (
+                    {!loading && visibleDepartmentUsers.length === 0 && !error ? (
                         <div className="phonebook-department-empty">В этом отделе пока нет сотрудников.</div>
                     ) : null}
 
@@ -1198,7 +1277,7 @@ function PhonebookPage() {
                         <div className="phonebook-department-empty">{selectedUserError}</div>
                     ) : null}
 
-                    {!loading && !selectedUser && users.map((user) => (
+                    {!loading && !selectedUser && visibleDepartmentUsers.map((user) => (
                         <button
                             key={user.id}
                             type="button"
@@ -1355,6 +1434,30 @@ function PhonebookPage() {
                                         <span>Город:</span>
                                         <span>{toValueOrDash(selectedUser?.location)}</span>
                                     </div>
+                                    {canEditSelectedUser ? (
+                                        <div className="phonebook-user-card-row">
+                                            <span>{'\u0412\u0438\u0434\u0438\u043c\u043e\u0441\u0442\u044c:'}</span>
+                                            <label className={`phonebook-user-card-toggle${isHidenToggleDisabled ? ' is-disabled' : ''}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    className="phonebook-user-card-toggle-input"
+                                                    checked={isSelectedUserVisibleForRegularUsers}
+                                                    onChange={handleHidenFlagChange}
+                                                    disabled={isHidenToggleDisabled}
+                                                    aria-label={'\u0412\u0438\u0434\u0438\u043c\u043e\u0441\u0442\u044c \u0432 \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u043d\u043e\u0439 \u043a\u043d\u0438\u0433\u0435'}
+                                                />
+                                                <div aria-hidden className="phonebook-user-card-toggle-track" />
+                                                <div className="phonebook-user-card-toggle-text">
+                                                    {isSelectedUserVisibleForRegularUsers
+                                                        ? '\u0412\u0438\u0434\u0435\u043d \u0434\u043b\u044f \u0432\u0441\u0435\u0445'
+                                                        : '\u0421\u043a\u0440\u044b\u0442 \u0434\u043b\u044f \u043e\u0431\u044b\u0447\u043d\u044b\u0445 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0435\u0439'}
+                                                </div>
+                                            </label>
+                                        </div>
+                                    ) : null}
+                                    {canEditSelectedUser && isSavingHidenFlag ? (
+                                        <div className="phonebook-user-card-level-saving">{'\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435...'}</div>
+                                    ) : null}
                                     {canEditSelectedUser ? (
                                         <div className="phonebook-user-card-row">
                                             <span>Уровень:</span>

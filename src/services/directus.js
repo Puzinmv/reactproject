@@ -844,26 +844,45 @@ export const fetchPhonebookDepartments = async () => {
     return Array.isArray(data) ? data : [];
 };
 
-export const fetchPhonebookUsersByDepartment = async (departmentId) => {
+export const fetchPhonebookUsersByDepartment = async (departmentId, { includeHidden = false } = {}) => {
     if (!departmentId) {
         return [];
     }
 
-    const users = await directus.request(readUsers({
-        fields: ['id', 'first_name', 'last_name', 'middleName', 'title', 'avatar', 'department', 'level'],
-        filter: {
-            _and: [
+    const filters = [
+        {
+            status: {
+                _eq: 'active',
+            },
+        },
+        {
+            department: {
+                _eq: departmentId,
+            },
+        },
+    ];
+
+    if (!includeHidden) {
+        filters.push({
+            _or: [
                 {
-                    status: {
-                        _eq: 'active',
+                    hiden: {
+                        _eq: true,
                     },
                 },
                 {
-                    department: {
-                        _eq: departmentId,
+                    hiden: {
+                        _null: true,
                     },
                 },
             ],
+        });
+    }
+
+    const users = await directus.request(readUsers({
+        fields: ['id', 'first_name', 'last_name', 'middleName', 'title', 'avatar', 'department', 'level', 'hiden'],
+        filter: {
+            _and: filters,
         },
         limit: -1,
     }));
@@ -922,7 +941,37 @@ export const fetchPhonebookUsersByDepartment = async (departmentId) => {
     });
 };
 
-export const fetchPhonebookUsersForSearch = async () => {
+export const fetchPhonebookUsersForSearch = async ({ includeHidden = false } = {}) => {
+    const filters = [
+        {
+            status: {
+                _eq: 'active',
+            },
+        },
+        {
+            department: {
+                _nnull: true,
+            },
+        },
+    ];
+
+    if (!includeHidden) {
+        filters.push({
+            _or: [
+                {
+                    hiden: {
+                        _eq: true,
+                    },
+                },
+                {
+                    hiden: {
+                        _null: true,
+                    },
+                },
+            ],
+        });
+    }
+
     const users = await directus.request(readUsers({
         fields: [
             'id',
@@ -931,22 +980,12 @@ export const fetchPhonebookUsersForSearch = async () => {
             'middleName',
             'title',
             'avatar',
+            'hiden',
             'location',
             { department: ['id', 'name'] },
         ],
         filter: {
-            _and: [
-                {
-                    status: {
-                        _eq: 'active',
-                    },
-                },
-                {
-                    department: {
-                        _nnull: true,
-                    },
-                },
-            ],
+            _and: filters,
         },
         limit: -1,
     }));
@@ -980,9 +1019,39 @@ export const fetchPhonebookUsersForSearch = async () => {
     });
 };
 
-export const fetchPhonebookUserCard = async (userId) => {
+export const fetchPhonebookUserCard = async (userId, { includeHidden = false } = {}) => {
     if (!userId) {
         return null;
+    }
+
+    const filters = [
+        {
+            id: {
+                _eq: userId,
+            },
+        },
+        {
+            status: {
+                _eq: 'active',
+            },
+        },
+    ];
+
+    if (!includeHidden) {
+        filters.push({
+            _or: [
+                {
+                    hiden: {
+                        _eq: true,
+                    },
+                },
+                {
+                    hiden: {
+                        _null: true,
+                    },
+                },
+            ],
+        });
     }
 
     const users = await directus.request(readUsers({
@@ -991,18 +1060,7 @@ export const fetchPhonebookUserCard = async (userId) => {
             { Head: ['id', 'first_name', 'last_name', 'middleName', { department: ['id'] }] },
         ],
         filter: {
-            _and: [
-                {
-                    id: {
-                        _eq: userId,
-                    },
-                },
-                {
-                    status: {
-                        _eq: 'active',
-                    },
-                },
-            ],
+            _and: filters,
         },
         limit: 1,
     }));
@@ -1036,6 +1094,7 @@ export const updatePhonebookUserCard = async (userId, {
     avatar,
     level,
     date_birthd,
+    hiden,
 } = {}) => {
     if (!userId) {
         throw new Error('User id is required');
@@ -1057,6 +1116,10 @@ export const updatePhonebookUserCard = async (userId, {
 
     if (date_birthd !== undefined) {
         payload.date_birthd = date_birthd;
+    }
+
+    if (hiden !== undefined) {
+        payload.hiden = hiden;
     }
 
     if (Object.keys(payload).length === 0) {

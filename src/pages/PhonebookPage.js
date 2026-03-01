@@ -44,6 +44,28 @@ const TRUECONF_STATUS_META = Object.freeze({
     2: { label: 'Занят', tone: 'busy' },
     5: { label: 'В конференции', tone: 'multihost' },
 });
+const TRUECONF_EXT_STATUS_META = Object.freeze({
+    0: { label: '\u0414\u043E\u043C\u0430', tone: 'away' },
+    1: { label: '\u041D\u0430 \u0440\u0430\u0431\u043E\u0442\u0435', tone: 'online' },
+    2: { label: '\u041E\u0431\u0435\u0434', tone: 'away' },
+    3: { label: '\u041E\u0442\u043F\u0443\u0441\u043A', tone: 'away' },
+    4: { label: '\u041A\u043E\u043C\u0430\u043D\u0434\u0438\u0440\u043E\u0432\u043A\u0430', tone: 'away' },
+    5: { label: '\u0411\u043E\u043B\u0435\u044E', tone: 'away' },
+    6: { label: '\u041E\u0442\u043E\u0448\u0451\u043B', tone: 'away' },
+    7: { label: '\u041D\u0435 \u0431\u0435\u0441\u043F\u043E\u043A\u043E\u0438\u0442\u044C', tone: 'busy' },
+    8: { label: '\u0421\u043A\u043E\u0440\u043E \u0432\u0435\u0440\u043D\u0443\u0441\u044C', tone: 'away' },
+    9: { label: '\u041D\u0435\u0442 \u043D\u0430 \u043C\u0435\u0441\u0442\u0435', tone: 'away' },
+    10: { label: '\u041D\u0435 \u0432 \u0441\u0435\u0442\u0438', tone: 'offline' },
+    11: { label: '\u0412 \u043A\u043E\u043D\u0444\u0435\u0440\u0435\u043D\u0446\u0438\u0438', tone: 'multihost' },
+    12: { label: '\u041D\u0435 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0430\u0442\u044C', tone: 'busy' },
+    13: { label: '\u0412 \u044D\u0444\u0438\u0440\u0435', tone: 'busy' },
+    14: { label: '\u0412 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435', tone: 'online' },
+    15: { label: '\u0412 \u0438\u0433\u0440\u0435', tone: 'busy' },
+    16: { label: '\u0412 \u043C\u0430\u0448\u0438\u043D\u0435', tone: 'away' },
+    17: { label: '\u0421\u043F\u043B\u044E', tone: 'away' },
+    18: { label: '\u0422\u043E\u043B\u044C\u043A\u043E \u0441\u0440\u043E\u0447\u043D\u044B\u0435', tone: 'busy' },
+});
+const TRUECONF_EXT_STATUS_HIDDEN_CODES = new Set([10]);
 const TRUECONF_STATUS_LOADING_LABEL = 'Проверка статуса...';
 const TRUECONF_STATUS_UNAVAILABLE_LABEL = 'Статус недоступен';
 
@@ -324,7 +346,47 @@ const getTrueConfStatusMeta = (rawStatus) => {
         return null;
     }
 
-    return TRUECONF_STATUS_META[numericStatus] || null;
+    const statusMeta = TRUECONF_STATUS_META[numericStatus] || null;
+    return statusMeta ? { ...statusMeta, code: numericStatus } : null;
+};
+
+const getTrueConfExtStatusMeta = (rawExtStatus) => {
+    const numericExtStatus = Number(rawExtStatus);
+    if (!Number.isFinite(numericExtStatus)) {
+        return null;
+    }
+
+    const extStatusMeta = TRUECONF_EXT_STATUS_META[numericExtStatus] || null;
+    return extStatusMeta ? { ...extStatusMeta, code: numericExtStatus } : null;
+};
+
+const resolveTrueConfPresenceMeta = ({ status, extStatus }) => {
+    const statusMeta = getTrueConfStatusMeta(status);
+    const extStatusMeta = getTrueConfExtStatusMeta(extStatus);
+
+    if (!statusMeta && !extStatusMeta) {
+        return null;
+    }
+
+    const shouldHideExtStatus = Boolean(
+        extStatusMeta
+        && (
+            TRUECONF_EXT_STATUS_HIDDEN_CODES.has(extStatusMeta.code)
+            || extStatusMeta.label === statusMeta?.label
+        ),
+    );
+
+    const label = shouldHideExtStatus
+        ? (statusMeta?.label || extStatusMeta?.label || '')
+        : [statusMeta?.label, extStatusMeta?.label].filter(Boolean).join(' · ');
+
+    const tone = (
+        (statusMeta?.tone && statusMeta.tone !== 'online')
+            ? statusMeta.tone
+            : (extStatusMeta?.tone || statusMeta?.tone || 'unknown')
+    );
+
+    return { label, tone };
 };
 
 function PhonebookPage() {
@@ -696,7 +758,7 @@ function PhonebookPage() {
         setIsSelectedUserTrueConfStatusLoading(false);
 
         const loadTrueConfStatus = async () => {
-            if (!selectedUser?.id || !currentUserTrueConfIdentifiers.length || !selectedUserTrueConfIdentifiers.length) {
+            if (!selectedUser?.id || !selectedUserTrueConfIdentifiers.length) {
                 return;
             }
 
@@ -713,21 +775,38 @@ function PhonebookPage() {
                 }
 
                 const contactPayload = statusResponse?.contact || null;
-                if (!contactPayload) {
-                    setSelectedUserTrueConfStatus('');
-                    setSelectedUserTrueConfStatusTone('unavailable');
-                    setSelectedUserTrueConfDialUser(fallbackDialUser);
-                    return;
-                }
-
                 const contactUser = contactPayload?.user && typeof contactPayload.user === 'object'
                     ? contactPayload.user
                     : contactPayload;
-                const resolvedStatusMeta = getTrueConfStatusMeta(contactUser?.status ?? contactPayload?.status);
-                const resolvedDialUser = collectTrueConfUserIdentifiers(contactUser)[0] || fallbackDialUser;
+                const statusPresence = statusResponse?.presence && typeof statusResponse.presence === 'object'
+                    ? statusResponse.presence
+                    : null;
+                const resolvedPresenceMeta = resolveTrueConfPresenceMeta({
+                    status: statusPresence?.status ?? contactUser?.status ?? contactPayload?.status,
+                    extStatus: (
+                        statusPresence?.extStatus
+                        ?? contactUser?.extStatus
+                        ?? contactUser?.ext_status
+                        ?? contactPayload?.extStatus
+                        ?? contactPayload?.ext_status
+                    ),
+                });
+                const responseContactId = String(statusResponse?.contactId || '').trim();
+                const resolvedDialUser = (
+                    collectTrueConfUserIdentifiers(contactUser)[0]
+                    || responseContactId
+                    || fallbackDialUser
+                );
 
-                setSelectedUserTrueConfStatus(resolvedStatusMeta?.label || '');
-                setSelectedUserTrueConfStatusTone(resolvedStatusMeta?.tone || 'unknown');
+                if (!resolvedPresenceMeta) {
+                    setSelectedUserTrueConfStatus('');
+                    setSelectedUserTrueConfStatusTone('unavailable');
+                    setSelectedUserTrueConfDialUser(resolvedDialUser);
+                    return;
+                }
+
+                setSelectedUserTrueConfStatus(resolvedPresenceMeta.label || '');
+                setSelectedUserTrueConfStatusTone(resolvedPresenceMeta.tone || 'unknown');
                 setSelectedUserTrueConfDialUser(resolvedDialUser);
             } catch (statusError) {
                 if (!active) {

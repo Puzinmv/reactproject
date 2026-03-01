@@ -827,6 +827,11 @@
     box-shadow: 0 0 0.34em rgba(255, 180, 84, 0.62);
 }
 
+.phonebook-trueconf-status-dot-away {
+    background: #ffd973;
+    box-shadow: 0 0 0.34em rgba(255, 217, 115, 0.62);
+}
+
 .phonebook-trueconf-status-dot-multihost {
     background: #5cb8ff;
     box-shadow: 0 0 0.34em rgba(92, 184, 255, 0.62);

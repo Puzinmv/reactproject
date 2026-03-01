@@ -353,6 +353,7 @@ function PhonebookPage() {
     const [isSavingUserCard, setIsSavingUserCard] = useState(false);
     const [isSavingLevel, setIsSavingLevel] = useState(false);
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+    const [isDeletingAvatar, setIsDeletingAvatar] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchUsers, setSearchUsers] = useState([]);
     const [userCardBackStack, setUserCardBackStack] = useState([]);
@@ -853,7 +854,7 @@ function PhonebookPage() {
         const file = event.target.files?.[0];
         event.target.value = '';
 
-        if (!file || !canEditSelectedUser || !selectedUser?.id) {
+        if (!file || !canEditSelectedUser || !selectedUser?.id || isDeletingAvatar) {
             return;
         }
 
@@ -891,6 +892,45 @@ function PhonebookPage() {
             setSelectedUserError('Не удалось обновить фото сотрудника.');
         } finally {
             setIsUploadingAvatar(false);
+        }
+    };
+
+    const handleAvatarDelete = async () => {
+        if (!canEditSelectedUser || !selectedUser?.id || isUploadingAvatar || isDeletingAvatar || isSavingUserCard) {
+            return;
+        }
+
+        const currentAvatarValue = selectedUser?.avatar;
+        const currentAvatarId = typeof currentAvatarValue === 'object'
+            ? currentAvatarValue?.id
+            : currentAvatarValue;
+
+        if (!currentAvatarId) {
+            return;
+        }
+
+        setSelectedUserError('');
+        setIsDeletingAvatar(true);
+
+        try {
+            await updatePhonebookUserCard(selectedUser.id, { avatar: null });
+
+            setSelectedUser((prevUser) => (prevUser ? { ...prevUser, avatar: null } : prevUser));
+            setUsers((prevUsers) => prevUsers.map((user) => (
+                String(user.id) === String(selectedUser.id)
+                    ? { ...user, avatar: null }
+                    : user
+            )));
+            setSearchUsers((prevUsers) => prevUsers.map((user) => (
+                String(user.id) === String(selectedUser.id)
+                    ? { ...user, avatar: null }
+                    : user
+            )));
+        } catch (deleteError) {
+            console.error('Phonebook: failed to delete avatar', deleteError);
+            setSelectedUserError('Не удалось удалить фото сотрудника.');
+        } finally {
+            setIsDeletingAvatar(false);
         }
     };
 
@@ -1040,6 +1080,12 @@ function PhonebookPage() {
     const selectedUserPhoneTrueConfHref = selectedUserPhoneForTrueConf
         ? `trueconf:#tel:${selectedUserPhoneForTrueConf}`
         : '';
+    const selectedUserAvatarValue = selectedUser?.avatar;
+    const selectedUserAvatarId = typeof selectedUserAvatarValue === 'object'
+        ? selectedUserAvatarValue?.id
+        : selectedUserAvatarValue;
+    const hasSelectedUserAvatar = Boolean(selectedUserAvatarId);
+    const isAvatarActionInProgress = isUploadingAvatar || isDeletingAvatar || isSavingUserCard;
     const selectedUserMobile = String(selectedUser?.mobile || '').trim();
     const selectedUserMobileForTrueConf = selectedUserMobile.replace(/[^\d+]/g, '');
     const selectedUserMobileTrueConfHref = selectedUserMobileForTrueConf
@@ -1174,20 +1220,30 @@ function PhonebookPage() {
 
                             <div className="phonebook-user-card-main">
                                 <div className="phonebook-user-card-avatar-wrap">
-                                    <div className="phonebook-user-card-avatar">{renderAvatar(selectedUser, AVATAR_SIZES.card)}</div>
-                                    {canEditSelectedUser ? (
-                                        <div className="phonebook-user-card-avatar-actions">
-                                            <label className={`phonebook-user-card-action-button${isUploadingAvatar ? ' is-disabled' : ''}`}>
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    onChange={handleAvatarUpload}
-                                                    disabled={isUploadingAvatar || isSavingUserCard}
-                                                />
-                                                <span>{isUploadingAvatar ? 'Загрузка фото...' : 'Загрузить фото'}</span>
-                                            </label>
-                                        </div>
-                                    ) : null}
+                                    <div className="phonebook-user-card-avatar">
+                                        {renderAvatar(selectedUser, AVATAR_SIZES.card)}
+                                        {canEditSelectedUser ? (
+                                            <div className="phonebook-user-card-avatar-actions">
+                                                <label className={`phonebook-user-card-action-button${isAvatarActionInProgress ? ' is-disabled' : ''}`}>
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={handleAvatarUpload}
+                                                        disabled={isAvatarActionInProgress}
+                                                    />
+                                                    <span>{isUploadingAvatar ? 'Загрузка фото...' : 'Загрузить фото'}</span>
+                                                </label>
+                                                <button
+                                                    type="button"
+                                                    className="phonebook-user-card-action-button phonebook-user-card-action-button-danger"
+                                                    onClick={handleAvatarDelete}
+                                                    disabled={isAvatarActionInProgress || !hasSelectedUserAvatar}
+                                                >
+                                                    {isDeletingAvatar ? 'Удаление...' : 'Удалить фото'}
+                                                </button>
+                                            </div>
+                                        ) : null}
+                                    </div>
                                 </div>
 
                                 <div className="phonebook-user-card-fields">
@@ -1268,7 +1324,7 @@ function PhonebookPage() {
                                                         setBirthDateValidationError('');
                                                     }
                                                 }}
-                                                disabled={isSavingUserCard || isUploadingAvatar}
+                                                disabled={isSavingUserCard || isAvatarActionInProgress}
                                                 placeholder="1.2 / 01.02 / 01.02.2000"
                                                 aria-label="Дата рождения"
                                                 inputMode="numeric"
@@ -1309,7 +1365,7 @@ function PhonebookPage() {
                                                     className="phonebook-user-card-level-input"
                                                     value={levelDraft}
                                                     onChange={handleLevelDraftChange}
-                                                    disabled={isUploadingAvatar}
+                                                    disabled={isAvatarActionInProgress}
                                                     placeholder="-"
                                                     aria-label="Уровень"
                                                 />
@@ -1327,14 +1383,14 @@ function PhonebookPage() {
                                         className="phonebook-user-card-extra-input"
                                         value={descriptionDraft}
                                         onChange={(event) => setDescriptionDraft(event.target.value)}
-                                        disabled={isSavingUserCard || isUploadingAvatar}
+                                        disabled={isSavingUserCard || isAvatarActionInProgress}
                                         placeholder="Введите доп. сведения"
                                     />
                                     <button
                                         type="button"
                                         className="phonebook-user-card-action-button"
                                         onClick={handleUserCardSave}
-                                        disabled={isSavingUserCard || isUploadingAvatar}
+                                        disabled={isSavingUserCard || isAvatarActionInProgress}
                                     >
                                         {isSavingUserCard ? 'Сохранение...' : 'Сохранить'}
                                     </button>

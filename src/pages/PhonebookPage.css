@@ -651,35 +651,56 @@
 
 .phonebook-user-card-main {
     display: grid;
-    grid-template-columns: minmax(160px, 240px) 1fr;
+    grid-template-columns: minmax(180px, 300px) 1fr;
     gap: clamp(18px, 2.2vw, 34px);
 }
 
 .phonebook-user-card-avatar {
-    width: 100%;
-    min-height: 300px;
+    position: relative;
+    width: min(300px, 100%);
+    aspect-ratio: 4 / 5;
+    min-height: 0;
     background: rgba(214, 214, 214, 0.95);
+    overflow: hidden;
 }
 
 .phonebook-user-card-avatar-wrap {
-    display: grid;
-    gap: 10px;
+    display: block;
 }
 
 .phonebook-user-card-avatar .phonebook-contact-avatar-image {
     width: 100%;
     height: 100%;
+    object-fit: cover;
 }
 
 .phonebook-user-card-avatar .phonebook-contact-avatar-placeholder {
-    min-height: 300px;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .phonebook-user-card-avatar-actions {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
     display: flex;
+    gap: 8px;
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.phonebook-user-card-avatar:hover .phonebook-user-card-avatar-actions,
+.phonebook-user-card-avatar:focus-within .phonebook-user-card-avatar-actions {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
 }
 
 .phonebook-user-card-action-button {
@@ -695,6 +716,7 @@
     letter-spacing: 0.03em;
     padding: 6px 12px;
     cursor: pointer;
+    white-space: nowrap;
 }
 
 .phonebook-user-card-action-button:hover {
@@ -710,6 +732,21 @@
 
 .phonebook-user-card-action-button input[type='file'] {
     display: none;
+}
+
+.phonebook-user-card-avatar-actions .phonebook-user-card-action-button {
+    flex: 1 1 0;
+    min-height: 38px;
+    font-size: clamp(15px, 1vw, 18px);
+    background: rgba(6, 6, 18, 0.76);
+}
+
+.phonebook-user-card-action-button-danger {
+    border-color: rgba(255, 93, 121, 0.92);
+}
+
+.phonebook-user-card-action-button-danger:hover {
+    background: rgba(255, 93, 121, 0.2);
 }
 
 .phonebook-user-card-fields {
@@ -1019,11 +1056,17 @@
 
     .phonebook-user-card-avatar {
         width: min(240px, 100%);
-        min-height: 220px;
+        aspect-ratio: 4 / 5;
     }
 
     .phonebook-user-card-avatar .phonebook-contact-avatar-placeholder {
-        min-height: 220px;
+        min-height: 0;
+    }
+
+    .phonebook-user-card-avatar-actions {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
     }
 
     .phonebook-user-card-row {

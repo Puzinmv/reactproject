@@ -760,6 +760,67 @@
     outline-offset: 2px;
 }
 
+.phonebook-trueconf-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32em;
+}
+
+.phonebook-trueconf-status-dot {
+    width: 0.54em;
+    height: 0.54em;
+    border-radius: 999px;
+    flex: 0 0 auto;
+    background: #9da7b2;
+    box-shadow: 0 0 0.28em rgba(157, 167, 178, 0.55);
+}
+
+.phonebook-trueconf-status-dot-online {
+    background: #35e073;
+    box-shadow: 0 0 0.34em rgba(53, 224, 115, 0.62);
+}
+
+.phonebook-trueconf-status-dot-offline {
+    background: #8a95a3;
+    box-shadow: 0 0 0.3em rgba(138, 149, 163, 0.52);
+}
+
+.phonebook-trueconf-status-dot-busy {
+    background: #ffb454;
+    box-shadow: 0 0 0.34em rgba(255, 180, 84, 0.62);
+}
+
+.phonebook-trueconf-status-dot-multihost {
+    background: #5cb8ff;
+    box-shadow: 0 0 0.34em rgba(92, 184, 255, 0.62);
+}
+
+.phonebook-trueconf-status-dot-not-active {
+    background: #7a8796;
+    box-shadow: 0 0 0.3em rgba(122, 135, 150, 0.5);
+}
+
+.phonebook-trueconf-status-dot-invalid {
+    background: #ff6f8b;
+    box-shadow: 0 0 0.34em rgba(255, 111, 139, 0.62);
+}
+
+.phonebook-trueconf-status-dot-undefined {
+    background: #b38aff;
+    box-shadow: 0 0 0.34em rgba(179, 138, 255, 0.62);
+}
+
+.phonebook-trueconf-status-dot-loading {
+    background: #ffd8ec;
+    box-shadow: 0 0 0.34em rgba(255, 216, 236, 0.58);
+}
+
+.phonebook-trueconf-status-dot-unavailable,
+.phonebook-trueconf-status-dot-unknown {
+    background: #8f95a1;
+    box-shadow: 0 0 0.28em rgba(143, 149, 161, 0.48);
+}
+
 .phonebook-user-card-level-edit {
     display: flex;
     align-items: center;

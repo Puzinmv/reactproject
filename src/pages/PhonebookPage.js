@@ -35,17 +35,17 @@ const AVATAR_SIZES = {
     card: { width: 480, height: 600 },
     currentUser: { width: 80, height: 80 },
 };
-const TRUECONF_STATUS_LABELS = Object.freeze({
-    [-127]: 'UNDEFINED',
-    [-2]: 'NOT_ACTIVE',
-    [-1]: 'INVALID',
-    0: 'OFFLINE',
-    1: 'ONLINE',
-    2: 'BUSY',
-    5: 'MULTIHOST',
+const TRUECONF_STATUS_META = Object.freeze({
+    [-127]: { label: 'Не определен', tone: 'undefined' },
+    [-2]: { label: 'Не активен', tone: 'not-active' },
+    [-1]: { label: 'Не определен', tone: 'invalid' },
+    0: { label: 'Не в сети', tone: 'offline' },
+    1: { label: 'В сети', tone: 'online' },
+    2: { label: 'Занят', tone: 'busy' },
+    5: { label: 'В конференции', tone: 'multihost' },
 });
-const TRUECONF_STATUS_LOADING_LABEL = 'Checking status...';
-const TRUECONF_STATUS_UNAVAILABLE_LABEL = 'Status unavailable';
+const TRUECONF_STATUS_LOADING_LABEL = 'Проверка статуса...';
+const TRUECONF_STATUS_UNAVAILABLE_LABEL = 'Статус недоступен';
 
 const buildSlotsMap = (departments) => {
     const map = new Map();
@@ -259,33 +259,33 @@ const getDepartmentNameSizeClass = (name) => {
 };
 
 const appendUniqueTrueConfIdentifier = (target, rawValue) => {
-    const addValue = (value) => {
-        const normalizedValue = String(value || '').trim();
-        if (!normalizedValue || target.includes(normalizedValue)) {
-            return;
-        }
-
-        target.push(normalizedValue);
-    };
-
     const sourceValue = String(rawValue ?? '').trim();
     if (!sourceValue) {
         return;
     }
 
-    addValue(sourceValue);
-
     const pathParts = sourceValue.split(/[/\\]/);
-    if (pathParts.length > 1) {
-        const lastPart = String(pathParts[pathParts.length - 1] || '').trim();
-        addValue(lastPart);
-        if (lastPart.includes('@')) {
-            addValue(lastPart.split('@')[0]);
-        }
+    const withoutPath = String(pathParts[pathParts.length - 1] || '').trim();
+    const withoutDomain = withoutPath.includes('@')
+        ? String(withoutPath.split('@')[0] || '').trim()
+        : withoutPath;
+
+    if (!withoutDomain) {
+        return;
     }
 
-    if (sourceValue.includes('@')) {
-        addValue(sourceValue.split('@')[0]);
+    // Skip UUID-like identifiers for TrueConf status endpoint: login is expected here.
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(withoutDomain)) {
+        return;
+    }
+
+    // Keep only login-safe symbols to avoid invalid contact/user id probes.
+    if (!/^[a-zA-Z0-9._-]+$/.test(withoutDomain)) {
+        return;
+    }
+
+    if (!target.includes(withoutDomain)) {
+        target.push(withoutDomain);
     }
 };
 
@@ -315,16 +315,16 @@ const collectTrueConfUserIdentifiers = (user) => {
     appendUniqueTrueConfIdentifier(identifiers, user?.username);
     appendUniqueTrueConfIdentifier(identifiers, user?.id);
 
-    return identifiers;
+    return identifiers.slice(0, 1);
 };
 
-const getTrueConfStatusLabel = (rawStatus) => {
+const getTrueConfStatusMeta = (rawStatus) => {
     const numericStatus = Number(rawStatus);
     if (!Number.isFinite(numericStatus)) {
-        return '';
+        return null;
     }
 
-    return TRUECONF_STATUS_LABELS[numericStatus] || '';
+    return TRUECONF_STATUS_META[numericStatus] || null;
 };
 
 function PhonebookPage() {
@@ -357,6 +357,7 @@ function PhonebookPage() {
     const [searchUsers, setSearchUsers] = useState([]);
     const [userCardBackStack, setUserCardBackStack] = useState([]);
     const [selectedUserTrueConfStatus, setSelectedUserTrueConfStatus] = useState('');
+    const [selectedUserTrueConfStatusTone, setSelectedUserTrueConfStatusTone] = useState('unknown');
     const [selectedUserTrueConfDialUser, setSelectedUserTrueConfDialUser] = useState('');
     const [isSelectedUserTrueConfStatusLoading, setIsSelectedUserTrueConfStatusLoading] = useState(false);
     const searchResultUserId = useMemo(() => {
@@ -690,6 +691,7 @@ function PhonebookPage() {
         const fallbackDialUser = selectedUserTrueConfIdentifiers[0] || '';
         setSelectedUserTrueConfDialUser(fallbackDialUser);
         setSelectedUserTrueConfStatus('');
+        setSelectedUserTrueConfStatusTone('unknown');
         setIsSelectedUserTrueConfStatusLoading(false);
 
         const loadTrueConfStatus = async () => {
@@ -712,6 +714,7 @@ function PhonebookPage() {
                 const contactPayload = statusResponse?.contact || null;
                 if (!contactPayload) {
                     setSelectedUserTrueConfStatus('');
+                    setSelectedUserTrueConfStatusTone('unavailable');
                     setSelectedUserTrueConfDialUser(fallbackDialUser);
                     return;
                 }
@@ -719,10 +722,11 @@ function PhonebookPage() {
                 const contactUser = contactPayload?.user && typeof contactPayload.user === 'object'
                     ? contactPayload.user
                     : contactPayload;
-                const resolvedStatus = getTrueConfStatusLabel(contactUser?.status ?? contactPayload?.status);
+                const resolvedStatusMeta = getTrueConfStatusMeta(contactUser?.status ?? contactPayload?.status);
                 const resolvedDialUser = collectTrueConfUserIdentifiers(contactUser)[0] || fallbackDialUser;
 
-                setSelectedUserTrueConfStatus(resolvedStatus);
+                setSelectedUserTrueConfStatus(resolvedStatusMeta?.label || '');
+                setSelectedUserTrueConfStatusTone(resolvedStatusMeta?.tone || 'unknown');
                 setSelectedUserTrueConfDialUser(resolvedDialUser);
             } catch (statusError) {
                 if (!active) {
@@ -731,6 +735,7 @@ function PhonebookPage() {
 
                 console.error('Phonebook: failed to load TrueConf status', statusError);
                 setSelectedUserTrueConfStatus('');
+                setSelectedUserTrueConfStatusTone('unavailable');
                 setSelectedUserTrueConfDialUser(fallbackDialUser);
             } finally {
                 if (active) {
@@ -1047,6 +1052,22 @@ function PhonebookPage() {
     const selectedUserTrueConfText = isSelectedUserTrueConfStatusLoading
         ? TRUECONF_STATUS_LOADING_LABEL
         : (selectedUserTrueConfStatus || (selectedUserTrueConfHref ? TRUECONF_STATUS_UNAVAILABLE_LABEL : ''));
+    const selectedUserTrueConfTone = isSelectedUserTrueConfStatusLoading
+        ? 'loading'
+        : (selectedUserTrueConfStatus
+            ? selectedUserTrueConfStatusTone
+            : (selectedUserTrueConfHref ? 'unavailable' : 'unknown'));
+    const selectedUserTrueConfStatusNode = selectedUserTrueConfText
+        ? (
+            <span className="phonebook-trueconf-status">
+                <span
+                    aria-hidden
+                    className={`phonebook-trueconf-status-dot phonebook-trueconf-status-dot-${selectedUserTrueConfTone}`}
+                />
+                <span>{selectedUserTrueConfText}</span>
+            </span>
+        )
+        : '-';
     const selectedUserHeadName = formatFullName(selectedUser?.Head);
     const selectedUserHeadId = getRelatedUserId(selectedUser?.Head);
 
@@ -1215,9 +1236,9 @@ function PhonebookPage() {
                                                     className="phonebook-user-card-value-link"
                                                     title={selectedUserTrueConfHref}
                                                 >
-                                                    {selectedUserTrueConfText || TRUECONF_STATUS_UNAVAILABLE_LABEL}
+                                                    {selectedUserTrueConfStatusNode}
                                                 </a>
-                                            ) : (selectedUserTrueConfText || '-')}
+                                            ) : selectedUserTrueConfStatusNode}
                                         </span>
                                     </div>
                                     <div className="phonebook-user-card-row">

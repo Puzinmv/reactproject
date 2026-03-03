@@ -802,11 +802,11 @@ export const isUserInPolicyByName = async (userId, policyName) => {
     }
 
     try {
-        const policies = await directus.request(customEndpoint({
+        const policiesResponse = await directus.request(customEndpoint({
             path: '/policies',
             method: 'GET',
             params: {
-                fields: ['id', 'name', { users: ['user'] }],
+                fields: ['id', 'name', { users: ['user', 'directus_users_id'] }],
                 filter: {
                     name: {
                         _eq: normalizedPolicyName,
@@ -816,14 +816,22 @@ export const isUserInPolicyByName = async (userId, policyName) => {
             },
         }));
 
-        const matchedPolicies = Array.isArray(policies) ? policies : [];
+        const matchedPolicies = Array.isArray(policiesResponse)
+            ? policiesResponse
+            : (Array.isArray(policiesResponse?.data) ? policiesResponse.data : []);
 
         return matchedPolicies.some((policy) => {
             const policyUsers = Array.isArray(policy?.users) ? policy.users : [];
 
             return policyUsers.some((policyUser) => {
                 const candidateUserId = typeof policyUser === 'object'
-                    ? (policyUser?.user?.id || policyUser?.user || policyUser?.id)
+                    ? (
+                        policyUser?.user?.id
+                        || policyUser?.user
+                        || policyUser?.directus_users_id?.id
+                        || policyUser?.directus_users_id
+                        || policyUser?.id
+                    )
                     : policyUser;
 
                 return normalizeStringValue(candidateUserId) === normalizedUserId;

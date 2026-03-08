@@ -1728,14 +1728,18 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
         const lists = await directus.request(
             readItems('ListsKII', {
                 fields: [
-                    '*.*',
+                    '*',
+                    'okved.*',
+                    'okved.ListKIIokvedNew_id.*'
                 ],
                 limit: -1,
                 filter: {
                     okved: {
                         _some: {
-                            ListsKIIokved_code: {
-                                _in: codesArray
+                            ListKIIokvedNew_id: {
+                                code: {
+                                    _in: codesArray
+                                }
                             }
                         }
                     }
@@ -1791,14 +1795,18 @@ export const fetchListsKIIByCode = async (code) => {
         const lists = await directus.request(
             readItems('ListsKII', {
                 fields: [
-                    '*.*',
+                    '*',
+                    'okved.*',
+                    'okved.ListKIIokvedNew_id.*'
                 ],
                 limit: -1,
                 filter: {
                     okved: {
                         _some: {
-                            ListsKIIokved_code: {
-                                _contains: String(code).trim()
+                            ListKIIokvedNew_id: {
+                                code: {
+                                    _contains: String(code).trim()
+                                }
                             }
                         }
                     }

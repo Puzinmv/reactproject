@@ -806,7 +806,7 @@ export const isUserInPolicyByName = async (userId, policyName) => {
             path: '/policies',
             method: 'GET',
             params: {
-                fields: ['id', 'name', { users: ['user', 'directus_users_id'] }],
+                fields: ['id', 'name', { users: ['user'] }],
                 filter: {
                     name: {
                         _eq: normalizedPolicyName,
@@ -816,25 +816,22 @@ export const isUserInPolicyByName = async (userId, policyName) => {
             },
         }));
 
-        const matchedPolicies = Array.isArray(policiesResponse)
-            ? policiesResponse
-            : (Array.isArray(policiesResponse?.data) ? policiesResponse.data : []);
+        const policies = Array.isArray(policiesResponse?.data)
+            ? policiesResponse.data
+            : (Array.isArray(policiesResponse) ? policiesResponse : []);
 
-        return matchedPolicies.some((policy) => {
+        return policies.some((policy) => {
+            const isRequestedPolicy = normalizeStringValue(policy?.name) === normalizedPolicyName;
+
+            if (!isRequestedPolicy) {
+                return false;
+            }
+
             const policyUsers = Array.isArray(policy?.users) ? policy.users : [];
 
             return policyUsers.some((policyUser) => {
-                const candidateUserId = typeof policyUser === 'object'
-                    ? (
-                        policyUser?.user?.id
-                        || policyUser?.user
-                        || policyUser?.directus_users_id?.id
-                        || policyUser?.directus_users_id
-                        || policyUser?.id
-                    )
-                    : policyUser;
-
-                return normalizeStringValue(candidateUserId) === normalizedUserId;
+                const policyUserId = normalizeStringValue(policyUser?.user);
+                return policyUserId === normalizedUserId;
             });
         });
     } catch (error) {
@@ -2117,3 +2114,4 @@ export const updateUserPromptWrapper = async (wrapper) => {
 };
 
 export default directus;
+

@@ -265,6 +265,10 @@
     box-shadow: none;
 }
 
+.phonebook-center-image-main {
+    aspect-ratio: 1 / 1;
+}
+
 .phonebook-center-image img {
     width: 100%;
     height: 100%;

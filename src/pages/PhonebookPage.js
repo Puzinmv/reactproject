@@ -1514,7 +1514,7 @@ function PhonebookPage() {
 
             <div className="phonebook-grid-scroll">
                 <section className="phonebook-grid-container">
-                    <div aria-hidden className="phonebook-center-image">
+                    <div aria-hidden className="phonebook-center-image phonebook-center-image-main">
                         <img src="/background-center.png" alt="" />
                         <div className="phonebook-center-text">
                             <span>ИНДИВИДУАЛЬНЫЕ</span>

@@ -10,7 +10,7 @@ import {
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
-import { fetchCustomer1C, fetchCustomerContact1C } from '../services/1c';
+import { fetchCustomer1C, fetchCustomerContact1C, fetchCustomerInn1C } from '../services/1c';
 
 
 
@@ -136,15 +136,30 @@ const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => 
 
     // };
     const handleCustomerChange1c = async (event, value) => {
-        setFormData({
-            ...formData,
+        setFormData((prevData) => ({
+            ...prevData,
             Customer: value ? value?.name : '',
-            CustomerCRMID: value ? value?.CRMID : ''
-        });
+            CustomerCRMID: value ? value?.CRMID : '',
+            inn: ''
+        }));
         setCustomer(value);
+
+        if (!value?.id) {
+            setCustomerContactOptions([]);
+            return;
+        }
+
         try {
-            const response = await fetchCustomerContact1C(value.id);
-            setCustomerContactOptions(response.map(item => ({
+            const [response, inn] = await Promise.all([
+                fetchCustomerContact1C(value.id),
+                fetchCustomerInn1C(value.id)
+            ]);
+
+            setFormData((prevData) => ({
+                ...prevData,
+                inn: inn || ''
+            }));
+            setCustomerContactOptions((response || []).map(item => ({
                 name: item.Description,
                 id: item.Ref_Key,
                 email: item['КонтактнаяИнформация']
@@ -156,7 +171,7 @@ const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => 
                     .filter(contact => contact['Тип'] === 'Телефон')
                     .map(contact => contact['Представление'])
                     .join(';')
-            })))
+            })));
         } catch (error) {
             console.error('Error fetching 1c customer сontact options:', error);
         }
@@ -383,7 +398,17 @@ const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => 
 
 
                         </Grid>
-                        <Grid item xs={12} md={4}>
+                        <Grid item xs={12} md={2}>
+                            <TextField
+                                label={'\u0418\u041d\u041d'}
+                                name="inn"
+                                value={formData.inn || ''}
+                                onChange={handleChange}
+                                fullWidth
+                                margin="dense"
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={2}>
                             <TextField
                                 label="Заказчик CRMID"
                                 name="CustomerCRMID"
@@ -540,3 +565,4 @@ const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => 
 };
 
 export default CreateForm;
+

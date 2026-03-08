@@ -7,6 +7,9 @@ const LINKS ={
  }
 const API_KEY = '0J7QsdC80LXQvTpuRTZ6YW1hcA=='
 const THRESHOLD = 0.3 
+const COUNTERPARTY_CATALOG = 'Catalog_\u041a\u043e\u043d\u0442\u0440\u0430\u0433\u0435\u043d\u0442\u044b';
+const PARTNER_KEY_FIELD = '\u041f\u0430\u0440\u0442\u043d\u0435\u0440_Key';
+const INN_FIELD = '\u0418\u041d\u041d';
 const normalizeSearchValue = (value) => String(value || '')
     .toLowerCase()
     .trim()
@@ -107,4 +110,37 @@ export const fetchCustomerContact1C = async (RefKey_1C) => {
     }
 };
 
+export const fetchCustomerInn1C = async (partnerRefKey) => {
+    const normalizedPartnerRefKey = String(partnerRefKey || '').trim();
+    if (!normalizedPartnerRefKey) {
+        return '';
+    }
+
+    try {
+        const filter = `${PARTNER_KEY_FIELD} eq guid'${normalizedPartnerRefKey}'`;
+        const url = `${LINKS.MAIN}${COUNTERPARTY_CATALOG}?$format=json&$select=${encodeURIComponent(INN_FIELD)}&$filter=${encodeURIComponent(filter)}`;
+        const config = {
+            method: 'get',
+            url,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Basic ' + API_KEY
+            },
+        };
+
+        const response = await axios.request(config);
+        if (response.status === 200) {
+            const innValue = response?.data?.value?.[0]?.[INN_FIELD];
+            return String(innValue || '').trim();
+        }
+
+        console.error('Непредвиденный статус ответа:', response.status);
+        return '';
+    } catch (error) {
+        console.error('Ошибка загрузки ИНН из 1С:', error);
+        return '';
+    }
+};
 export default GetUser1C;
+
+

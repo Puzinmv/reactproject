@@ -1280,8 +1280,12 @@ export const fetchInitData = async () => {
         filter: {
             id: {
                 _in: uniqueInitiatorIds
+            },
+            status: {
+                _eq: 'active'
             }
-        }
+        },
+        limit: -1,
     }));
     return [Users, Department]
     
@@ -1444,7 +1448,11 @@ export const fetchUser = async () => {
             readUsers({
                 fields: [
                     '*'
-                ],
+                ], 
+                status: {
+                    _eq: 'active'
+                },
+                limit: -1,
             })
         );
         return data;

@@ -26,6 +26,7 @@ export const ROLES = {
   // Константы для полей формы
   export const FORM_FIELDS = {
     COMMENT_JOB: 'CommentJob',
+    SYSTEM_REQUIREMENTS: 'system_requirements',
     HIRED_COST: 'HiredCost',
     HIRED: 'Hired',
     OPEN_PROJECT_TEMPLATE_ID: 'OpenProject_Template_id',

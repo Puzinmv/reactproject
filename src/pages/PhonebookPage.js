@@ -452,9 +452,9 @@ function PhonebookPage() {
                     // Ignore and continue with /users/me probe.
                 }
 
-                const user = await getCurrentUser();
+                const user = await getCurrentUser({ skipSessionExpiredRedirect: true });
                 const canEditByPolicy = user?.id
-                    ? await isUserInPolicyByName(user.id, PHONEBOOK_DND_POLICY_NAME)
+                    ? await isUserInPolicyByName(user.id, PHONEBOOK_DND_POLICY_NAME, { skipSessionExpiredRedirect: true })
                     : false;
 
                 if (active) {

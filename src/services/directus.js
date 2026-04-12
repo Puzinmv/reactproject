@@ -11,6 +11,100 @@ export const directus = createDirectus(directusBaseUrl)
     .with(rest({ credentials: 'include' }))
     ;
 
+const normalizeDirectusCallOptions = (input) => {
+    if (input === true) {
+        return { skipSessionExpiredRedirect: true };
+    }
+
+    if (input && typeof input === 'object' && 'skipSessionExpiredRedirect' in input) {
+        return { skipSessionExpiredRedirect: Boolean(input.skipSessionExpiredRedirect) };
+    }
+
+    return { skipSessionExpiredRedirect: false };
+};
+
+const isDirectusSessionUnauthorizedError = (error) => {
+    if (!error || typeof error !== 'object') {
+        return false;
+    }
+
+    const status = error.response?.status
+        ?? error.status
+        ?? error?.extensions?.response?.status;
+
+    if (status === 401) {
+        return true;
+    }
+
+    const collectFromErrorsArray = (errors) => {
+        if (!Array.isArray(errors)) {
+            return false;
+        }
+
+        return errors.some((entry) => {
+            const entryStatus = entry?.extensions?.response?.status;
+            if (entryStatus === 401) {
+                return true;
+            }
+
+            const code = String(entry?.extensions?.code || '').toUpperCase();
+            return code === 'TOKEN_EXPIRED' || code === 'INVALID_TOKEN';
+        });
+    };
+
+    if (collectFromErrorsArray(error.errors)) {
+        return true;
+    }
+
+    const code = String(error?.extensions?.code || error?.code || '').toUpperCase();
+    if (code === 'TOKEN_EXPIRED' || code === 'INVALID_TOKEN') {
+        return true;
+    }
+
+    return false;
+};
+
+let directusAuthRedirectScheduled = false;
+
+const redirectToLoginPage = () => {
+    if (typeof window === 'undefined' || directusAuthRedirectScheduled) {
+        return;
+    }
+
+    const pathname = String(window.location.pathname || '').replace(/\/+$/, '') || '/';
+    // Уже на странице входа (корень SPA): при отсутствии сессии readMe даёт 401 —
+    // assign('/') вызывал бесконечную перезагрузку localhost:3000/.
+    if (pathname === '/') {
+        return;
+    }
+
+    directusAuthRedirectScheduled = true;
+
+    try {
+        if (typeof directus.setToken === 'function') {
+            directus.setToken(null);
+        }
+    } catch (clearTokenError) {
+        // Ignore token cleanup failures.
+    }
+
+    window.location.assign('/');
+};
+
+const requestDirectus = async (operation, options = {}) => {
+    const { skipSessionExpiredRedirect = false } = options;
+
+    try {
+        return await directus.request(operation);
+    } catch (error) {
+        if (!skipSessionExpiredRedirect && isDirectusSessionUnauthorizedError(error)) {
+            redirectToLoginPage();
+        }
+
+        throw error;
+    }
+};
+
 const getDefaultTrueConfBaseUrl = () => {
     if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
         return '/trueconf';
@@ -1138,9 +1232,11 @@ export const getToken = async () => {
 
 const normalizeStringValue = (value) => String(value ?? '').trim();
 
-export const getCurrentUser = async () => {
+export const getCurrentUser = async (callOptions = {}) => {
+    const { skipSessionExpiredRedirect } = normalizeDirectusCallOptions(callOptions);
+
     try {
-        const user = await directus.request(readMe());
+        const user = await requestDirectus(readMe(), { skipSessionExpiredRedirect });
         if (!user) {
             throw new Error('Failed to get user data');
         }
@@ -1151,16 +1247,17 @@ export const getCurrentUser = async () => {
     }
 };
 
-export const isUserInPolicyByName = async (userId, policyName) => {
+export const isUserInPolicyByName = async (userId, policyName, callOptions = {}) => {
     const normalizedUserId = normalizeStringValue(userId);
     const normalizedPolicyName = normalizeStringValue(policyName);
+    const { skipSessionExpiredRedirect } = normalizeDirectusCallOptions(callOptions);
 
     if (!normalizedUserId || !normalizedPolicyName) {
         return false;
     }
 
     try {
-        const policies = await directus.request(customEndpoint({
+        const policies = await requestDirectus(customEndpoint({
             path: '/policies',
             method: 'GET',
             params: {
@@ -1172,7 +1269,7 @@ export const isUserInPolicyByName = async (userId, policyName) => {
                 },
                 limit: -1,
             },
-        }));
+        }), { skipSessionExpiredRedirect });
 
         const matchedPolicies = Array.isArray(policies) ? policies : [];
 
@@ -1194,10 +1291,10 @@ export const isUserInPolicyByName = async (userId, policyName) => {
 };
 
 export const fetchPhonebookDepartments = async () => {
-    const data = await directus.request(readItems('LADP_departments', {
+    const data = await requestDirectus(readItems('LADP_departments', {
         fields: ['id', 'name', 'sort'],
         limit: -1,
-    }));
+    }), { skipSessionExpiredRedirect: true });
 
     return Array.isArray(data) ? data : [];
 };
@@ -1207,7 +1304,7 @@ export const fetchPhonebookUsersByDepartment = async (departmentId) => {
         return [];
     }
 
-    const users = await directus.request(readUsers({
+    const users = await requestDirectus(readUsers({
         fields: ['id', 'first_name', 'last_name', 'middleName', 'title', 'avatar', 'department', 'level'],
         filter: {
             _and: [
@@ -1224,7 +1321,7 @@ export const fetchPhonebookUsersByDepartment = async (departmentId) => {
             ],
         },
         limit: -1,
-    }));
+    }), { skipSessionExpiredRedirect: true });
 
     if (!Array.isArray(users)) {
         return [];
@@ -1281,7 +1378,7 @@ export const fetchPhonebookUsersByDepartment = async (departmentId) => {
 };
 
 export const fetchPhonebookUsersForSearch = async () => {
-    const users = await directus.request(readUsers({
+    const users = await requestDirectus(readUsers({
         fields: [
             'id',
             'first_name',
@@ -1307,7 +1404,7 @@ export const fetchPhonebookUsersForSearch = async () => {
             ],
         },
         limit: -1,
-    }));
+    }), { skipSessionExpiredRedirect: true });
 
     if (!Array.isArray(users)) {
         return [];
@@ -1343,7 +1440,7 @@ export const fetchPhonebookUserCard = async (userId) => {
         return null;
     }
 
-    const users = await directus.request(readUsers({
+    const users = await requestDirectus(readUsers({
         fields: [
             '*',
             { Head: ['id', 'first_name', 'last_name', 'middleName', { department: ['id'] }] },
@@ -1363,7 +1460,7 @@ export const fetchPhonebookUserCard = async (userId) => {
             ],
         },
         limit: 1,
-    }));
+    }), { skipSessionExpiredRedirect: true });
 
     if (!Array.isArray(users) || users.length === 0) {
         return null;
@@ -1380,7 +1477,7 @@ export const uploadPhonebookUserAvatar = async (file) => {
     const formData = new FormData();
     formData.append('folder', '6b1c5409-c44e-48c3-871a-e058bbac1934');
     formData.append('file', file);
-    const response = await directus.request(uploadFiles(formData));
+    const response = await requestDirectus(uploadFiles(formData), { skipSessionExpiredRedirect: true });
 
     if (Array.isArray(response)) {
         return response[0] || null;
@@ -1421,7 +1518,7 @@ export const updatePhonebookUserCard = async (userId, {
         return null;
     }
 
-    return directus.request(updateUser(userId, payload));
+    return requestDirectus(updateUser(userId, payload), { skipSessionExpiredRedirect: true });
 };
 
 export const fetchDatanew = async ({
@@ -1520,7 +1617,7 @@ export const fetchDatanew = async ({
                 ]}
         }
         const [data, countData] = await Promise.all([
-            directus.request(readItems('Project_Card', {
+            requestDirectus(readItems('Project_Card', {
                 fields,
                 filter,
                 sort: [sort],
@@ -1528,7 +1625,7 @@ export const fetchDatanew = async ({
                 limit
             })),
             // Отдельный запрос для получения общего количества с учетом фильтров
-            directus.request(readItems('Project_Card', {
+            requestDirectus(readItems('Project_Card', {
                 aggregate: {
                     count: '*'
                 },
@@ -1552,7 +1649,7 @@ export const fetchDatanew = async ({
 
 export const fetchInitData = async () => {
     const [initiatorIds, Department] = await Promise.all([
-        directus.request(readItems('Project_Card', {
+        requestDirectus(readItems('Project_Card', {
             groupBy: ['initiator'],
             filter: {
                 initiator: { 
@@ -1561,11 +1658,11 @@ export const fetchInitData = async () => {
                 }
             }
         })),
-        directus.request(readItems('Department', { fields: ['*'] })),
+        requestDirectus(readItems('Department', { fields: ['*'] })),
     ]);
     const uniqueInitiatorIds = initiatorIds.map(item => item.initiator).filter(Boolean);
 
-    const Users = await directus.request(readUsers({
+    const Users = await requestDirectus(readUsers({
         fields: ['id', 'first_name', 'last_name'],
         filter: {
             id: {
@@ -1580,10 +1677,10 @@ export const fetchInitData = async () => {
 export const fetchInitGrade = async () => {
     try {
         const [presaleUsers, gradesData, allGradesWithUsers, averageGrades, closedMonths] = await Promise.all([
-            directus.request(readItems('PresaleUsers', {
+            requestDirectus(readItems('PresaleUsers', {
                 fields: ['*', { user: ['id', 'first_name'] }]
             })),
-            directus.request(readItems('gradePresale', {
+            requestDirectus(readItems('gradePresale', {
                 fields: ['*'],
                 filter: {
                     user_created: {
@@ -1592,7 +1689,7 @@ export const fetchInitGrade = async () => {
                 },
                 sort: ['-date_created']
             })),
-            directus.request(readItems('gradePresale', {
+            requestDirectus(readItems('gradePresale', {
                 fields: ['*', {
                     user_created: ['id', 'first_name'],
                     user_updated: ['id', 'first_name'],
@@ -1604,7 +1701,7 @@ export const fetchInitGrade = async () => {
                 },
                 sort: ['-date_created']
             })),
-            directus.request(readItems('gradePresale', {
+            requestDirectus(readItems('gradePresale', {
                 aggregate: {
                     avg: 'grade'
                 },
@@ -1615,7 +1712,7 @@ export const fetchInitGrade = async () => {
                     }
                 }
             })),
-            directus.request(readItems('closedGrades', {
+            requestDirectus(readItems('closedGrades', {
                 fields: ['monthDate'],
             }))
         ]);
@@ -1648,8 +1745,8 @@ export const fetchCard = async (ID) => {
             },
         ]
         const [data, limitation] = await Promise.all([
-            directus.request(readItem('Project_Card', ID ,{fields: fields})),
-            directus.request(readItems('JobLimitation', { fields: ['name'] }))
+            requestDirectus(readItem('Project_Card', ID ,{fields: fields})),
+            requestDirectus(readItems('JobLimitation', { fields: ['name'] }))
         ]);
 
         return [data, limitation];
@@ -1661,7 +1758,7 @@ export const fetchCard = async (ID) => {
 
 export const fetchTemplate = async () => {
     try {
-        const data = await directus.request(
+        const data = await requestDirectus(
             readItems('JobTemplate', {
                 fields: ['*'],
             })
@@ -1675,7 +1772,7 @@ export const fetchTemplate = async () => {
 
 export const fetchCustomer = async (initiator) => {
     try {
-        const data = await directus.request(
+        const data = await requestDirectus(
             readItems('Customers', {
                 fields: ['*'],
                 filter: {
@@ -1694,7 +1791,7 @@ export const fetchCustomer = async (initiator) => {
 
 export const fetchCustomerContact = async (CRMID) => {
     try {
-        const data = await directus.request(
+        const data = await requestDirectus(
             readItems('Customer_Contact', {
                 fields: ['*'],
                 filter: {
@@ -1716,7 +1813,7 @@ export const GetfilesInfo = async (files) => {
         return [];
     }
     const fileInfoPromises = files.map(async (file) => {
-        const result = await directus.request(
+        const result = await requestDirectus(
             readFile(file.directus_files_id, {
                 fields: ['id', 'filename_download'],
             })
@@ -1730,7 +1827,7 @@ export const GetfilesInfo = async (files) => {
 
 export const fetchUser = async () => {
     try {
-        const data = await directus.request(
+        const data = await requestDirectus(
             readUsers({
                 fields: [
                     '*'
@@ -1766,7 +1863,7 @@ const isEqual = (value1, value2) => { // глубокое сравнение о�
 
 export const UpdateData = async (data) => {
     try {
-        const item = await directus.request(readItem('Project_Card', data.id));
+        const item = await requestDirectus(readItem('Project_Card', data.id));
         const id = data.id;
         const savedata = {
             ...data,
@@ -1804,7 +1901,7 @@ export const UpdateData = async (data) => {
         }
         console.log(savedata);
         if (Object.keys(savedata).length > 0) {
-            const req = await directus.request(updateItem('Project_Card', id, savedata));
+            const req = await requestDirectus(updateItem('Project_Card', id, savedata));
             return req;
         } else {
             return null;
@@ -1817,7 +1914,7 @@ export const UpdateData = async (data) => {
 
 export const Update1CField = async(refKey) => {
     try {
-        const req = await directus.request(updateMe({
+        const req = await requestDirectus(updateMe({
             RefKey_1C: refKey,
         }));
         return req;
@@ -1836,7 +1933,7 @@ export const CreateItemDirectus = async (data, token) => {
             Department: data.Department.id || 0
         };
         ['id', 'user_created', 'date_created', 'date_updated', 'user_updated', 'sort'].forEach(key => delete savedata[key]);
-        const req = await directus.request(createItem('Project_Card', savedata));
+        const req = await requestDirectus(createItem('Project_Card', savedata));
         return req;
     };
 
@@ -1861,7 +1958,7 @@ export const uploadFilesDirectus = async (files) => {
         const uploadPromises = files.map(async (file) => {
             const formData = new FormData();
             formData.append('file', file);
-            const response = await directus.request(uploadFiles(formData));
+            const response = await requestDirectus(uploadFiles(formData));
             return response
         });
         const responses = await Promise.all(uploadPromises);
@@ -1873,7 +1970,7 @@ export const uploadFilesDirectus = async (files) => {
 };
 
 export const GetFilesStartId = async () => {
-    const existingFiles = await directus.request(
+    const existingFiles = await requestDirectus(
         readItems('Project_Card_files', {
             sort: ['-id'],
             limit: 1
@@ -1887,7 +1984,7 @@ export const GetFilesStartId = async () => {
 export const deleteFileDirectus = async (fileId) => {
     try {
         console.log(fileId);
-        await directus.request(deleteFile(fileId));
+        await requestDirectus(deleteFile(fileId));
     } catch (error) {
         console.error('Ошибка при удалении файла:', error);
         throw error;
@@ -1896,7 +1993,7 @@ export const deleteFileDirectus = async (fileId) => {
 
 // export const fetchGrades = async (userId) => {
 //     try {
-//         const grades = await directus.request(readItems('gradePresale', {
+//         const grades = await requestDirectus(readItems('gradePresale', {
 //             fields: ['*', { presale: ['*', { user: ['id', 'first_name'] }] }],
 //             filter: {
 //                 user_created: {
@@ -1914,7 +2011,7 @@ export const deleteFileDirectus = async (fileId) => {
 export const updateOrCreateGrade = async (presaleId, grade, dateGrade) => {
     try {
         // Проверяем, существует ли уже оценка за этот месяц от текущего пользователя
-        const existingGrade = await directus.request(readItems('gradePresale', {
+        const existingGrade = await requestDirectus(readItems('gradePresale', {
             filter: {
                 _and: [
                     { presale: { _eq: presaleId } },
@@ -1927,12 +2024,12 @@ export const updateOrCreateGrade = async (presaleId, grade, dateGrade) => {
 
         if (existingGrade.length > 0) {
             // Обновляем существующую оценку
-            return await directus.request(updateItem('gradePresale', existingGrade[0].id, {
+            return await requestDirectus(updateItem('gradePresale', existingGrade[0].id, {
                 grade: grade
             }));
         } else {
             // Создаем новую оценку
-            return await directus.request(createItem('gradePresale', {
+            return await requestDirectus(createItem('gradePresale', {
                 grade: grade,
                 presale: presaleId,
                 dateGrade: dateGrade
@@ -1946,7 +2043,7 @@ export const updateOrCreateGrade = async (presaleId, grade, dateGrade) => {
 
 export const closeMonthGrades = async (month) => {
     try {
-        return await directus.request(createItem('closedGrades', {
+        return await requestDirectus(createItem('closedGrades', {
             monthDate: month
         }));
     } catch (error) {
@@ -1958,7 +2055,7 @@ export const closeMonthGrades = async (month) => {
 export const openMonthGrades = async (month) => {
     try {
         // Находим и удаляем запись о закрытом месяце
-        const closedMonth = await directus.request(readItems('closedGrades', {
+        const closedMonth = await requestDirectus(readItems('closedGrades', {
             filter: {
                 monthDate: {
                     _eq: month
@@ -1968,7 +2065,7 @@ export const openMonthGrades = async (month) => {
         }));
         
         if (closedMonth.length > 0) {
-            await directus.request(deleteItem('closedGrades', closedMonth[0].id));
+            await requestDirectus(deleteItem('closedGrades', closedMonth[0].id));
         }
     } catch (error) {
         console.error(error);
@@ -1978,7 +2075,7 @@ export const openMonthGrades = async (month) => {
 
 export const fetchAITemplates = async (departmentId) => {
     try {
-        const templates = await directus.request(
+        const templates = await requestDirectus(
             readItems('TemplateFromAI', {
                 fields: ['JobDescription'],
                 filter: {
@@ -2015,7 +2112,7 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
     const codesArray = Array.from(expandedCodes);
     
     try {
-        const lists = await directus.request(
+        const lists = await requestDirectus(
             readItems('ListsKII', {
                 fields: [
                     '*.*',
@@ -2078,7 +2175,7 @@ export const fetchListsKIIByCode = async (code) => {
     }
 
     try {
-        const lists = await directus.request(
+        const lists = await requestDirectus(
             readItems('ListsKII', {
                 fields: [
                     '*.*',
@@ -2137,7 +2234,7 @@ export const fetchListsKIIByCode = async (code) => {
 
 export const fetchOfDataByInn = async (inn) => {
     try {
-        const records = await directus.request(
+        const records = await requestDirectus(
             readItems('ofdata', {
                 fields: ['*'],
                 filter: {
@@ -2179,7 +2276,7 @@ export const saveOfDataRecord = async (inn, object) => {
             console.warn('Пустой объект ofdata не будет сохранён в Directus');
             return null;
         }
-        return await directus.request(
+        return await requestDirectus(
             createItem('ofdata', {
                 INN: inn,
                 object
@@ -2195,7 +2292,7 @@ export const saveOfDataRecord = async (inn, object) => {
 
 export const fetchUserChats = async () => {
     try {
-        const chats = await directus.request(readItems('AI_Chats', {
+        const chats = await requestDirectus(readItems('AI_Chats', {
             fields: ['*'],
             filter: {
                 user_created: {
@@ -2213,7 +2310,7 @@ export const fetchUserChats = async () => {
 
 export const createNewChat = async (title) => {
     try {
-        const chat = await directus.request(createItem('AI_Chats', {
+        const chat = await requestDirectus(createItem('AI_Chats', {
             title: title || 'Новый чат'
         }));
         return chat;
@@ -2225,7 +2322,7 @@ export const createNewChat = async (title) => {
 
 export const fetchChatMessages = async (chatId) => {
     try {
-        const messages = await directus.request(readItems('AI_Messages', {
+        const messages = await requestDirectus(readItems('AI_Messages', {
             fields: ['*'],
             filter: {
                 chat_id: {
@@ -2243,7 +2340,7 @@ export const fetchChatMessages = async (chatId) => {
 
 export const saveMessage = async (chatId, content, role, reasoning = null) => {
     try {
-        const message = await directus.request(createItem('AI_Messages', {
+        const message = await requestDirectus(createItem('AI_Messages', {
             chat_id: chatId,
             content,
             role,
@@ -2258,7 +2355,7 @@ export const saveMessage = async (chatId, content, role, reasoning = null) => {
 
 export const updateChatTitle = async (chatId, title) => {
     try {
-        await directus.request(updateItem('AI_Chats', chatId, {
+        await requestDirectus(updateItem('AI_Chats', chatId, {
             title
         }));
     } catch (error) {
@@ -2269,7 +2366,7 @@ export const updateChatTitle = async (chatId, title) => {
 
 export const deleteChat = async (chatId) => {
     try {
-        await directus.request(deleteItem('AI_Chats', chatId));
+        await requestDirectus(deleteItem('AI_Chats', chatId));
     } catch (error) {
         console.error('Ошибка при удалении чата:', error);
         throw error;
@@ -2279,7 +2376,7 @@ export const deleteChat = async (chatId) => {
 // Функция для получения пользовательских настроек промптов
 export const fetchUserPromptSettings = async () => {
     try {
-        const settings = await directus.request(readItems('AI_User_Settings', {
+        const settings = await requestDirectus(readItems('AI_User_Settings', {
             fields: ['*'],
             filter: {
                 user_created: {
@@ -2302,12 +2399,12 @@ export const saveUserPromptSettings = async (systemPrompt, userWrapper) => {
         const currentSettings = await fetchUserPromptSettings();
         
         if (currentSettings) {
-            await directus.request(updateItem('AI_User_Settings', currentSettings.id, {
+            await requestDirectus(updateItem('AI_User_Settings', currentSettings.id, {
                 system_prompt: systemPrompt,
                 user_wrapper: userWrapper
             }));
         } else {
-            await directus.request(createItem('AI_User_Settings', {
+            await requestDirectus(createItem('AI_User_Settings', {
                 system_prompt: systemPrompt,
                 user_wrapper: userWrapper
             }));
@@ -2328,7 +2425,7 @@ export const fetchSystemPrompt = async (modelId) => {
         }
 
         // Если пользовательских настроек нет, берем значение по умолчанию
-        const prompts = await directus.request(readItems('AI_System_Prompts', {
+        const prompts = await requestDirectus(readItems('AI_System_Prompts', {
             fields: ['*'],
             limit: 1
         }));
@@ -2349,7 +2446,7 @@ export const fetchUserPromptWrapper = async (modelId) => {
         }
 
         // Если пользовательских настроек нет, берем значение по умолчанию
-        const wrappers = await directus.request(readItems('AI_User_Prompt_Wrappers', {
+        const wrappers = await requestDirectus(readItems('AI_User_Prompt_Wrappers', {
             fields: ['*'],
             limit: 1
         }));
@@ -2363,16 +2460,16 @@ export const fetchUserPromptWrapper = async (modelId) => {
 
 export const updateSystemPrompt = async (prompt) => {
     try {
-        const prompts = await directus.request(readItems('AI_System_Prompts', {
+        const prompts = await requestDirectus(readItems('AI_System_Prompts', {
             limit: 1
         }));
 
         if (prompts.length > 0) {
-            await directus.request(updateItem('AI_System_Prompts', prompts[0].id, {
+            await requestDirectus(updateItem('AI_System_Prompts', prompts[0].id, {
                 prompt
             }));
         } else {
-            await directus.request(createItem('AI_System_Prompts', {
+            await requestDirectus(createItem('AI_System_Prompts', {
                 prompt
             }));
         }
@@ -2384,16 +2481,16 @@ export const updateSystemPrompt = async (prompt) => {
 
 export const updateUserPromptWrapper = async (wrapper) => {
     try {
-        const wrappers = await directus.request(readItems('AI_User_Prompt_Wrappers', {
+        const wrappers = await requestDirectus(readItems('AI_User_Prompt_Wrappers', {
             limit: 1
         }));
 
         if (wrappers.length > 0) {
-            await directus.request(updateItem('AI_User_Prompt_Wrappers', wrappers[0].id, {
+            await requestDirectus(updateItem('AI_User_Prompt_Wrappers', wrappers[0].id, {
                 wrapper
             }));
         } else {
-            await directus.request(createItem('AI_User_Prompt_Wrappers', {
+            await requestDirectus(createItem('AI_User_Prompt_Wrappers', {
                 wrapper
             }));
         }

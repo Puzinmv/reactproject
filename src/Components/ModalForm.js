@@ -3,9 +3,11 @@ import {
     Modal, Box, Tabs, Tab, TextField, Button, Typography, Autocomplete,
     InputLabel, Select, MenuItem, FormControl, FormHelperText,
     Switch, Grid, InputAdornment, FormControlLabel, ListItemText,
-    ClickAwayListener, Popper, Checkbox, List, ListItem, Snackbar, Alert,
-    CircularProgress, Chip, Card, Link, Divider
+    Checkbox, List, ListItem, Snackbar, Alert,
+    CircularProgress, Chip, Card, Link, Divider, Stack, IconButton, Tooltip, Paper
 } from '@mui/material';
+import ImportContactsIcon from '@mui/icons-material/ImportContacts';
+import CloseIcon from '@mui/icons-material/Close';
 import { styled } from '@mui/system';
 import { 
     STATUS, STATUS_COLORS, ROLES, WARNING_MESSAGES, FORM_FIELDS, 
@@ -44,6 +46,13 @@ const calculateTotalCost = (data) => {
     return costs.reduce((sum, value) => sum + value, 0);
 };
 
+const LIMITATIONS_CONTRACT_HINT_LEAD =
+    'Указанные ограничения будут включены в текст договора после формулировки:';
+const LIMITATIONS_CONTRACT_HINT_QUOTE =
+    '«Работы начинаются после предоставления Заказчиком: …»\nРекомендуется указывать условия в форме перечисления.';
+const JOB_LIMITATION_ADMIN_URL =
+    'https://projectcard.asterit.ru:8086/admin/content/JobLimitation';
+
 // Функция для определения цвета статуса
 const getStatusColor = (status) => STATUS_COLORS[status] || '#e0e0e0';
 
@@ -69,7 +78,8 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const [errors, setErrors] = useState({});
     const [fileInfo, setfileInfo] = useState([]);
     const [autofill, setAutofill] = useState(false);
-    const [anchorEl, setAnchorEl] = useState(null);
+    const [limitationPanelOpen, setLimitationPanelOpen] = useState(false);
+    const [limitationsFieldFocused, setLimitationsFieldFocused] = useState(false);
     const [checkedTemplates, setCheckedTemplates] = useState([]);
     const [snackbarState, setSnackbarState] = useState({ open: false, message: '', severity: 'info', multiline: false });
     const [totalCost, setTotalCost] = useState(0);
@@ -78,7 +88,6 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const [SummPerHour, setSummPerHour] = useState(0);
     const [startDateHelperText, setStartDateHelperText] = useState('');
     const [isCreatingProject, setIsCreatingProject] = useState(false); // анимация кнопки при создании проекта
-    const textFieldRef = useRef(null);
     const [fieldErrors, setFieldErrors] = useState({});
     const selectRef = useRef(null);
     const switchRef = useRef(null);
@@ -331,7 +340,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        if ([FORM_FIELDS.COMMENT_JOB, FORM_FIELDS.HIRED_COST, FORM_FIELDS.HIRED, FORM_FIELDS.OPEN_PROJECT_TEMPLATE_ID, FORM_FIELDS.LIMITATIONS].indexOf(name) > -1 &&
+        if ([FORM_FIELDS.COMMENT_JOB, FORM_FIELDS.SYSTEM_REQUIREMENTS, FORM_FIELDS.HIRED_COST, FORM_FIELDS.HIRED, FORM_FIELDS.OPEN_PROJECT_TEMPLATE_ID, FORM_FIELDS.LIMITATIONS].indexOf(name) > -1 &&
             currentUser?.ProjectCardRole !== ROLES.ADMIN &&
             currentUser?.ProjectCardRole !== ROLES.TECHNICAL)
         {
@@ -428,17 +437,6 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         setErrors(prevErrors => ({ ...prevErrors, OpenProject_Template_id: '' }));
     }
 
-
-    // показ шаблонов ограничения от исполнителей
-    const handleFocus = (event) => {
-        setAnchorEl(textFieldRef.current);
-    };
-
-    const handleFocusOut = (event) => {
-        if (textFieldRef.current && !textFieldRef.current.contains(event.target) && !anchorEl?.contains(event.relatedTarget)) {
-            setAnchorEl(null);
-        }
-    };
 
     const handleCheckboxToggle = (template) => {
         if (currentUser?.ProjectCardRole !== ROLES.ADMIN &&
@@ -1149,49 +1147,65 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                     </FormControl>
                                 </Grid>
                                 <Grid item xs={12}>
+                                    <Stack direction="row" spacing={1} alignItems="flex-start">
+                                        <TextField
+                                            label="Ограничения со стороны исполнителей"
+                                            name="Limitations"
+                                            value={formData.Limitations || ''}
+                                            onChange={handleChange}
+                                            onFocus={() => setLimitationsFieldFocused(true)}
+                                            onBlur={() => setLimitationsFieldFocused(false)}
+                                            fullWidth
+                                            multiline
+                                            margin="dense"
+                                            disabled={isReadOnly}
+                                            sx={{ flex: 1, minWidth: 0 }}
+                                        />
+                                        <Button
+                                            variant="outlined"
+                                            startIcon={<ImportContactsIcon />}
+                                            onMouseDown={(e) => e.preventDefault()}
+                                            onClick={() => setLimitationPanelOpen(true)}
+                                            disabled={isReadOnly}
+                                            sx={{ mt: '8px', flexShrink: 0, whiteSpace: 'nowrap' }}
+                                        >
+                                        </Button>
+                                    </Stack>
+                                    {limitationsFieldFocused && !limitationPanelOpen && (
+                                        <Alert severity="info" variant="outlined" sx={{ mt: 1 }}>
+                                            <Typography variant="body2" component="div" sx={{ mb: 0.5 }}>
+                                                {LIMITATIONS_CONTRACT_HINT_LEAD}
+                                            </Typography>
+                                            <Typography
+                                                variant="body2"
+                                                component="div"
+                                                sx={{ fontStyle: 'italic', whiteSpace: 'pre-line' }}
+                                            >
+                                                {LIMITATIONS_CONTRACT_HINT_QUOTE}
+                                            </Typography>
+                                        </Alert>
+                                    )}
+                                </Grid>
+                                <Grid item xs={12}>
                                     <TextField
-                                        label="Ограничения со стороны исполнителей"
-                                        name="Limitations"
-                                        value={formData.Limitations || ''}
+                                        label="Системные требования"
+                                        name="system_requirements"
+                                        value={formData.system_requirements ?? ''}
                                         onChange={handleChange}
-                                        onFocus={handleFocus}
                                         fullWidth
                                         multiline
+                                        minRows={5}
                                         margin="dense"
                                         disabled={isReadOnly}
-                                        ref={textFieldRef}
+                                        placeholder="Требования к железу и ПО необходимые для работы по проекту"
+                                        inputProps={{ spellCheck: false }}
+                                        sx={{
+                                            '& textarea': {
+                                                fontFamily: 'ui-monospace, Consolas, monospace',
+                                                whiteSpace: 'pre-wrap',
+                                            },
+                                        }}
                                     />
-                                    <Popper
-                                        open={Boolean(anchorEl)}
-                                        anchorEl={textFieldRef.current}
-                                        placement="top-start"
-                                        style={{ zIndex: 1300 }} 
-         
-                                    >
-                                        <ClickAwayListener onClickAway={handleFocusOut}>
-                                            <List style={{ 
-                                                    backgroundColor: 'white', 
-                                                    border: '1px solid #ccc', 
-                                                    padding: '8px', 
-                                                    width: textFieldRef.current?.offsetWidth || 300,
-                                                    maxHeight: '400px',
-                                                    overflowY: 'auto',
-                                                }}>
-                                                {limitation.map((template) => (
-                                                    <ListItem key={template.name} dense>
-                                                        <Checkbox
-                                                            edge="start"
-                                                            checked={checkedTemplates.indexOf(template.name) !== -1}
-                                                            tabIndex={-1}
-                                                            disableRipple
-                                                            onChange={() => handleCheckboxToggle(template.name)}
-                                                        />
-                                                        <ListItemText primary={template.name} />
-                                                    </ListItem>
-                                                ))}
-                                            </List>
-                                        </ClickAwayListener>
-                                    </Popper>
                                 </Grid>
                             </Grid>
                         </TabPanel>
@@ -1552,6 +1566,74 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                             </Box>
                         </Box>
                     </Box>
+                {limitationPanelOpen && (
+                    <Box
+                        sx={{
+                            position: 'fixed',
+                            top: 0,
+                            right: 0,
+                            width: '50vw',
+                            height: '100vh',
+                            bgcolor: 'background.paper',
+                            boxShadow: 3,
+                            zIndex: 1200,
+                            p: 2,
+                            display: 'flex',
+                            flexDirection: 'column',
+                        }}
+                    >
+                        <Paper sx={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, flexShrink: 0 }}>
+                                <Typography variant="h6" component="div">
+                                    Шаблоны ограничений
+                                </Typography>
+                                <Tooltip title="Закрыть">
+                                    <IconButton onClick={() => setLimitationPanelOpen(false)} aria-label="Закрыть панель шаблонов">
+                                        <CloseIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            </Box>
+                            <Alert severity="info" variant="outlined" sx={{ mx: 2, mb: 1, flexShrink: 0 }}>
+                                <Typography variant="body2" component="div" sx={{ mb: 0.5 }}>
+                                    {LIMITATIONS_CONTRACT_HINT_LEAD}
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    component="div"
+                                    sx={{ fontStyle: 'italic', whiteSpace: 'pre-line' }}
+                                >
+                                    {LIMITATIONS_CONTRACT_HINT_QUOTE}
+                                </Typography>
+                            </Alert>
+                            <Box sx={{ mx: 2, mb: 1, flexShrink: 0 }}>
+                                <Typography variant="body2" color="text.secondary" component="div">
+                                    <Link
+                                        href={JOB_LIMITATION_ADMIN_URL}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        variant="body2"
+                                    >
+                                        Редактирование шаблонов
+                                    </Link>
+                                </Typography>
+                            </Box>
+                            <List sx={{ flex: 1, overflowY: 'auto', px: 1, pb: 2 }}>
+                                {limitation.map((template) => (
+                                    <ListItem key={template.name} dense>
+                                        <Checkbox
+                                            edge="start"
+                                            checked={checkedTemplates.indexOf(template.name) !== -1}
+                                            tabIndex={-1}
+                                            disableRipple
+                                            onChange={() => handleCheckboxToggle(template.name)}
+                                        />
+                                        <ListItemText primary={template.name} />
+                                    </ListItem>
+                                ))}
+                            </List>
+                        </Paper>
+                    </Box>
+                )}
                 <Snackbar
                     open={snackbarState.open}
                     autoHideDuration={6000}

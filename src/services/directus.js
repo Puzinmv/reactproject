@@ -1459,7 +1459,7 @@ export const fetchPhonebookUserCard = async (userId) => {
                 },
             ],
         },
-        limit: 1,
+        limit: -1,
     }), { skipSessionExpiredRedirect: true });
 
     if (!Array.isArray(users) || users.length === 0) {
@@ -1668,7 +1668,8 @@ export const fetchInitData = async () => {
             id: {
                 _in: uniqueInitiatorIds
             }
-        }
+        },
+        limit: -1
     }));
     return [Users, Department]
     
@@ -1832,6 +1833,7 @@ export const fetchUser = async () => {
                 fields: [
                     '*'
                 ],
+                limit: -1
             })
         );
         return data;

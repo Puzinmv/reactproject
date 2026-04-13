@@ -44,28 +44,6 @@ const TRUECONF_STATUS_META = Object.freeze({
     2: { label: 'Занят', tone: 'busy' },
     5: { label: 'В конференции', tone: 'multihost' },
 });
-const TRUECONF_EXT_STATUS_META = Object.freeze({
-    0: { label: '\u0414\u043E\u043C\u0430', tone: 'away' },
-    1: { label: '\u041D\u0430 \u0440\u0430\u0431\u043E\u0442\u0435', tone: 'online' },
-    2: { label: '\u041E\u0431\u0435\u0434', tone: 'away' },
-    3: { label: '\u041E\u0442\u043F\u0443\u0441\u043A', tone: 'away' },
-    4: { label: '\u041A\u043E\u043C\u0430\u043D\u0434\u0438\u0440\u043E\u0432\u043A\u0430', tone: 'away' },
-    5: { label: '\u0411\u043E\u043B\u0435\u044E', tone: 'away' },
-    6: { label: '\u041E\u0442\u043E\u0448\u0451\u043B', tone: 'away' },
-    7: { label: '\u041D\u0435 \u0431\u0435\u0441\u043F\u043E\u043A\u043E\u0438\u0442\u044C', tone: 'busy' },
-    8: { label: '\u0421\u043A\u043E\u0440\u043E \u0432\u0435\u0440\u043D\u0443\u0441\u044C', tone: 'away' },
-    9: { label: '\u041D\u0435\u0442 \u043D\u0430 \u043C\u0435\u0441\u0442\u0435', tone: 'away' },
-    10: { label: '\u041D\u0435 \u0432 \u0441\u0435\u0442\u0438', tone: 'offline' },
-    11: { label: '\u0412 \u043A\u043E\u043D\u0444\u0435\u0440\u0435\u043D\u0446\u0438\u0438', tone: 'multihost' },
-    12: { label: '\u041D\u0435 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0430\u0442\u044C', tone: 'busy' },
-    13: { label: '\u0412 \u044D\u0444\u0438\u0440\u0435', tone: 'busy' },
-    14: { label: '\u0412 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435', tone: 'online' },
-    15: { label: '\u0412 \u0438\u0433\u0440\u0435', tone: 'busy' },
-    16: { label: '\u0412 \u043C\u0430\u0448\u0438\u043D\u0435', tone: 'away' },
-    17: { label: '\u0421\u043F\u043B\u044E', tone: 'away' },
-    18: { label: '\u0422\u043E\u043B\u044C\u043A\u043E \u0441\u0440\u043E\u0447\u043D\u044B\u0435', tone: 'busy' },
-});
-const TRUECONF_EXT_STATUS_HIDDEN_CODES = new Set([10]);
 const TRUECONF_STATUS_LOADING_LABEL = 'Проверка статуса...';
 const TRUECONF_STATUS_UNAVAILABLE_LABEL = 'Статус недоступен';
 
@@ -115,6 +93,14 @@ const normalizeSearchText = (value) => String(value || '')
     .replace(/\u0451/g, '\u0435')
     .replace(/\s+/g, ' ')
     .trim();
+
+const canViewPhonebookUser = (user, canEditByPolicy) => {
+    if (canEditByPolicy) {
+        return true;
+    }
+
+    return user?.hiden !== false;
+};
 
 const toValueOrDash = (value) => {
     if (value === null || value === undefined) {
@@ -350,43 +336,12 @@ const getTrueConfStatusMeta = (rawStatus) => {
     return statusMeta ? { ...statusMeta, code: numericStatus } : null;
 };
 
-const getTrueConfExtStatusMeta = (rawExtStatus) => {
-    const numericExtStatus = Number(rawExtStatus);
-    if (!Number.isFinite(numericExtStatus)) {
-        return null;
-    }
-
-    const extStatusMeta = TRUECONF_EXT_STATUS_META[numericExtStatus] || null;
-    return extStatusMeta ? { ...extStatusMeta, code: numericExtStatus } : null;
-};
-
-const resolveTrueConfPresenceMeta = ({ status, extStatus }) => {
+const resolveTrueConfPresenceMeta = ({ status }) => {
     const statusMeta = getTrueConfStatusMeta(status);
-    const extStatusMeta = getTrueConfExtStatusMeta(extStatus);
-
-    if (!statusMeta && !extStatusMeta) {
+    if (!statusMeta) {
         return null;
     }
-
-    const shouldHideExtStatus = Boolean(
-        extStatusMeta
-        && (
-            TRUECONF_EXT_STATUS_HIDDEN_CODES.has(extStatusMeta.code)
-            || extStatusMeta.label === statusMeta?.label
-        ),
-    );
-
-    const label = shouldHideExtStatus
-        ? (statusMeta?.label || extStatusMeta?.label || '')
-        : [statusMeta?.label, extStatusMeta?.label].filter(Boolean).join(' · ');
-
-    const tone = (
-        (statusMeta?.tone && statusMeta.tone !== 'online')
-            ? statusMeta.tone
-            : (extStatusMeta?.tone || statusMeta?.tone || 'unknown')
-    );
-
-    return { label, tone };
+    return { label: statusMeta.label || '', tone: statusMeta.tone || 'unknown' };
 };
 
 function PhonebookPage() {
@@ -411,6 +366,7 @@ function PhonebookPage() {
     const [descriptionDraft, setDescriptionDraft] = useState('');
     const [levelDraft, setLevelDraft] = useState('');
     const [birthDateDraft, setBirthDateDraft] = useState('');
+    const [visibilityDraft, setVisibilityDraft] = useState(true);
     const [birthDateValidationError, setBirthDateValidationError] = useState('');
     const [isSavingUserCard, setIsSavingUserCard] = useState(false);
     const [isSavingLevel, setIsSavingLevel] = useState(false);
@@ -435,7 +391,7 @@ function PhonebookPage() {
 
     useEffect(() => {
         if (/^\/phonebook\/?$/.test(location.pathname)) {
-            document.title = '\u0422\u0435\u043b\u0435\u0444\u043e\u043d\u043d\u0430\u044f \u043a\u043d\u0438\u0433\u0430';
+            document.title = 'Телефонная книга';
         }
     }, [location.pathname]);
 
@@ -520,17 +476,19 @@ function PhonebookPage() {
                     const safeDepartments = Array.isArray(departmentData) ? departmentData : [];
                     const safeUsers = Array.isArray(usersData) ? usersData : [];
                     const safeSearchUsers = Array.isArray(allUsersData) ? allUsersData : [];
+                    const visibleUsers = safeUsers.filter((user) => canViewPhonebookUser(user, hasPhonebookEditPolicy));
+                    const visibleSearchUsers = safeSearchUsers.filter((user) => canViewPhonebookUser(user, hasPhonebookEditPolicy));
 
                     setDepartments(safeDepartments);
-                    setUsers(safeUsers);
-                    setSearchUsers(safeSearchUsers);
+                    setUsers(visibleUsers);
+                    setSearchUsers(visibleSearchUsers);
                     setSelectedUser(null);
                     setSelectedUserError('');
 
                     const requestedUser = searchResultUserId
-                        ? safeUsers.find((user) => String(user?.id) === searchResultUserId)
+                        ? visibleUsers.find((user) => String(user?.id) === searchResultUserId)
                         : null;
-                    const autoOpenUser = requestedUser || (safeUsers.length === 1 ? safeUsers[0] : null);
+                    const autoOpenUser = requestedUser || (visibleUsers.length === 1 ? visibleUsers[0] : null);
 
                     if (autoOpenUser?.id) {
                         setSelectedUserLoading(true);
@@ -541,6 +499,8 @@ function PhonebookPage() {
                             }
                             if (!cardUser) {
                                 setSelectedUserError('Не удалось загрузить карточку сотрудника.');
+                            } else if (!canViewPhonebookUser(cardUser, hasPhonebookEditPolicy)) {
+                                setSelectedUser(null);
                             } else {
                                 setSelectedUser(cardUser);
                             }
@@ -566,8 +526,10 @@ function PhonebookPage() {
                         return;
                     }
 
+                    const safeSearchUsers = Array.isArray(allUsersData) ? allUsersData : [];
+
                     setDepartments(Array.isArray(departmentData) ? departmentData : []);
-                    setSearchUsers(Array.isArray(allUsersData) ? allUsersData : []);
+                    setSearchUsers(safeSearchUsers.filter((user) => canViewPhonebookUser(user, hasPhonebookEditPolicy)));
                     setUsers([]);
                     setSelectedUser(null);
                     setSelectedUserError('');
@@ -595,7 +557,7 @@ function PhonebookPage() {
         return () => {
             active = false;
         };
-    }, [departmentId, isDepartmentPage, searchResultUserId]);
+    }, [departmentId, hasPhonebookEditPolicy, isDepartmentPage, searchResultUserId]);
 
     const slotsMap = useMemo(() => buildSlotsMap(departments), [departments]);
     const canEditSelectedUser = useMemo(
@@ -714,6 +676,11 @@ function PhonebookPage() {
                 setSelectedUserError('Не удалось загрузить карточку сотрудника.');
                 return;
             }
+            if (!canViewPhonebookUser(cardUser, hasPhonebookEditPolicy)) {
+                setSelectedUser(null);
+                setSelectedUserError('Карточка сотрудника недоступна.');
+                return;
+            }
             setSelectedUser(cardUser);
         } catch (cardError) {
             console.error('Phonebook: failed to load user card', cardError);
@@ -722,6 +689,17 @@ function PhonebookPage() {
             setSelectedUserLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (!selectedUser?.id) {
+            return;
+        }
+
+        if (!canViewPhonebookUser(selectedUser, hasPhonebookEditPolicy)) {
+            setSelectedUser(null);
+            setSelectedUserError('Карточка сотрудника недоступна.');
+        }
+    }, [hasPhonebookEditPolicy, selectedUser]);
 
     useEffect(() => {
         setDescriptionDraft(selectedUser?.description || '');
@@ -742,6 +720,10 @@ function PhonebookPage() {
 
         setLevelDraft(String(rawLevel));
     }, [selectedUser?.id, selectedUser?.level]);
+
+    useEffect(() => {
+        setVisibilityDraft(selectedUser?.hiden !== false);
+    }, [selectedUser?.id, selectedUser?.hiden]);
 
     useEffect(() => {
         setIsSavingLevel(false);
@@ -783,13 +765,6 @@ function PhonebookPage() {
                     : null;
                 const resolvedPresenceMeta = resolveTrueConfPresenceMeta({
                     status: statusPresence?.status ?? contactUser?.status ?? contactPayload?.status,
-                    extStatus: (
-                        statusPresence?.extStatus
-                        ?? contactUser?.extStatus
-                        ?? contactUser?.ext_status
-                        ?? contactPayload?.extStatus
-                        ?? contactPayload?.ext_status
-                    ),
                 });
                 const responseContactId = String(statusResponse?.contactId || '').trim();
                 const resolvedDialUser = (
@@ -911,6 +886,7 @@ function PhonebookPage() {
             await updatePhonebookUserCard(selectedUser.id, {
                 description: descriptionDraft,
                 date_birthd: normalizedBirthDate,
+                hiden: visibilityDraft,
             });
             setSelectedUser((prevUser) => (
                 prevUser
@@ -918,6 +894,7 @@ function PhonebookPage() {
                         ...prevUser,
                         description: descriptionDraft,
                         date_birthd: normalizedBirthDate,
+                        hiden: visibilityDraft,
                     }
                     : prevUser
             ));
@@ -1211,12 +1188,12 @@ function PhonebookPage() {
                             {'\u041d\u0430\u0437\u0430\u0434'}
                         </button>
                     ) : null}
-                    <div className="phonebook-department-title">{'\u0420\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u044b \u043f\u043e\u0438\u0441\u043a\u0430'}</div>
+                    <div className="phonebook-department-title">{'Результаты поиска'}</div>
                 </div>
 
                 <div className="phonebook-department-list">
                     {!loading && groupedSearchResults.length === 0 ? (
-                        <div className="phonebook-department-empty">{'\u041d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e.'}</div>
+                        <div className="phonebook-department-empty">{'Ничего не найдено.'}</div>
                     ) : null}
 
                     {!loading && groupedSearchResults.map((group) => (
@@ -1224,9 +1201,9 @@ function PhonebookPage() {
                             <div className="phonebook-search-group-title">{group.departmentName}</div>
                             <div className="phonebook-search-columns" aria-hidden>
                                 <div />
-                                <div className="phonebook-search-column-cell">{'\u0424\u0418\u041e'}</div>
-                                <div className="phonebook-search-column-cell">{'\u0414\u043e\u043b\u0436\u043d\u043e\u0441\u0442\u044c'}</div>
-                                <div className="phonebook-search-column-cell">{'\u0413\u043e\u0440\u043e\u0434'}</div>
+                                <div className="phonebook-search-column-cell">{'ФИО'}</div>
+                                <div className="phonebook-search-column-cell">{'Должность'}</div>
+                                <div className="phonebook-search-column-cell">{'Город'}</div>
                             </div>
                             {group.users.map((user) => (
                                 <button
@@ -1259,7 +1236,7 @@ function PhonebookPage() {
 
                 <div className="phonebook-department-header-row">
                     <button type="button" className="phonebook-back-button" onClick={handleBackClick}>
-                        {'\u041d\u0430\u0437\u0430\u0434'}
+                        {'Назад'}
                     </button>
                     <div className="phonebook-department-title">{departmentTitle}</div>
                 </div>
@@ -1450,6 +1427,22 @@ function PhonebookPage() {
                                                 />
                                                 {isSavingLevel ? <span className="phonebook-user-card-level-saving">Сохранение...</span> : null}
                                             </div>
+                                        </div>
+                                    ) : null}
+                                    {canEditSelectedUser ? (
+                                        <div className="phonebook-user-card-row">
+                                            <span>Видимость:</span>
+                                            <span>
+                                                <label className="phonebook-switch" aria-label="Видимость в телефонной книге">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={visibilityDraft}
+                                                        onChange={(event) => setVisibilityDraft(event.target.checked)}
+                                                        disabled={isSavingUserCard || isAvatarActionInProgress}
+                                                    />
+                                                    <span className="phonebook-switch-slider" />
+                                                </label>
+                                            </span>
                                         </div>
                                     ) : null}
                                 </div>

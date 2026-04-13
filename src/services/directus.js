@@ -1305,7 +1305,7 @@ export const fetchPhonebookUsersByDepartment = async (departmentId) => {
     }
 
     const users = await requestDirectus(readUsers({
-        fields: ['id', 'first_name', 'last_name', 'middleName', 'title', 'avatar', 'department', 'level'],
+        fields: ['id', 'first_name', 'last_name', 'middleName', 'title', 'avatar', 'department', 'level', 'hiden'],
         filter: {
             _and: [
                 {
@@ -1386,6 +1386,7 @@ export const fetchPhonebookUsersForSearch = async () => {
             'middleName',
             'title',
             'avatar',
+            'hiden',
             'location',
             { department: ['id', 'name'] },
         ],

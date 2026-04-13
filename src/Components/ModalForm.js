@@ -25,6 +25,7 @@ import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
 import CustomTable from './CustomTable'; 
 import TableJobOnTrip from './TableJobOnTrip'; 
+import TableSystemRequirements from './TableSystemRequirements';
 import './ModalForm.css';
 
 
@@ -241,9 +242,11 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     }, [formData?.Department?.CostHour, formData?.HiredCost, formData?.resourceSumm, isInitialLoad]);
 
     useEffect(() => {
-        if (![STATUS.NEW_CARD, STATUS.LABOR_COSTS_ESTIMATED, STATUS.ECONOMICS_AGREED].includes(formData.status)) return;
+        if (![STATUS.NEW_CARD, STATUS.INITIATOR_REQUEST, STATUS.LABOR_COSTS_ESTIMATED, STATUS.ECONOMICS_AGREED].includes(formData.status)) return;
         let newStatus = STATUS.NEW_CARD;
-        if (formData.jobCalculated && !formData.priceAproved) {
+        if (formData.need_system_requirements && !formData.jobCalculated) {
+            newStatus = STATUS.INITIATOR_REQUEST;
+        } else if (formData.jobCalculated && !formData.priceAproved) {
             newStatus = STATUS.LABOR_COSTS_ESTIMATED;
         } else if (formData.jobCalculated && formData.priceAproved) {
             newStatus = STATUS.ECONOMICS_AGREED;
@@ -256,7 +259,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
             }
             return prevData;
         });
-    }, [formData.Project_created, formData.jobCalculated, formData.priceAproved, formData.status]);
+    }, [formData.Project_created, formData.jobCalculated, formData.need_system_requirements, formData.priceAproved, formData.status]);
 
     const validateFields = () => {
         const newErrors = {};
@@ -399,8 +402,18 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
 
     };
 
+    const canManageRequirementChecks = (
+        currentUser?.id === formData?.initiator?.id ||
+        currentUser?.id === formData?.user_created?.id
+    );
+
     const handleChangeSwitch = async (e) => {
         const { name, checked } = e.target;
+
+        if (['need_system_requirements', 'jobCalculated'].includes(name) && !canManageRequirementChecks) {
+            triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning");
+            return;
+        }
 
         if (!formData.OpenProject_Template_id && name === 'jobCalculated' && checked) {
             setErrors({ ...errors, OpenProject_Template_id: 'Выберите шаблон проекта' });
@@ -608,6 +621,15 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         }
         setFormData({ ...formData, JobOnTripTable: data });
         return true
+    };
+    const handleSystemRequirementsChange = (data) => {
+        if (currentUser?.ProjectCardRole !== ROLES.ADMIN &&
+            currentUser?.ProjectCardRole !== ROLES.TECHNICAL) {
+            triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning");
+            return false;
+        }
+        setFormData({ ...formData, system_requirements: data });
+        return true;
     };
     const handleCreateProject = async () => {
         // Проверка обязательных полей
@@ -1033,17 +1055,16 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                         ref={switchRef}
                                         control={
                                             <RedSwitch
-                                                checked={formData.jobCalculated || false}
-                                                name="jobCalculated"
+                                                checked={formData.need_system_requirements || false}
+                                                name="need_system_requirements"
                                                 onChange={handleChangeSwitch}
                                                 color="primary"
-                                                error={errors.OpenProject_Template_id ? 'true' : 'false'}
-                                                disabled={(currentUser?.ProjectCardRole !== ROLES.ADMIN && currentUser?.ProjectCardRole !== ROLES.TECHNICAL) || isJobCalculationInProgress }
+                                                disabled={!canManageRequirementChecks || isReadOnly}
                                             />
                                         }
                                         label={
                                             <Typography variant="body1" color="textPrimary">
-                                                Расчет трудозатрат произведен
+                                                Требуются ПО или железо
                                             </Typography>
                                         }
                                         labelPlacement="start" 
@@ -1079,7 +1100,26 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                         }}
                                     />
                                 </Grid>
-                                <Grid container item xs={12} md={6}>
+                                <Grid container item xs={12} md={6} justifyContent="flex-end" alignItems="center">
+                                    <FormControlLabel 
+                                        ref={switchRef}
+                                        control={
+                                            <RedSwitch
+                                                checked={formData.jobCalculated || false}
+                                                name="jobCalculated"
+                                                onChange={handleChangeSwitch}
+                                                color="primary"
+                                                error={errors.OpenProject_Template_id ? 'true' : 'false'}
+                                                disabled={!canManageRequirementChecks || isJobCalculationInProgress || isReadOnly}
+                                            />
+                                        }
+                                        label={
+                                            <Typography variant="body1" color="textPrimary">
+                                                Расчет трудозатрат произведен
+                                            </Typography>
+                                        }
+                                        labelPlacement="start" 
+                                    />
                                 </Grid>
                                 <Grid item xs={3} md={3}>
                                     <TextField
@@ -1187,24 +1227,12 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                     )}
                                 </Grid>
                                 <Grid item xs={12}>
-                                    <TextField
-                                        label="Системные требования"
-                                        name="system_requirements"
-                                        value={formData.system_requirements ?? ''}
-                                        onChange={handleChange}
-                                        fullWidth
-                                        multiline
-                                        minRows={5}
-                                        margin="dense"
+                                    <TableSystemRequirements
+                                        data={formData.system_requirements || []}
+                                        projectCardRole={currentUser?.ProjectCardRole || ''}
+                                        handleChange={handleSystemRequirementsChange}
                                         disabled={isReadOnly}
-                                        placeholder="Требования к железу и ПО необходимые для работы по проекту"
-                                        inputProps={{ spellCheck: false }}
-                                        sx={{
-                                            '& textarea': {
-                                                fontFamily: 'ui-monospace, Consolas, monospace',
-                                                whiteSpace: 'pre-wrap',
-                                            },
-                                        }}
+                                        canApprove={canManageRequirementChecks}
                                     />
                                 </Grid>
                             </Grid>

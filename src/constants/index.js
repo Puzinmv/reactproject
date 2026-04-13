@@ -37,6 +37,7 @@ export const ROLES = {
 // Статусы карточки 
 export const STATUS = {
     NEW_CARD: 'Новая карта',
+    INITIATOR_REQUEST: 'Запрос инициатору',
     LABOR_COSTS_ESTIMATED: 'Оценка трудозатрат проведена',
     ECONOMICS_AGREED: 'Экономика согласована',
     PROJECT_STARTED: 'Проект выполняется',
@@ -45,6 +46,7 @@ export const STATUS = {
   };
 export const STATUS_COLORS = {
     [STATUS.NEW_CARD]: 'primary.main',
+    [STATUS.INITIATOR_REQUEST]: '#ff9800',
     [STATUS.LABOR_COSTS_ESTIMATED]: 'warning.main',
     [STATUS.ECONOMICS_AGREED]: 'secondary.main',
     [STATUS.PROJECT_STARTED]: 'success.main',

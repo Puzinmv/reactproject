@@ -28,6 +28,14 @@ function GradeApp() {
     const [averageGrades, setAverageGrades] = useState({});
     const [closedMonths, setClosedMonths] = useState([]);
 
+    const getUserDisplayName = (user) => {
+        if (!user) {
+            return '';
+        }
+
+        return [user.first_name, user.last_name].filter(Boolean).join(' ');
+    };
+
     const fetchData = async () => {
         try {
             const [presaleUsersData, gradesData, allGradesWithUsers, averageGradesData, closedMonthsData] = await fetchInitGrade();
@@ -333,7 +341,7 @@ function GradeApp() {
                                                     }}
                                                     onClick={() => Object.keys(allGrades).length > 0 && handleRowExpand(presale.id)}
                                                 >
-                                                    <TableCell>{presale.user.first_name}</TableCell>
+                                                    <TableCell>{getUserDisplayName(presale.user)}</TableCell>
                                                     <TableCell>
                                                         <ToggleButtonGroup
                                                             value={getGradeValue(presale.id)}
@@ -369,7 +377,7 @@ function GradeApp() {
                                                             </Typography>
                                                             {allGrades[`${presale.id}-${selectedMonth}`]?.map((grade, index) => (
                                                                 <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
-                                                                    {grade.user.first_name}: {grade.grade} - {new Date(grade.date).toLocaleString('ru')}
+                                                                    {getUserDisplayName(grade.user)}: {grade.grade} - {new Date(grade.date).toLocaleString('ru')}
                                                                 </Typography>
                                                             )) || (
                                                                 <Typography variant="body2" color="text.secondary">

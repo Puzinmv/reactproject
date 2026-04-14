@@ -1271,17 +1271,22 @@ export const isUserInPolicyByName = async (userId, policyName, callOptions = {})
             },
         }), { skipSessionExpiredRedirect });
 
-        const matchedPolicies = Array.isArray(policies) ? policies : [];
+        const policies = Array.isArray(policiesResponse?.data)
+            ? policiesResponse.data
+            : (Array.isArray(policiesResponse) ? policiesResponse : []);
 
-        return matchedPolicies.some((policy) => {
+        return policies.some((policy) => {
+            const isRequestedPolicy = normalizeStringValue(policy?.name) === normalizedPolicyName;
+
+            if (!isRequestedPolicy) {
+                return false;
+            }
+
             const policyUsers = Array.isArray(policy?.users) ? policy.users : [];
 
             return policyUsers.some((policyUser) => {
-                const candidateUserId = typeof policyUser === 'object'
-                    ? (policyUser?.user?.id || policyUser?.user || policyUser?.id)
-                    : policyUser;
-
-                return normalizeStringValue(candidateUserId) === normalizedUserId;
+                const policyUserId = normalizeStringValue(policyUser?.user);
+                return policyUserId === normalizedUserId;
             });
         });
     } catch (error) {
@@ -1299,7 +1304,7 @@ export const fetchPhonebookDepartments = async () => {
     return Array.isArray(data) ? data : [];
 };
 
-export const fetchPhonebookUsersByDepartment = async (departmentId) => {
+export const fetchPhonebookUsersByDepartment = async (departmentId, { includeHidden = false } = {}) => {
     if (!departmentId) {
         return [];
     }
@@ -1319,6 +1324,13 @@ export const fetchPhonebookUsersByDepartment = async (departmentId) => {
                     },
                 },
             ],
+        });
+    }
+
+    const users = await directus.request(readUsers({
+        fields: ['id', 'first_name', 'last_name', 'middleName', 'title', 'avatar', 'department', 'level', 'hiden'],
+        filter: {
+            _and: filters,
         },
         limit: -1,
     }), { skipSessionExpiredRedirect: true });
@@ -1387,22 +1399,12 @@ export const fetchPhonebookUsersForSearch = async () => {
             'title',
             'avatar',
             'hiden',
+            'hiden',
             'location',
             { department: ['id', 'name'] },
         ],
         filter: {
-            _and: [
-                {
-                    status: {
-                        _eq: 'active',
-                    },
-                },
-                {
-                    department: {
-                        _nnull: true,
-                    },
-                },
-            ],
+            _and: filters,
         },
         limit: -1,
     }), { skipSessionExpiredRedirect: true });
@@ -1436,7 +1438,7 @@ export const fetchPhonebookUsersForSearch = async () => {
     });
 };
 
-export const fetchPhonebookUserCard = async (userId) => {
+export const fetchPhonebookUserCard = async (userId, { includeHidden = false } = {}) => {
     if (!userId) {
         return null;
     }
@@ -1459,6 +1461,16 @@ export const fetchPhonebookUserCard = async (userId) => {
                     },
                 },
             ],
+        });
+    }
+
+    const users = await directus.request(readUsers({
+        fields: [
+            '*',
+            { Head: ['id', 'first_name', 'last_name', 'middleName', { department: ['id'] }] },
+        ],
+        filter: {
+            _and: filters,
         },
         limit: -1,
     }), { skipSessionExpiredRedirect: true });
@@ -1492,6 +1504,7 @@ export const updatePhonebookUserCard = async (userId, {
     avatar,
     level,
     date_birthd,
+    hiden,
 } = {}) => {
     if (!userId) {
         throw new Error('User id is required');
@@ -1513,6 +1526,10 @@ export const updatePhonebookUserCard = async (userId, {
 
     if (date_birthd !== undefined) {
         payload.date_birthd = date_birthd;
+    }
+
+    if (hiden !== undefined) {
+        payload.hiden = hiden;
     }
 
     if (Object.keys(payload).length === 0) {
@@ -1668,6 +1685,9 @@ export const fetchInitData = async () => {
         filter: {
             id: {
                 _in: uniqueInitiatorIds
+            },
+            status: {
+                _eq: 'active'
             }
         },
         limit: -1
@@ -1693,8 +1713,8 @@ export const fetchInitGrade = async () => {
             })),
             requestDirectus(readItems('gradePresale', {
                 fields: ['*', {
-                    user_created: ['id', 'first_name'],
-                    user_updated: ['id', 'first_name'],
+                    user_created: ['id', 'first_name', 'last_name'],
+                    user_updated: ['id', 'first_name', 'last_name'],
                 }],
                 filter: {
                     dateGrade: {
@@ -2118,14 +2138,18 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
         const lists = await requestDirectus(
             readItems('ListsKII', {
                 fields: [
-                    '*.*',
+                    '*',
+                    'okved.*',
+                    'okved.ListKIIokvedNew_id.*'
                 ],
                 limit: -1,
                 filter: {
                     okved: {
                         _some: {
-                            ListsKIIokved_code: {
-                                _in: codesArray
+                            ListKIIokvedNew_id: {
+                                code: {
+                                    _in: codesArray
+                                }
                             }
                         }
                     }
@@ -2181,14 +2205,18 @@ export const fetchListsKIIByCode = async (code) => {
         const lists = await requestDirectus(
             readItems('ListsKII', {
                 fields: [
-                    '*.*',
+                    '*',
+                    'okved.*',
+                    'okved.ListKIIokvedNew_id.*'
                 ],
                 limit: -1,
                 filter: {
                     okved: {
                         _some: {
-                            ListsKIIokved_code: {
-                                _contains: String(code).trim()
+                            ListKIIokvedNew_id: {
+                                code: {
+                                    _contains: String(code).trim()
+                                }
                             }
                         }
                     }
@@ -2504,3 +2532,4 @@ export const updateUserPromptWrapper = async (wrapper) => {
 };
 
 export default directus;
+

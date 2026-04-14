@@ -18,7 +18,7 @@ import {
     fetchCard, fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus,
     deleteFileDirectus, GetFilesStartId
 } from '../services/directus';
-import { fetchCustomer1C, fetchCustomerContact1C } from '../services/1c';
+import { fetchCustomer1C, fetchCustomerContact1C, fetchCustomerInn1C } from '../services/1c';
 import {CreateProject, GetProjectTemtplate} from '../services/openproject';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
@@ -142,6 +142,12 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                         option => option.name === formData?.Customer
                     );
                     setCustomer(selectedCustomer);
+                    if (selectedCustomer?.id && !formData?.inn) {
+                        const customerInn = await fetchCustomerInn1C(selectedCustomer.id);
+                        if (customerInn) {
+                            setFormData((prevData) => ({ ...prevData, inn: customerInn }));
+                        }
+                    }
                     if (!selectedCustomer) setAutofill(true);
             } catch (error) {
                 setAutofill(true)
@@ -180,6 +186,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         formData?.id, 
         formData?.initiator?.RefKey_1C,
         formData?.Customer,
+        formData?.inn,
         formData?.Files,
         currentUser?.RefKey_1C,
         formData?.Department?.prefix
@@ -474,15 +481,29 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
 
     //изменения в заказчике
     const handleCustomerChange = async (event, value) => {
-        setFormData({
-            ...formData,
+        setFormData((prevData) => ({
+            ...prevData,
             Customer: value ? value?.name : '',
-            CustomerCRMID: value ? value?.CRMID : ''
-        });
+            CustomerCRMID: value ? value?.CRMID : '',
+            inn: ''
+        }));
         setCustomer(value);
+
+        if (!value?.id) {
+            setCustomerContactOptions([]);
+            return;
+        }
+
         try {
-            const response = await fetchCustomerContact1C(value.id);
-            setCustomerContactOptions(response.map(item => ({
+            const [response, inn] = await Promise.all([
+                fetchCustomerContact1C(value.id),
+                fetchCustomerInn1C(value.id)
+            ]);
+            setFormData((prevData) => ({
+                ...prevData,
+                inn: inn || ''
+            }));
+            setCustomerContactOptions((response || []).map(item => ({
                 name: item.Description,
                 id: item.Ref_Key,
                 email: item['КонтактнаяИнформация']
@@ -494,7 +515,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                     .filter(contact => contact['Тип'] === 'Телефон')
                     .map(contact => contact['Представление'])
                     .join(';')
-            })))
+            })));
         } catch (error) {
             console.error('Error fetching 1c customer сontact options:', error);
         }
@@ -844,7 +865,21 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                         />
                                     )}
                                 </Grid>
-                                <Grid item xs={12} md={4}>
+                                <Grid item xs={12} md={2}>
+                                    <TextField
+                                        label={'\u0418\u041d\u041d'}
+                                        name="inn"
+                                        value={formData.inn ?? ''}
+                                        onChange={handleChange}
+                                        fullWidth
+                                        margin="dense"
+                                        disabled={isReadOnly}
+                                        InputLabelProps={{
+                                            shrink: formData.inn ? true : undefined
+                                        }}
+                                    />
+                                </Grid>
+                                <Grid item xs={12} md={2}>
                                     <TextField
                                         label="Заказчик CRMID"
                                         name="CustomerCRMID"
@@ -1689,3 +1724,4 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
 };
 
 export default ModalForm;
+

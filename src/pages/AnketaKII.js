@@ -15,6 +15,7 @@ import {
     TableRow,
     Paper,
     Chip,
+    Tooltip,
     Checkbox,
     FormControlLabel
 } from '@mui/material';
@@ -151,14 +152,60 @@ const AnketaKII = () => {
         }
         return Array.from(new Set(codes));
     };
+    const extractCodeDescriptions = (companyInfo) => {
+        if (!companyInfo) return {};
+
+        const descriptions = {};
+
+        const pickName = (okvedItem) => {
+            if (!okvedItem || typeof okvedItem !== 'object') {
+                return '';
+            }
+            return normalizeCode(
+                okvedItem?.['Наим'] ??
+                okvedItem?.['Наименование'] ??
+                okvedItem?.['OKVED']
+            );
+        };
+
+        const appendDescription = (okvedItem) => {
+            const code = normalizeCode(okvedItem?.['Код']);
+            if (!code) {
+                return;
+            }
+            const name = pickName(okvedItem);
+            if (name && !descriptions[code]) {
+                descriptions[code] = name;
+            }
+        };
+
+        appendDescription(companyInfo?.['ОКВЭД']);
+
+        const extraCodes = companyInfo?.['ОКВЭДДоп'];
+        if (Array.isArray(extraCodes)) {
+            extraCodes.forEach(appendDescription);
+        }
+
+        return descriptions;
+    };
 
     const getListCodes = useCallback((okvedArray = []) => {
         if (!Array.isArray(okvedArray)) {
             return [];
         }
-        return okvedArray
-            .map((item) => normalizeCode(item?.ListsKIIokved_code))
-            .filter(Boolean);
+        return Array.from(
+            new Set(
+                okvedArray
+                    .map((item) => {
+                        const relation = item?.ListKIIokvedNew_id;
+                        const code = typeof relation === 'string'
+                            ? relation
+                            : relation?.code ?? item?.code ?? item?.ListsKIIokved_code;
+                        return normalizeCode(code);
+                    })
+                    .filter(Boolean)
+            )
+        );
     }, []);
 
     const findMatchingLists = async (company) => {
@@ -303,6 +350,7 @@ const AnketaKII = () => {
     };
 
     const companyName = useMemo(() => extractCompanyName(companyData), [companyData]);
+    const companyCodeDescriptions = useMemo(() => extractCodeDescriptions(companyData), [companyData]);
 
     const flattenedMatchedLists = useMemo(() => {
         if (!matchedGroups.length) {
@@ -492,13 +540,15 @@ const AnketaKII = () => {
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                             {companyCodes.map((code) => {
                                 const isMatched = matchedCompanyCodes.has(code);
+                                const description = companyCodeDescriptions[code] || 'Наименование ОКВЭД не найдено';
                                 return (
-                                    <Chip
-                                        key={code}
-                                        label={code}
-                                        color={isMatched ? 'success' : 'default'}
-                                        variant={isMatched ? 'filled' : 'outlined'}
-                                    />
+                                    <Tooltip key={code} title={description} arrow>
+                                        <Chip
+                                            label={code}
+                                            color={isMatched ? 'success' : 'default'}
+                                            variant={isMatched ? 'filled' : 'outlined'}
+                                        />
+                                    </Tooltip>
                                 );
                             })}
                         </Box>

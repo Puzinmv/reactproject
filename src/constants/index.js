@@ -60,6 +60,7 @@ export const getNewCardData = (CurrentUser) => {
         "title": "",
         "Description": "",
         "Customer": "",
+        "inn": "",
         "CustomerCRMID": "",
         "CustomerContact": "",
         "CustomerContactCRMID": "",
@@ -138,3 +139,4 @@ export const FIELD_NAMES = [
 ];
 
 export default getNewCardData;
+

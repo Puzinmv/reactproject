@@ -67,6 +67,15 @@ const RedSwitch = styled(Switch)(({ theme, error }) => ({
     },
 }));
 
+const EXECUTOR_EDITABLE_FIELDS = new Set([
+    FORM_FIELDS.COMMENT_JOB,
+    FORM_FIELDS.SYSTEM_REQUIREMENTS,
+    FORM_FIELDS.HIRED_COST,
+    FORM_FIELDS.HIRED,
+    FORM_FIELDS.OPEN_PROJECT_TEMPLATE_ID,
+    FORM_FIELDS.LIMITATIONS,
+]);
+
 const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => {
     const [tabIndex, setTabIndex] = useState(0);
     const [formData, setFormData] = useState({});
@@ -96,6 +105,9 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [aiJobDescriptions, setAiJobDescriptions] = useState([]);
     const [isJobCalculationInProgress, setIsJobCalculationInProgress] = useState(false);
+    const canEditExecutorFields =
+        currentUser?.ProjectCardRole === ROLES.ADMIN ||
+        currentUser?.ProjectCardRole === ROLES.TECHNICAL;
 
     // Первичная загрузка данных карточки
     useEffect(() => {
@@ -350,9 +362,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        if ([FORM_FIELDS.COMMENT_JOB, FORM_FIELDS.SYSTEM_REQUIREMENTS, FORM_FIELDS.HIRED_COST, FORM_FIELDS.HIRED, FORM_FIELDS.OPEN_PROJECT_TEMPLATE_ID, FORM_FIELDS.LIMITATIONS].indexOf(name) > -1 &&
-            currentUser?.ProjectCardRole !== ROLES.ADMIN &&
-            currentUser?.ProjectCardRole !== ROLES.TECHNICAL)
+        if (EXECUTOR_EDITABLE_FIELDS.has(name) && !canEditExecutorFields)
         {
             triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning")
             return
@@ -410,6 +420,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     };
 
     const canManageRequirementChecks = (
+        canEditExecutorFields ||
         currentUser?.id === formData?.initiator?.id ||
         currentUser?.id === formData?.user_created?.id
     );
@@ -417,7 +428,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const handleChangeSwitch = async (e) => {
         const { name, checked } = e.target;
 
-        if (['need_system_requirements', 'jobCalculated'].includes(name) && !canManageRequirementChecks) {
+        if (['need_system_requirements', 'jobCalculated'].includes(name) && !canEditExecutorFields) {
             triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning");
             return;
         }
@@ -459,8 +470,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
 
 
     const handleCheckboxToggle = (template) => {
-        if (currentUser?.ProjectCardRole !== ROLES.ADMIN &&
-            currentUser?.ProjectCardRole !== ROLES.TECHNICAL) {
+        if (!canEditExecutorFields) {
             triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning")
             return
         }
@@ -616,8 +626,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     };
 
     const handleJobChange = (jobDescriptions) => {
-        if (currentUser?.ProjectCardRole !== ROLES.ADMIN &&
-            currentUser?.ProjectCardRole !== ROLES.TECHNICAL) {
+        if (!canEditExecutorFields) {
             triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning")
             return false
         }
@@ -635,8 +644,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     };
 
     const handleJobOnTripChange = (data) => {
-        if (currentUser?.ProjectCardRole !== ROLES.ADMIN &&
-            currentUser?.ProjectCardRole !== ROLES.TECHNICAL) {
+        if (!canEditExecutorFields) {
             triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning")
             return false
         }
@@ -644,8 +652,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         return true
     };
     const handleSystemRequirementsChange = (data) => {
-        if (currentUser?.ProjectCardRole !== ROLES.ADMIN &&
-            currentUser?.ProjectCardRole !== ROLES.TECHNICAL) {
+        if (!canEditExecutorFields) {
             triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning");
             return false;
         }
@@ -712,6 +719,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     };
 
     const isReadOnly = formData.status === STATUS.PROJECT_CANCELED;
+    const isExecutorSectionDisabled = isReadOnly || !canEditExecutorFields;
 
     return (
         <Modal 
@@ -1082,7 +1090,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                         fullWidth
                                         multiline
                                         margin="dense"
-                                        disabled={isReadOnly}
+                                        disabled={isExecutorSectionDisabled}
                                     />
                                 </Grid>
                                 <Grid container item xs={12} md={6} justifyContent="flex-end" alignItems="center">
@@ -1094,7 +1102,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                                 name="need_system_requirements"
                                                 onChange={handleChangeSwitch}
                                                 color="primary"
-                                                disabled={!canManageRequirementChecks || isReadOnly}
+                                                disabled={!canEditExecutorFields || isReadOnly}
                                             />
                                         }
                                         label={
@@ -1145,7 +1153,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                                 onChange={handleChangeSwitch}
                                                 color="primary"
                                                 error={errors.OpenProject_Template_id ? 'true' : 'false'}
-                                                disabled={!canManageRequirementChecks || isJobCalculationInProgress || isReadOnly}
+                                                disabled={!canEditExecutorFields || isJobCalculationInProgress || isReadOnly}
                                             />
                                         }
                                         label={
@@ -1165,7 +1173,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                         size="small"
                                         fullWidth
                                         margin="dense"
-                                        disabled={isReadOnly}
+                                        disabled={isExecutorSectionDisabled}
                                         InputProps={{
                                             endAdornment: <InputAdornment position="end">₽</InputAdornment>,
                                         }}
@@ -1180,7 +1188,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                         size="small"
                                         fullWidth
                                         margin="dense"
-                                        disabled={isReadOnly}
+                                        disabled={isExecutorSectionDisabled}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
@@ -1188,11 +1196,16 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                         data={formData.JobOnTripTable || []}
                                         projectCardRole={currentUser?.ProjectCardRole || ''}
                                         handleChange={handleJobOnTripChange}
-                                        disabled={isReadOnly}
+                                        disabled={isExecutorSectionDisabled}
                                     />
                                 </Grid>
                                 <Grid item xs={6} md={4}>
-                                    <FormControl fullWidth margin="dense" error={Boolean(errors?.OpenProject_Template_id)}>
+                                    <FormControl
+                                        fullWidth
+                                        margin="dense"
+                                        error={Boolean(errors?.OpenProject_Template_id)}
+                                        disabled={isExecutorSectionDisabled}
+                                    >
                                         <InputLabel id="OpenProject-template">Шаблон проекта</InputLabel>
                                         <Select
                                             labelId="OpenProject-template-label"
@@ -1233,7 +1246,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                             fullWidth
                                             multiline
                                             margin="dense"
-                                            disabled={isReadOnly}
+                                            disabled={isExecutorSectionDisabled}
                                             sx={{ flex: 1, minWidth: 0 }}
                                         />
                                         <Button
@@ -1241,7 +1254,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                             startIcon={<ImportContactsIcon />}
                                             onMouseDown={(e) => e.preventDefault()}
                                             onClick={() => setLimitationPanelOpen(true)}
-                                            disabled={isReadOnly}
+                                            disabled={isExecutorSectionDisabled}
                                             sx={{ mt: '8px', flexShrink: 0, whiteSpace: 'nowrap' }}
                                         >
                                         </Button>

@@ -1271,22 +1271,17 @@ export const isUserInPolicyByName = async (userId, policyName, callOptions = {})
             },
         }), { skipSessionExpiredRedirect });
 
-        const policies = Array.isArray(policiesResponse?.data)
-            ? policiesResponse.data
-            : (Array.isArray(policiesResponse) ? policiesResponse : []);
+        const matchedPolicies = Array.isArray(policies) ? policies : [];
 
-        return policies.some((policy) => {
-            const isRequestedPolicy = normalizeStringValue(policy?.name) === normalizedPolicyName;
-
-            if (!isRequestedPolicy) {
-                return false;
-            }
-
+        return matchedPolicies.some((policy) => {
             const policyUsers = Array.isArray(policy?.users) ? policy.users : [];
 
             return policyUsers.some((policyUser) => {
-                const policyUserId = normalizeStringValue(policyUser?.user);
-                return policyUserId === normalizedUserId;
+                const candidateUserId = typeof policyUser === 'object'
+                    ? (policyUser?.user?.id || policyUser?.user || policyUser?.id)
+                    : policyUser;
+
+                return normalizeStringValue(candidateUserId) === normalizedUserId;
             });
         });
     } catch (error) {
@@ -1304,7 +1299,7 @@ export const fetchPhonebookDepartments = async () => {
     return Array.isArray(data) ? data : [];
 };
 
-export const fetchPhonebookUsersByDepartment = async (departmentId, { includeHidden = false } = {}) => {
+export const fetchPhonebookUsersByDepartment = async (departmentId) => {
     if (!departmentId) {
         return [];
     }
@@ -1324,13 +1319,6 @@ export const fetchPhonebookUsersByDepartment = async (departmentId, { includeHid
                     },
                 },
             ],
-        });
-    }
-
-    const users = await directus.request(readUsers({
-        fields: ['id', 'first_name', 'last_name', 'middleName', 'title', 'avatar', 'department', 'level', 'hiden'],
-        filter: {
-            _and: filters,
         },
         limit: -1,
     }), { skipSessionExpiredRedirect: true });
@@ -1399,12 +1387,22 @@ export const fetchPhonebookUsersForSearch = async () => {
             'title',
             'avatar',
             'hiden',
-            'hiden',
             'location',
             { department: ['id', 'name'] },
         ],
         filter: {
-            _and: filters,
+            _and: [
+                {
+                    status: {
+                        _eq: 'active',
+                    },
+                },
+                {
+                    department: {
+                        _nnull: true,
+                    },
+                },
+            ],
         },
         limit: -1,
     }), { skipSessionExpiredRedirect: true });
@@ -1438,7 +1436,7 @@ export const fetchPhonebookUsersForSearch = async () => {
     });
 };
 
-export const fetchPhonebookUserCard = async (userId, { includeHidden = false } = {}) => {
+export const fetchPhonebookUserCard = async (userId) => {
     if (!userId) {
         return null;
     }
@@ -1461,16 +1459,6 @@ export const fetchPhonebookUserCard = async (userId, { includeHidden = false } =
                     },
                 },
             ],
-        });
-    }
-
-    const users = await directus.request(readUsers({
-        fields: [
-            '*',
-            { Head: ['id', 'first_name', 'last_name', 'middleName', { department: ['id'] }] },
-        ],
-        filter: {
-            _and: filters,
         },
         limit: -1,
     }), { skipSessionExpiredRedirect: true });
@@ -1504,7 +1492,6 @@ export const updatePhonebookUserCard = async (userId, {
     avatar,
     level,
     date_birthd,
-    hiden,
 } = {}) => {
     if (!userId) {
         throw new Error('User id is required');
@@ -1526,10 +1513,6 @@ export const updatePhonebookUserCard = async (userId, {
 
     if (date_birthd !== undefined) {
         payload.date_birthd = date_birthd;
-    }
-
-    if (hiden !== undefined) {
-        payload.hiden = hiden;
     }
 
     if (Object.keys(payload).length === 0) {
@@ -1685,9 +1668,6 @@ export const fetchInitData = async () => {
         filter: {
             id: {
                 _in: uniqueInitiatorIds
-            },
-            status: {
-                _eq: 'active'
             }
         },
         limit: -1
@@ -1713,8 +1693,8 @@ export const fetchInitGrade = async () => {
             })),
             requestDirectus(readItems('gradePresale', {
                 fields: ['*', {
-                    user_created: ['id', 'first_name', 'last_name'],
-                    user_updated: ['id', 'first_name', 'last_name'],
+                    user_created: ['id', 'first_name'],
+                    user_updated: ['id', 'first_name'],
                 }],
                 filter: {
                     dateGrade: {
@@ -2532,4 +2512,3 @@ export const updateUserPromptWrapper = async (wrapper) => {
 };
 
 export default directus;
-

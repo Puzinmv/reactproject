@@ -5,14 +5,20 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
+import { ROLES } from '../constants/index.js';
 
 
 export default function TableJobOnTrip({ data, projectCardRole, handleChange, disabled }) {
     const [rows, setRows] = useState(data || []);
     const [openSnackbar, setOpenSnackbar] = useState(false);
 
+    const editable = !disabled && (
+        projectCardRole === ROLES.ADMIN || projectCardRole === ROLES.TECHNICAL
+    );
+
    
     const handleAddRow = () => {
+        if (!editable) return;
         const newRows = [...rows, { id: rows.length + 1, Address: '', DayOnTrip: 0, JobDecription: '' }];
         if (handleChange(newRows)) {
             setRows(newRows)
@@ -21,6 +27,7 @@ export default function TableJobOnTrip({ data, projectCardRole, handleChange, di
     };
 
     const handleCellEdit = (id, key, value) => {
+        if (!editable) return;
         const newRows = rows.map(row => (row.id === id ? { ...row, [key]: value } : row))
         if (handleChange(newRows)) {
             setRows(newRows)
@@ -29,6 +36,7 @@ export default function TableJobOnTrip({ data, projectCardRole, handleChange, di
     };
 
     const handleDeleteRow = (id) => {
+        if (!editable) return;
         const newRows = rows.filter((row) => row.id !== id)
         if (handleChange(newRows)) {
             setRows(newRows)
@@ -82,7 +90,7 @@ export default function TableJobOnTrip({ data, projectCardRole, handleChange, di
                                 <TableCell sx={{ width: '40%', fontWeight: 'bold', textAlign: 'center' }}>Какие работы проводятся по указанным адресам</TableCell>
                                 <TableCell sx={{ width: 20, textAlign: 'center' }}>
                                     <Tooltip title="Добавить строку">
-                                        <IconButton disabled={disabled} onClick={handleAddRow}>
+                                        <IconButton disabled={!editable} onClick={handleAddRow}>
                                             <AddCircleIcon />
                                         </IconButton>
                                     </Tooltip>
@@ -100,8 +108,7 @@ export default function TableJobOnTrip({ data, projectCardRole, handleChange, di
                                         <TableCell
                                             sx={{ width: 20, textAlign: 'center' }}
                                             suppressContentEditableWarning
-                                            contentEditable={!disabled && (projectCardRole === 'Admin' ||
-                                                projectCardRole === 'Technical')}
+                                            contentEditable={editable}
                                             onBlur={(e) => handleCellEdit(row.id, 'id', e.target.textContent)}
                                         >
                                             {row.id}
@@ -111,8 +118,7 @@ export default function TableJobOnTrip({ data, projectCardRole, handleChange, di
                                             component="th"
                                             scope="row"
                                             padding="none"
-                                            contentEditable={!disabled && (projectCardRole === 'Admin' ||
-                                                projectCardRole === 'Technical')}
+                                            contentEditable={editable}
                                             suppressContentEditableWarning
                                             onBlur={(e) => handleCellEdit(row.id, 'Address', e.target.textContent)}
                                         >
@@ -121,8 +127,7 @@ export default function TableJobOnTrip({ data, projectCardRole, handleChange, di
                                         <TableCell
                                             sx={{ width: 80 }}
                                             align="right"
-                                            contentEditable={!disabled && (projectCardRole === 'Admin' ||
-                                                projectCardRole === 'Technical')}
+                                            contentEditable={editable}
                                             suppressContentEditableWarning
                                             onBlur={(e) => handleCellEdit(row.id, 'DayOnTrip', e.target.textContent)}
                                         >
@@ -131,14 +136,13 @@ export default function TableJobOnTrip({ data, projectCardRole, handleChange, di
                                         <TableCell
                                             sx={{ width: '40%' }}
                                             align="right"
-                                            contentEditable={!disabled && (projectCardRole === 'Admin' ||
-                                                projectCardRole === 'Technical')}
+                                            contentEditable={editable}
                                             suppressContentEditableWarning
                                             onBlur={(e) => handleCellEdit(row.id, 'JobDecription', e.target.textContent)}
                                         >
                                             {row.JobDecription}
                                         </TableCell>
-                                        {!disabled && (
+                                        {editable && (
                                             <TableCell align="center">
                                                 <Tooltip title="Удалить">
                                                     <IconButton onClick={() => handleDeleteRow(row.id)}>

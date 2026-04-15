@@ -33,7 +33,10 @@ function GradeApp() {
             return '';
         }
 
-        return [user.first_name, user.last_name].filter(Boolean).join(' ');
+        return [user.first_name, user.last_name]
+            .map((value) => String(value || '').trim())
+            .filter(Boolean)
+            .join(' ');
     };
 
     const fetchData = async () => {
@@ -416,4 +419,4 @@ function GradeApp() {
     );
 }
 
-export default GradeApp; 
+export default GradeApp;

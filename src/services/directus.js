@@ -1680,7 +1680,7 @@ export const fetchInitGrade = async () => {
     try {
         const [presaleUsers, gradesData, allGradesWithUsers, averageGrades, closedMonths] = await Promise.all([
             requestDirectus(readItems('PresaleUsers', {
-                fields: ['*', { user: ['id', 'first_name'] }]
+                fields: ['*', { user: ['id', 'first_name', 'last_name'] }]
             })),
             requestDirectus(readItems('gradePresale', {
                 fields: ['*'],
@@ -1693,8 +1693,8 @@ export const fetchInitGrade = async () => {
             })),
             requestDirectus(readItems('gradePresale', {
                 fields: ['*', {
-                    user_created: ['id', 'first_name'],
-                    user_updated: ['id', 'first_name'],
+                    user_created: ['id', 'first_name', 'last_name'],
+                    user_updated: ['id', 'first_name', 'last_name'],
                 }],
                 filter: {
                     dateGrade: {

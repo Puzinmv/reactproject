@@ -15,8 +15,7 @@ import {
 } from '../constants/index.js';
 //import InputAdornment from '@mui/material/InputAdornment';
 import {
-    fetchCard, fetchUser, UpdateData, GetfilesInfo, uploadFilesDirectus,
-    deleteFileDirectus, GetFilesStartId
+    fetchCard, fetchUser, UpdateData
 } from '../services/directus';
 import { fetchCustomer1C, fetchCustomerContact1C, fetchCustomerInn1C } from '../services/1c';
 import {CreateProject, GetProjectTemtplate} from '../services/openproject';
@@ -27,6 +26,10 @@ import CustomTable from './CustomTable';
 import TableJobOnTrip from './TableJobOnTrip'; 
 import TableSystemRequirements from './TableSystemRequirements';
 import './ModalForm.css';
+import {
+    createLocalProjectCardFiles,
+    normalizeProjectCardFiles,
+} from '../utils/projectCardFiles';
 
 
 const TabPanel = ({ children, value, index }) => {
@@ -76,6 +79,11 @@ const EXECUTOR_EDITABLE_FIELDS = new Set([
     FORM_FIELDS.LIMITATIONS,
 ]);
 
+const normalizeCardForForm = (card) => ({
+    ...card,
+    Files: normalizeProjectCardFiles(card?.Files || []),
+});
+
 const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => {
     const [tabIndex, setTabIndex] = useState(0);
     const [formData, setFormData] = useState({});
@@ -86,7 +94,6 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const [InitiatorOptions, setInitiatorOptions] = useState([]);
     const [limitation, setLimitation] = useState([]);
     const [errors, setErrors] = useState({});
-    const [fileInfo, setfileInfo] = useState([]);
     const [autofill, setAutofill] = useState(false);
     const [limitationPanelOpen, setLimitationPanelOpen] = useState(false);
     const [limitationsFieldFocused, setLimitationsFieldFocused] = useState(false);
@@ -115,7 +122,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
             try {
                 const [row, limitation] = await fetchCard(rowid);
                 if (row) {
-                    setFormData(row);
+                    setFormData(normalizeCardForForm(row));
                     setLimitation(limitation);
                     setTotalCost(calculateTotalCost(row));
                     if (row.aiJobDescriptions) {
@@ -174,16 +181,6 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                 console.error('Ошибка при загрузке пользователей:', error);
             });
         // Загрузка файлов
-        if (formData?.Files) {
-            GetfilesInfo(formData?.Files)
-                .then(files => {
-                    setfileInfo(files);
-                })
-                .catch(error => {
-                    console.error('Ошибка при загрузке файлов:', error);
-                });
-        }
-
         // Загрузка шаблонов проектов
         GetProjectTemtplate(formData?.Department?.prefix)
             .then(templates => {
@@ -199,7 +196,6 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         formData?.initiator?.RefKey_1C,
         formData?.Customer,
         formData?.inn,
-        formData?.Files,
         currentUser?.RefKey_1C,
         formData?.Department?.prefix
     ]); 
@@ -298,13 +294,9 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
             return;
         }
         try {
-            if (!newformData?.target) {
-                console.log('SafeData', newformData)
-                await UpdateData(newformData);
-            } else {
-                console.log('SafeData', formData)
-                await UpdateData(formData);
-            }
+            const dataToSave = newformData?.target ? formData : (newformData || formData);
+            console.log('SafeData', dataToSave)
+            await UpdateData(dataToSave);
             onDataSaved();
             onClose();
         } catch (error) {
@@ -575,54 +567,20 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         ? InitiatorOptions.find((option) => option.id === formData.initiator.id) || ''
         : '';
 
-    const handleFileUpload = async (files) => {
-            const updateFilesArray = async (currentFiles, uploadedFiles, projectCardId) => {
-                const maxDbId = await GetFilesStartId();
-                const maxId = currentFiles.reduce((max, file) => Math.max(max, file.id, ), maxDbId);
-                console.log(maxId, maxDbId, currentFiles, uploadedFiles,projectCardId);
-                const newFiles = uploadedFiles.map((file, index) => ({
-                    id: maxId + index + 1,
-                    Project_Card_id: projectCardId,
-                    directus_files_id: file.id
-                }));
-                console.log([...currentFiles, ...newFiles]);
-                return [...currentFiles, ...newFiles];
-            };
-        try {
-            const filesArray = Array.from(files);
-            const uploadedFiles = await uploadFilesDirectus(filesArray);
-            const newformData = { ...formData, Files: await updateFilesArray(formData.Files, uploadedFiles, formData.id) };
-            await UpdateData(newformData);
-            setFormData(newformData);
-            GetfilesInfo(newformData.Files).then((fileInfo) => {
-                setfileInfo(fileInfo)
-            }).catch((error) => {
-                console.error('Ошибка при загрузке информаци о файлах:', error);
-            });
-        } catch (error) {
-            console.error('Ошибка при загрузке файлов:', error);
-        }
+    const handleFileUpload = (files) => {
+        const newFiles = createLocalProjectCardFiles(files);
+        setFormData((prevData) => ({
+            ...prevData,
+            Files: [...(prevData.Files || []), ...newFiles],
+        }));
     };
 
 
-    const handleFileDelete = async (fileId) => {
-        const updateFilesArray = (currentFiles, deletedFileId) => {
-            return currentFiles.filter(file => file.directus_files_id !== deletedFileId);
-        };
-
-        try {
-            await deleteFileDirectus(fileId);
-            const newformData = { ...formData, Files: updateFilesArray(formData.Files, fileId) };
-            await UpdateData(newformData);
-            setFormData(newformData);
-            GetfilesInfo(newformData.Files).then((fileInfo) => {
-                setfileInfo(fileInfo)
-            }).catch((error) => {
-                console.error('Ошибка при загрузке информаци о файлах', error);
-            });
-        } catch (error) {
-            console.error('Ошибка при удалении файла:', error);
-        }
+    const handleFileDelete = (fileId) => {
+        setFormData((prevData) => ({
+            ...prevData,
+            Files: (prevData.Files || []).filter((file) => file.id !== fileId),
+        }));
     };
 
     const handleJobChange = (jobDescriptions) => {
@@ -1049,7 +1007,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                             Файлы
                                         </Typography>
                                         <FileUpload
-                                            files={fileInfo}
+                                            files={formData.Files || []}
                                             onUpload={handleFileUpload}
                                             onDelete={handleFileDelete}
                                             isReadOnly={isReadOnly}

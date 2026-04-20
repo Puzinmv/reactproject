@@ -5,18 +5,25 @@ import {
     Switch
 } from '@mui/material';
 import {
-    fetchUser, uploadFilesDirectus, CreateItemDirectus, UpdateData, GetFilesStartId
+    fetchUser, CreateItemDirectus
 } from '../services/directus';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import FileUpload from './FileUpload';
 import { fetchCustomer1C, fetchCustomerContact1C, fetchCustomerInn1C } from '../services/1c';
-
+import {
+    createLocalProjectCardFiles,
+    normalizeProjectCardFiles,
+} from '../utils/projectCardFiles';
+const buildInitialFormData = (sourceRow) => ({
+    ...sourceRow,
+    Files: normalizeProjectCardFiles(sourceRow?.Files || []),
+});
 
 
 const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => {
 
-    const [formData, setFormData] = useState(row);
+    const [formData, setFormData] = useState(buildInitialFormData(row));
     // const [customerOptions, setCustomerOptions] = useState([]);
     const [customerOptions1C, setCustomerOptions1C] = useState([]);
     const [customerContactOptions, setCustomerContactOptions] = useState([]);
@@ -69,6 +76,10 @@ const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => 
         fetchCustomerOptions1C()
     }, [currentUser.RefKey_1C, formData.initiator.RefKey_1C, formData.initiator.first_name]);
 
+    useEffect(() => {
+        setFormData(buildInitialFormData(row));
+    }, [row]);
+
 
     const validateFields = () => {
         const newErrors = {};
@@ -85,18 +96,7 @@ const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => 
             return;
         }
         try {
-            const startId = await GetFilesStartId();
-            const files = Array.from(formData.Files.map((file)=>file.file));
-            const item = await CreateItemDirectus({ ...formData, Files: [] });
-            if (files.length > 0) {
-                const uploadedFiles = await uploadFilesDirectus(files);
-                const newFiles = uploadedFiles.map((file, index) => ({
-                    id: startId + index,
-                    Project_Card_id: item.id,
-                    directus_files_id: file.id
-                }));
-                await UpdateData({ ...item, Files: newFiles });
-            }
+            await CreateItemDirectus(formData);
             onDataSaved();
             onClose();
         } catch (error) {
@@ -105,7 +105,7 @@ const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => 
     };
 
     const handleCancel = () => {
-        setFormData(row);
+        setFormData(buildInitialFormData(row));
         onClose();
     };
 
@@ -215,23 +215,19 @@ const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => 
         ? InitiatorOptions.find((option) => option.id === formData.initiator.id) || ''
         : '';
 
-    const handleFileUpload = async (files) => {
-            const updateFilesArray = (currentFiles, uploadedFiles) => {
-                const maxId = currentFiles.reduce((max, file) => Math.max(max, file.id), 0);
-                const newFiles = uploadedFiles.map((file, index) => ({
-                    id: maxId + index + 1,
-                    filename_download: file.name,
-                    file: file,
-                }));
-                return [...currentFiles, ...newFiles];
-        };
-        const filesArray = Array.from(files);
-        setFormData({ ...formData, Files: updateFilesArray(formData.Files, filesArray) })
+    const handleFileUpload = (files) => {
+        const newFiles = createLocalProjectCardFiles(files);
+        setFormData((prevData) => ({
+            ...prevData,
+            Files: [...(prevData.Files || []), ...newFiles],
+        }));
     };
 
-    const handleFileDelete = async (fileId) => {
-        const files = formData.Files.filter((file) => file.id !== fileId)
-        setFormData({ ...formData, Files: files });
+    const handleFileDelete = (fileId) => {
+        setFormData((prevData) => ({
+            ...prevData,
+            Files: (prevData.Files || []).filter((file) => file.id !== fileId),
+        }));
     };
 
 
@@ -543,7 +539,7 @@ const CreateForm = ({ row, departament, currentUser, onClose, onDataSaved }) => 
                                 Файлы
                             </Typography>
                             <FileUpload
-                                files={formData.Files}
+                                files={formData.Files || []}
                                 onUpload={handleFileUpload}
                                 onDelete={handleFileDelete}
                             />

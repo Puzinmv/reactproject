@@ -1,8 +1,13 @@
 import {
     createDirectus, authentication,  rest,
-    customEndpoint, readItems, readUsers, updateItem, readMe, readFile, readItem,
-    uploadFiles, deleteFile, createItem, updateMe, deleteItem, updateUser
+    customEndpoint, readItems, readUsers, updateItem, readMe, readItem,
+    uploadFiles, createItem, createItems, updateMe, deleteItem, updateUser
 } from "@directus/sdk";
+import {
+    getProjectCardRelationId,
+    isLocalProjectCardFile,
+    normalizeProjectCardFiles,
+} from '../utils/projectCardFiles';
 
 const directusBaseUrl = new URL(process.env.REACT_APP_API_URL || '', window.location.origin).toString();
 
@@ -10,6 +15,21 @@ export const directus = createDirectus(directusBaseUrl)
     .with(authentication('session', { credentials: 'include', autoRefresh: true }))
     .with(rest({ credentials: 'include' }))
     ;
+
+const PROJECT_CARD_FILE_FIELDS = [
+    'id',
+    'Project_Card_id',
+    {
+        directus_files_id: ['id', 'filename_download']
+    }
+];
+
+const PROJECT_CARD_ITEM_FIELDS = [
+    '*',
+    {
+        Files: PROJECT_CARD_FILE_FIELDS
+    }
+];
 
 const normalizeDirectusCallOptions = (input) => {
     if (input === true) {
@@ -103,6 +123,67 @@ const requestDirectus = async (operation, options = {}) => {
 
         throw error;
     }
+};
+
+const createProjectCardFileRelations = async (projectCardId, directusFileIds = []) => {
+    if (!directusFileIds.length) {
+        return [];
+    }
+
+    return requestDirectus(
+        createItems('Project_Card_files', directusFileIds.map((directusFileId) => ({
+            Project_Card_id: projectCardId,
+            directus_files_id: directusFileId,
+        })))
+    );
+};
+
+const getProjectCardFilesDiff = (existingFiles = [], nextFiles = []) => {
+    const normalizedNextFiles = normalizeProjectCardFiles(nextFiles);
+    const nextRelationIds = new Set(
+        normalizedNextFiles
+            .map((file) => getProjectCardRelationId(file))
+            .filter((fileId) => fileId !== null && fileId !== undefined)
+            .map((fileId) => String(fileId))
+    );
+    const relationsToDelete = (existingFiles || []).filter((file) => {
+        const relationId = getProjectCardRelationId(file);
+        return relationId !== null
+            && relationId !== undefined
+            && !nextRelationIds.has(String(relationId));
+    });
+    const localFilesToUpload = normalizedNextFiles
+        .filter((file) => isLocalProjectCardFile(file) && file.file)
+        .map((file) => file.file);
+
+    return {
+        relationsToDelete,
+        localFilesToUpload,
+    };
+};
+
+const syncProjectCardFiles = async (projectCardId, existingFiles = [], nextFiles = []) => {
+    const { relationsToDelete, localFilesToUpload } = getProjectCardFilesDiff(existingFiles, nextFiles);
+
+    if (!relationsToDelete.length && !localFilesToUpload.length) {
+        return false;
+    }
+
+    if (localFilesToUpload.length) {
+        const uploadedFiles = await uploadFilesDirectus(localFilesToUpload);
+        await createProjectCardFileRelations(
+            projectCardId,
+            uploadedFiles.map((file) => file.id).filter(Boolean)
+        );
+    }
+
+    if (relationsToDelete.length) {
+        await Promise.all(
+            relationsToDelete.map((file) => requestDirectus(deleteItem('Project_Card_files', file.id)))
+        );
+    }
+
+    return true;
 };
 
 const getDefaultTrueConfBaseUrl = () => {
@@ -1546,7 +1627,7 @@ export const fetchDatanew = async ({
                 Department: ['*']
             },
             {
-                Files: ['*']
+                Files: PROJECT_CARD_FILE_FIELDS
             },
         ]
 
@@ -1743,7 +1824,7 @@ export const fetchCard = async (ID) => {
                 Department: ['*']
             },
             {
-                Files: ['*']
+                Files: PROJECT_CARD_FILE_FIELDS
             },
         ]
         const [data, limitation] = await Promise.all([
@@ -1810,23 +1891,6 @@ export const fetchCustomerContact = async (CRMID) => {
     }
 };
 
-export const GetfilesInfo = async (files) => {
-    if (!files.length) {
-        return [];
-    }
-    const fileInfoPromises = files.map(async (file) => {
-        const result = await requestDirectus(
-            readFile(file.directus_files_id, {
-                fields: ['id', 'filename_download'],
-            })
-        );
-        return result;
-    });
-
-    const fileInfo = await Promise.all(fileInfoPromises);
-    return fileInfo;
-};
-
 export const fetchUser = async () => {
     try {
         const data = await requestDirectus(
@@ -1866,13 +1930,17 @@ const isEqual = (value1, value2) => { // глубокое сравнение о�
 
 export const UpdateData = async (data) => {
     try {
-        const item = await requestDirectus(readItem('Project_Card', data.id));
+        const item = await requestDirectus(readItem('Project_Card', data.id, {
+            fields: PROJECT_CARD_ITEM_FIELDS
+        }));
         const id = data.id;
         const savedata = {
             ...data,
             initiator: data.initiator.id || data.initiator,
             Department: data.Department.id || data.Department
         };
+        const files = Array.isArray(savedata.Files) ? savedata.Files : null;
+        delete savedata.Files;
 
         // Преобразование числовых полей
         const numericFields = ['HotelCost', 'dailyCost', 'otherPayments', 'tiketsCost','HiredCost'];
@@ -1903,12 +1971,16 @@ export const UpdateData = async (data) => {
             savedata.deadline = null; // обнуляем, если дата пустая
         }
         console.log(savedata);
+        let req = null;
         if (Object.keys(savedata).length > 0) {
-            const req = await requestDirectus(updateItem('Project_Card', id, savedata));
-            return req;
-        } else {
-            return null;
+            req = await requestDirectus(updateItem('Project_Card', id, savedata));
         }
+
+        if (files) {
+            await syncProjectCardFiles(id, item.Files || [], files);
+        }
+
+        return req;
     } catch (error) {
         console.error("Error updating data:", error);
         throw error;
@@ -1930,13 +2002,16 @@ export const Update1CField = async(refKey) => {
 
 export const CreateItemDirectus = async (data, token) => {
     const makeRequest = async () => {
+        const files = normalizeProjectCardFiles(data.Files || []);
         const savedata = {
             ...data,
             initiator: data.initiator.id || '',
             Department: data.Department.id || 0
         };
+        delete savedata.Files;
         ['id', 'user_created', 'date_created', 'date_updated', 'user_updated', 'sort'].forEach(key => delete savedata[key]);
         const req = await requestDirectus(createItem('Project_Card', savedata));
+        await syncProjectCardFiles(req.id, [], files);
         return req;
     };
 
@@ -1968,28 +2043,6 @@ export const uploadFilesDirectus = async (files) => {
         return responses;
     } catch (error) {
         console.error('Ошибка при загрузке файлов:', error);
-        throw error;
-    }
-};
-
-export const GetFilesStartId = async () => {
-    const existingFiles = await requestDirectus(
-        readItems('Project_Card_files', {
-            sort: ['-id'],
-            limit: 1
-        })
-    );
-    console.log(existingFiles);
-    
-    return existingFiles.length > 0 ? existingFiles[0].id + 1 : 1;
-}
-
-export const deleteFileDirectus = async (fileId) => {
-    try {
-        console.log(fileId);
-        await requestDirectus(deleteFile(fileId));
-    } catch (error) {
-        console.error('Ошибка при удалении файла:', error);
         throw error;
     }
 };

@@ -2,12 +2,23 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ModalForm from '../Components/ModalForm';
-import { UpdateData, fetchCard } from '../services/directus';
+import { UpdateData, fetchCard, fetchUser } from '../services/directus';
 
 jest.mock('../services/directus', () => ({
   UpdateData: jest.fn(),
   fetchCard: jest.fn(),
-  GetfilesInfo: jest.fn().mockResolvedValue([])
+  fetchUser: jest.fn().mockResolvedValue([])
+}));
+
+jest.mock('../services/1c', () => ({
+  fetchCustomer1C: jest.fn().mockResolvedValue([]),
+  fetchCustomerContact1C: jest.fn().mockResolvedValue([]),
+  fetchCustomerInn1C: jest.fn().mockResolvedValue(''),
+}));
+
+jest.mock('../services/openproject', () => ({
+  CreateProject: jest.fn(),
+  GetProjectTemtplate: jest.fn().mockResolvedValue([]),
 }));
 
 const mockFormData = {
@@ -22,6 +33,7 @@ const mockFormData = {
 describe('ModalForm', () => {
   beforeEach(() => {
     fetchCard.mockResolvedValue([mockFormData, []]);
+    fetchUser.mockResolvedValue([]);
   });
 
   afterEach(() => {

@@ -25,27 +25,27 @@ export default function TableSystemRequirements({ data, projectCardRole, handleC
 
     const editable = useMemo(() => canEdit(projectCardRole, disabled), [projectCardRole, disabled]);
 
-    const pushChanges = (nextRows) => {
-        if (handleChange(nextRows)) {
+    const pushChanges = (nextRows, options = {}) => {
+        if (handleChange(nextRows, options)) {
             setRows(nextRows);
         }
     };
 
     const handleAddRow = () => {
         const nextRows = [...rows, { requirement: '', approved: null }];
-        pushChanges(nextRows);
+        pushChanges(nextRows, { type: 'edit' });
     };
 
     const handleDeleteRow = (index) => {
         const nextRows = rows.filter((_, rowIndex) => rowIndex !== index);
-        pushChanges(nextRows);
+        pushChanges(nextRows, { type: 'edit' });
     };
 
     const handleRequirementBlur = (index, value) => {
         const nextRows = rows.map((row, rowIndex) => (
             rowIndex === index ? { ...row, requirement: value } : row
         ));
-        pushChanges(nextRows);
+        pushChanges(nextRows, { type: 'edit' });
     };
 
     const handleApprovedToggle = (index) => {
@@ -53,7 +53,7 @@ export default function TableSystemRequirements({ data, projectCardRole, handleC
         const nextRows = rows.map((row, rowIndex) => (
             rowIndex === index ? { ...row, approved: !(row.approved === true) } : row
         ));
-        pushChanges(nextRows);
+        pushChanges(nextRows, { type: 'approval' });
     };
 
     return (

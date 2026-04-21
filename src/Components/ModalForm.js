@@ -60,6 +60,12 @@ const JOB_LIMITATION_ADMIN_URL =
 // Функция для определения цвета статуса
 const getStatusColor = (status) => STATUS_COLORS[status] || '#e0e0e0';
 
+const areAllSystemRequirementsApproved = (requirements) => (
+    Array.isArray(requirements) &&
+    requirements.length > 0 &&
+    requirements.every((requirement) => requirement?.approved === true)
+);
+
 // стили для switch с ошибкой
 const RedSwitch = styled(Switch)(({ theme, error }) => ({
     '& .MuiSwitch-switchBase': {
@@ -259,7 +265,8 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     useEffect(() => {
         if (![STATUS.NEW_CARD, STATUS.INITIATOR_REQUEST, STATUS.LABOR_COSTS_ESTIMATED, STATUS.ECONOMICS_AGREED].includes(formData.status)) return;
         let newStatus = STATUS.NEW_CARD;
-        if (formData.need_system_requirements && !formData.jobCalculated) {
+        const allSystemRequirementsApproved = areAllSystemRequirementsApproved(formData.system_requirements);
+        if (formData.need_system_requirements && !formData.jobCalculated && !allSystemRequirementsApproved) {
             newStatus = STATUS.INITIATOR_REQUEST;
         } else if (formData.jobCalculated && !formData.priceAproved) {
             newStatus = STATUS.LABOR_COSTS_ESTIMATED;
@@ -274,7 +281,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
             }
             return prevData;
         });
-    }, [formData.Project_created, formData.jobCalculated, formData.need_system_requirements, formData.priceAproved, formData.status]);
+    }, [formData.Project_created, formData.jobCalculated, formData.need_system_requirements, formData.priceAproved, formData.status, formData.system_requirements]);
 
     const validateFields = () => {
         const newErrors = {};
@@ -609,12 +616,18 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         setFormData({ ...formData, JobOnTripTable: data });
         return true
     };
-    const handleSystemRequirementsChange = (data) => {
-        if (!canEditExecutorFields) {
-            triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning");
+    const handleSystemRequirementsChange = (data, options = {}) => {
+        const isApprovalChange = options.type === 'approval';
+        if (isApprovalChange ? !canManageRequirementChecks : !canEditExecutorFields) {
+            triggerSnackbar(
+                isApprovalChange
+                    ? 'Недостаточно прав для согласования системных требований'
+                    : WARNING_MESSAGES.ONLY_EXECUTORS,
+                "warning"
+            );
             return false;
         }
-        setFormData({ ...formData, system_requirements: data });
+        setFormData((prevData) => ({ ...prevData, system_requirements: data }));
         return true;
     };
     const handleCreateProject = async () => {

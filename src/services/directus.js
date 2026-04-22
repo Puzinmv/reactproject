@@ -1928,6 +1928,23 @@ const isEqual = (value1, value2) => { // глубокое сравнение о�
     return true;
 };
 
+const getProjectCardFilesChangeMeta = (existingFiles = [], nextFiles = []) => {
+    const { relationsToDelete, localFilesToUpload } = getProjectCardFilesDiff(existingFiles, nextFiles);
+  
+    const removedFileNames = relationsToDelete
+      .map((file) => file?.directus_files_id?.filename_download || '')
+      .filter(Boolean);
+  
+    const addedFileNames = localFilesToUpload
+      .map((file) => file?.name || '')
+      .filter(Boolean);
+  
+    return {
+      addedFileNames,
+      removedFileNames,
+    };
+  };
+
 export const UpdateData = async (data) => {
     try {
         const item = await requestDirectus(readItem('Project_Card', data.id, {
@@ -1942,6 +1959,15 @@ export const UpdateData = async (data) => {
         const files = Array.isArray(savedata.Files) ? savedata.Files : null;
         delete savedata.Files;
 
+        const { addedFileNames, removedFileNames } = getProjectCardFilesChangeMeta(
+            item.Files || [],
+            files || []
+          );
+      
+        // служебные поля для flow
+        savedata.notify_added_files = addedFileNames;
+        savedata.notify_removed_files = removedFileNames;
+        
         // Преобразование числовых полей
         const numericFields = ['HotelCost', 'dailyCost', 'otherPayments', 'tiketsCost','HiredCost'];
         numericFields.forEach(field => {

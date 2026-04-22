@@ -1959,14 +1959,18 @@ export const UpdateData = async (data) => {
         const files = Array.isArray(savedata.Files) ? savedata.Files : null;
         delete savedata.Files;
 
+        // служебные поля для flow
         const { addedFileNames, removedFileNames } = getProjectCardFilesChangeMeta(
             item.Files || [],
             files || []
           );
       
-        // служебные поля для flow
-        savedata.notify_added_files = addedFileNames;
-        savedata.notify_removed_files = removedFileNames;
+        const hasFileChanges = addedFileNames.length > 0 || removedFileNames.length > 0;
+
+        if (hasFileChanges) {
+            savedata.notify_added_files = addedFileNames;
+            savedata.notify_removed_files = removedFileNames;
+        }
         
         // Преобразование числовых полей
         const numericFields = ['HotelCost', 'dailyCost', 'otherPayments', 'tiketsCost','HiredCost'];

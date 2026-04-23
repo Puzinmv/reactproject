@@ -23,6 +23,7 @@ import ExcelJS from 'exceljs';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import Collapse from '@mui/material/Collapse';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { improveJobDescriptions } from '../services/deepseek';
 import CircularProgress from '@mui/material/CircularProgress';
 
@@ -32,6 +33,11 @@ const CustomTable = forwardRef(function CustomTable(
     ref
 ) {
     const [rows, setRows] = useState(jobDescriptions || []);
+    const [dragState, setDragState] = useState({
+        sourceIndex: null,
+        overIndex: null,
+        isAITable: false,
+    });
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [openSnackbar, setOpenSnackbar] = useState({ 
         open: false, 
@@ -40,6 +46,20 @@ const CustomTable = forwardRef(function CustomTable(
     });
     const [isOriginalExpanded, setIsOriginalExpanded] = useState(!aiJobDescriptions?.length);
     const [isLoading, setIsLoading] = useState(false);
+    const canEditRows = !disabled && (projectCardRole === 'Admin' || projectCardRole === 'Technical');
+
+    const resetDragState = () => {
+        setDragState({
+            sourceIndex: null,
+            overIndex: null,
+            isAITable: false,
+        });
+    };
+
+    const normalizeRowOrder = (tableRows) => tableRows.map((row, index) => ({
+        ...row,
+        id: index + 1,
+    }));
 
     const handleAddRow = (isAITable = false) => {
         const targetRows = isAITable ? aiJobDescriptions : rows;
@@ -111,6 +131,117 @@ const CustomTable = forwardRef(function CustomTable(
                 setRows(newRow);
             }
         }
+    };
+
+    const handleReorderRows = (sourceIndex, targetIndex, isAITable = false) => {
+        if (sourceIndex === targetIndex || sourceIndex === null || targetIndex === null) {
+            return;
+        }
+
+        const targetRows = [...(isAITable ? aiJobDescriptions : rows)];
+
+        if (
+            sourceIndex < 0 ||
+            targetIndex < 0 ||
+            sourceIndex >= targetRows.length ||
+            targetIndex >= targetRows.length
+        ) {
+            return;
+        }
+
+        const [movedRow] = targetRows.splice(sourceIndex, 1);
+        targetRows.splice(targetIndex, 0, movedRow);
+        const reorderedRows = normalizeRowOrder(targetRows);
+
+        if (isAITable) {
+            handleAiJobChange(reorderedRows);
+            return;
+        }
+
+        if (handleJobChange(reorderedRows)) {
+            setRows(reorderedRows);
+        }
+    };
+
+    const handleDragStart = (index, isAITable = false) => (event) => {
+        if (!canEditRows) {
+            return;
+        }
+
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', `${isAITable ? 'ai' : 'main'}:${index}`);
+        setDragState({
+            sourceIndex: index,
+            overIndex: index,
+            isAITable,
+        });
+    };
+
+    const handleDragOver = (index, isAITable = false) => (event) => {
+        if (!canEditRows || dragState.sourceIndex === null || dragState.isAITable !== isAITable) {
+            return;
+        }
+
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+
+        if (dragState.overIndex !== index) {
+            setDragState((prev) => ({
+                ...prev,
+                overIndex: index,
+            }));
+        }
+    };
+
+    const handleDrop = (index, isAITable = false) => (event) => {
+        event.preventDefault();
+
+        if (!canEditRows || dragState.sourceIndex === null || dragState.isAITable !== isAITable) {
+            resetDragState();
+            return;
+        }
+
+        handleReorderRows(dragState.sourceIndex, index, isAITable);
+        resetDragState();
+    };
+
+    const renderDragHandle = (index, isAITable = false) => {
+        if (!canEditRows) {
+            return null;
+        }
+
+        const isDragging = dragState.sourceIndex === index && dragState.isAITable === isAITable;
+
+        return (
+            <Tooltip title="Перетащите, чтобы изменить порядок">
+                <Box
+                    draggable
+                    onDragStart={handleDragStart(index, isAITable)}
+                    onDragEnd={resetDragState}
+                    sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: isDragging ? 'primary.main' : 'text.secondary',
+                        cursor: 'grab',
+                        borderRadius: 1,
+                        width: '20px',
+                        height: '20px',
+                        p: 0,
+                        lineHeight: 0,
+                        transition: 'color 0.15s ease, background-color 0.15s ease',
+                        '&:hover': {
+                            bgcolor: 'action.hover',
+                        },
+                        '&:active': {
+                            cursor: 'grabbing',
+                        },
+                    }}
+                >
+                    <DragIndicatorIcon fontSize="small" />
+                </Box>
+            </Tooltip>
+        );
     };
 
     const handleCopyToClipboard = (dataSource = rows) => {
@@ -352,6 +483,7 @@ const CustomTable = forwardRef(function CustomTable(
                         >
                             <TableHead>
                                 <TableRow>
+                                    <TableCell sx={{ width: '20px', minWidth: '20px', maxWidth: '20px', p: 0, textAlign: 'center' }}></TableCell>
                                     <TableCell sx={{ width: 20, fontWeight: 'bold', textAlign: 'center' }}>№</TableCell>
                                     <TableCell sx={{ width: '90%', fontWeight: 'bold', textAlign: 'center' }}>Наименование работ</TableCell>
                                     <TableCell sx={{ width: 80, fontWeight: 'bold', textAlign: 'center' }}>Ресурсная</TableCell>
@@ -367,12 +499,29 @@ const CustomTable = forwardRef(function CustomTable(
                                             role="checkbox"
                                             tabIndex={-1}
                                             key={index}
-                                            sx={{ cursor: 'pointer' }}
+                                            onDragOver={handleDragOver(index, false)}
+                                            onDrop={handleDrop(index, false)}
+                                            sx={{
+                                                backgroundColor:
+                                                    dragState.overIndex === index &&
+                                                    dragState.isAITable === false &&
+                                                    dragState.sourceIndex !== index
+                                                        ? 'action.hover'
+                                                        : 'inherit',
+                                                opacity:
+                                                    dragState.sourceIndex === index &&
+                                                    dragState.isAITable === false
+                                                        ? 0.65
+                                                        : 1,
+                                                transition: 'background-color 0.15s ease, opacity 0.15s ease',
+                                            }}
                                         >
+                                            <TableCell sx={{ width: '20px', minWidth: '20px', maxWidth: '20px', p: 0, textAlign: 'center' }}>
+                                                {renderDragHandle(index, false)}
+                                            </TableCell>
                                             <TableCell
                                                 sx={{ width: 20, textAlign: 'center' }}
-                                                contentEditable={projectCardRole === 'Admin' ||
-                                                projectCardRole === 'Technical'}
+                                                contentEditable={canEditRows}
                                                 suppressContentEditableWarning
                                                 onBlur={(e) => handleCellEdit(row.id, 'id', e.target.textContent, false)}
                                             >
@@ -383,8 +532,7 @@ const CustomTable = forwardRef(function CustomTable(
                                                 component="th"
                                                 scope="row"
                                                 padding="none"
-                                                contentEditable={!disabled && (projectCardRole === 'Admin' ||
-                                                    projectCardRole === 'Technical')}
+                                                contentEditable={canEditRows}
                                                 suppressContentEditableWarning
                                                 onBlur={(e) => handleCellEdit(row.id, 'jobName', e.target.textContent, false)}
                                             >
@@ -393,8 +541,7 @@ const CustomTable = forwardRef(function CustomTable(
                                             <TableCell
                                                 sx={{ width: 80 }}
                                                 align="right"
-                                                contentEditable={!disabled && (projectCardRole === 'Admin' ||
-                                                    projectCardRole === 'Technical')}
+                                                contentEditable={canEditRows}
                                                 suppressContentEditableWarning
                                                 onBlur={(e) => handleCellEdit(row.id, 'resourceDay', e.target.textContent, false)}
                                             >
@@ -403,8 +550,7 @@ const CustomTable = forwardRef(function CustomTable(
                                             <TableCell
                                                 sx={{ width: 80 }}
                                                 align="right"
-                                                contentEditable={!disabled && (projectCardRole === 'Admin' ||
-                                                    projectCardRole === 'Technical')}
+                                                contentEditable={canEditRows}
                                                 suppressContentEditableWarning
                                                 onBlur={(e) => handleCellEdit(row.id, 'frameDay', e.target.textContent, false)}
                                             >
@@ -480,6 +626,7 @@ const CustomTable = forwardRef(function CustomTable(
                         <Table sx={{ minWidth: 750 }} size='small'>
                             <TableHead>
                                 <TableRow>
+                                    <TableCell sx={{ width: '20px', minWidth: '20px', maxWidth: '20px', p: 0, textAlign: 'center' }}></TableCell>
                                     <TableCell sx={{ width: 20, fontWeight: 'bold', textAlign: 'center' }}>№</TableCell>
                                     <TableCell sx={{ width: '90%', fontWeight: 'bold', textAlign: 'center' }}>Наименование работ</TableCell>
                                     <TableCell sx={{ width: 80, fontWeight: 'bold', textAlign: 'center' }}>Ресурсная</TableCell>
@@ -495,12 +642,29 @@ const CustomTable = forwardRef(function CustomTable(
                                             role="checkbox"
                                             tabIndex={-1}
                                             key={index}
-                                            sx={{ cursor: 'pointer' }}
+                                            onDragOver={handleDragOver(index, true)}
+                                            onDrop={handleDrop(index, true)}
+                                            sx={{
+                                                backgroundColor:
+                                                    dragState.overIndex === index &&
+                                                    dragState.isAITable === true &&
+                                                    dragState.sourceIndex !== index
+                                                        ? 'action.hover'
+                                                        : 'inherit',
+                                                opacity:
+                                                    dragState.sourceIndex === index &&
+                                                    dragState.isAITable === true
+                                                        ? 0.65
+                                                        : 1,
+                                                transition: 'background-color 0.15s ease, opacity 0.15s ease',
+                                            }}
                                         >
+                                            <TableCell sx={{ width: '20px', minWidth: '20px', maxWidth: '20px', p: 0, textAlign: 'center' }}>
+                                                {renderDragHandle(index, true)}
+                                            </TableCell>
                                             <TableCell
                                                 sx={{ width: 20, textAlign: 'center' }}
-                                                contentEditable={projectCardRole === 'Admin' ||
-                                                projectCardRole === 'Technical'}
+                                                contentEditable={canEditRows}
                                                 suppressContentEditableWarning
                                                 onBlur={(e) => handleCellEdit(row.id, 'id', e.target.textContent, true)}
                                             >
@@ -511,8 +675,7 @@ const CustomTable = forwardRef(function CustomTable(
                                                 component="th"
                                                 scope="row"
                                                 padding="none"
-                                                contentEditable={!disabled && (projectCardRole === 'Admin' ||
-                                                    projectCardRole === 'Technical')}
+                                                contentEditable={canEditRows}
                                                 suppressContentEditableWarning
                                                 onBlur={(e) => handleCellEdit(row.id, 'jobName', e.target.textContent, true)}
                                             >
@@ -521,8 +684,7 @@ const CustomTable = forwardRef(function CustomTable(
                                             <TableCell
                                                 sx={{ width: 80 }}
                                                 align="right"
-                                                contentEditable={!disabled && (projectCardRole === 'Admin' ||
-                                                    projectCardRole === 'Technical')}
+                                                contentEditable={canEditRows}
                                                 suppressContentEditableWarning
                                                 onBlur={(e) => handleCellEdit(row.id, 'resourceDay', e.target.textContent, true)}
                                             >
@@ -531,8 +693,7 @@ const CustomTable = forwardRef(function CustomTable(
                                             <TableCell
                                                 sx={{ width: 80 }}
                                                 align="right"
-                                                contentEditable={!disabled && (projectCardRole === 'Admin' ||
-                                                    projectCardRole === 'Technical')}
+                                                contentEditable={canEditRows}
                                                 suppressContentEditableWarning
                                                 onBlur={(e) => handleCellEdit(row.id, 'frameDay', e.target.textContent, true)}
                                             >

@@ -1004,6 +1004,137 @@ const requestTrueConfAddressBookContact = async ({
     return payload?.contact || null;
 };
 
+const requestTrueConfAddressBook = async ({
+    accessToken,
+    userId,
+}) => {
+    const requestUrl = new URL(
+        buildTrueConfApiUrl(`/users/${encodeURIComponent(userId)}/addressbook`),
+    );
+    requestUrl.searchParams.set('access_token', accessToken);
+
+    const response = await fetch(requestUrl.toString(), {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin',
+    });
+
+    const payload = await parseTrueConfResponseJson(response);
+
+    if (!response.ok) {
+        const error = new Error('TrueConf addressbook list request failed');
+        error.status = response.status;
+        error.payload = payload;
+        throw error;
+    }
+
+    return payload;
+};
+
+const getTrueConfAddressBookItems = (payload) => {
+    if (!payload) {
+        return [];
+    }
+
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    const listCandidates = [
+        payload?.contacts,
+        payload?.addressbook,
+        payload?.users,
+        payload?.items,
+        payload?.result,
+    ];
+
+    for (const listCandidate of listCandidates) {
+        if (Array.isArray(listCandidate)) {
+            return listCandidate;
+        }
+    }
+
+    return [];
+};
+
+const toTrueConfComparableIdentifier = (value) => String(value ?? '').trim().toLocaleLowerCase('en-US');
+
+const collectTrueConfComparableIdentifiers = (entity) => {
+    const identifiers = [];
+    if (!entity || typeof entity !== 'object') {
+        return identifiers;
+    }
+
+    [
+        entity?.userId,
+        entity?.userID,
+        entity?.login,
+        entity?.id,
+        entity?.uid,
+        entity?.username,
+        entity?.name,
+        entity?.user?.userId,
+        entity?.user?.userID,
+        entity?.user?.login,
+        entity?.user?.id,
+        entity?.user?.uid,
+    ].forEach((value) => {
+        const normalizedValue = toTrueConfComparableIdentifier(value);
+        if (!normalizedValue) {
+            return;
+        }
+
+        if (!identifiers.includes(normalizedValue)) {
+            identifiers.push(normalizedValue);
+        }
+    });
+
+    return identifiers;
+};
+
+const findTrueConfAddressBookItemByContactId = (payload, contactId) => {
+    const normalizedContactId = toTrueConfComparableIdentifier(contactId);
+    if (!normalizedContactId) {
+        return null;
+    }
+
+    const addressBookItems = getTrueConfAddressBookItems(payload);
+    for (const addressBookItem of addressBookItems) {
+        const itemIdentifiers = collectTrueConfComparableIdentifiers(addressBookItem);
+        if (itemIdentifiers.includes(normalizedContactId)) {
+            return addressBookItem;
+        }
+    }
+
+    return null;
+};
+
+const mergeTrueConfContacts = (primaryContact, fallbackContact) => {
+    if (!primaryContact && !fallbackContact) {
+        return null;
+    }
+
+    if (!fallbackContact) {
+        return primaryContact;
+    }
+
+    if (!primaryContact) {
+        return fallbackContact;
+    }
+
+    return {
+        ...fallbackContact,
+        ...primaryContact,
+        user: {
+            ...(fallbackContact?.user && typeof fallbackContact.user === 'object' ? fallbackContact.user : {}),
+            ...(primaryContact?.user && typeof primaryContact.user === 'object' ? primaryContact.user : {}),
+        },
+    };
+};
+
 export const fetchTrueConfAddressBookContact = async ({
     userIds = [],
     contactIds = [],
@@ -1037,8 +1168,31 @@ export const fetchTrueConfAddressBookContact = async ({
                     });
 
                     if (contact) {
+                        let resolvedContact = contact;
+                        const resolvedPresence = extractTrueConfPresence(contact);
+                        if (!Number.isFinite(Number(resolvedPresence?.extStatus))) {
+                            try {
+                                const addressBookPayload = await requestTrueConfAddressBook({
+                                    accessToken,
+                                    userId,
+                                });
+                                const extendedContact = findTrueConfAddressBookItemByContactId(addressBookPayload, contactId);
+                                resolvedContact = mergeTrueConfContacts(contact, extendedContact);
+                            } catch (addressBookError) {
+                                const addressBookStatus = Number(addressBookError?.status);
+                                if (
+                                    addressBookStatus !== 400
+                                    && addressBookStatus !== 401
+                                    && addressBookStatus !== 403
+                                    && addressBookStatus !== 404
+                                ) {
+                                    console.warn('TrueConf: failed to request full addressbook for extStatus', addressBookError);
+                                }
+                            }
+                        }
+
                         return withTrueConfPresence({
-                            contact,
+                            contact: resolvedContact,
                             userId,
                             contactId,
                             source: 'api',

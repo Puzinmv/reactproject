@@ -1,4 +1,4 @@
-import React, { useState, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import Box from '@mui/material/Box';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -28,16 +28,30 @@ import { improveJobDescriptions } from '../services/deepseek';
 import CircularProgress from '@mui/material/CircularProgress';
 
 
+const EMPTY_DRAG_STATE = {
+    sourceIndex: null,
+    overIndex: null,
+    insertIndex: null,
+    isAITable: false,
+};
+
 const CustomTable = forwardRef(function CustomTable(
     { depatmentid, jobDescriptions, aiJobDescriptions, projectCardRole, handleJobChange, handleAiJobChange, disabled, price, cost },
     ref
 ) {
     const [rows, setRows] = useState(jobDescriptions || []);
-    const [dragState, setDragState] = useState({
-        sourceIndex: null,
-        overIndex: null,
-        isAITable: false,
+    const rootRef = useRef(null);
+    const autoScrollFrameRef = useRef(null);
+    const autoScrollStateRef = useRef({
+        container: null,
+        clientY: null,
     });
+    const pointerPositionRef = useRef({
+        clientX: null,
+        clientY: null,
+    });
+    const dragStateRef = useRef(EMPTY_DRAG_STATE);
+    const [dragState, setDragState] = useState(EMPTY_DRAG_STATE);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [openSnackbar, setOpenSnackbar] = useState({ 
         open: false, 
@@ -47,19 +61,229 @@ const CustomTable = forwardRef(function CustomTable(
     const [isOriginalExpanded, setIsOriginalExpanded] = useState(!aiJobDescriptions?.length);
     const [isLoading, setIsLoading] = useState(false);
     const canEditRows = !disabled && (projectCardRole === 'Admin' || projectCardRole === 'Technical');
+    const tableColumnCount = disabled ? 5 : 6;
+
+    const updateDragState = (nextDragState) => {
+        setDragState((prevDragState) => {
+            const resolvedDragState =
+                typeof nextDragState === 'function'
+                    ? nextDragState(prevDragState)
+                    : nextDragState;
+
+            dragStateRef.current = resolvedDragState;
+            return resolvedDragState;
+        });
+    };
 
     const resetDragState = () => {
-        setDragState({
-            sourceIndex: null,
-            overIndex: null,
-            isAITable: false,
-        });
+        updateDragState({ ...EMPTY_DRAG_STATE });
+    };
+
+    const stopAutoScroll = () => {
+        if (autoScrollFrameRef.current !== null) {
+            cancelAnimationFrame(autoScrollFrameRef.current);
+            autoScrollFrameRef.current = null;
+        }
+
+        autoScrollStateRef.current = {
+            container: null,
+            clientY: null,
+        };
+    };
+
+    const resetPointerPosition = () => {
+        pointerPositionRef.current = {
+            clientX: null,
+            clientY: null,
+        };
+    };
+
+    const getScrollContainer = (element) => {
+        let currentElement = element;
+
+        while (currentElement) {
+            const styles = window.getComputedStyle(currentElement);
+            const isScrollable =
+                (styles.overflowY === 'auto' || styles.overflowY === 'scroll') &&
+                currentElement.scrollHeight > currentElement.clientHeight;
+
+            if (isScrollable) {
+                return currentElement;
+            }
+
+            currentElement = currentElement.parentElement;
+        }
+
+        return document.scrollingElement || document.documentElement;
+    };
+
+    const updateDragTargetFromPoint = (clientX, clientY) => {
+        const activeDragState = dragStateRef.current;
+
+        if (activeDragState.sourceIndex === null || clientX === null || clientY === null) {
+            return;
+        }
+
+        const rowElement = document
+            .elementFromPoint(clientX, clientY)
+            ?.closest('[data-custom-table-row="true"]');
+
+        if (!rowElement) {
+            return;
+        }
+
+        const rowIndex = Number(rowElement.getAttribute('data-row-index'));
+        const isAITableRow = rowElement.getAttribute('data-ai-table') === 'true';
+        const rowRect = rowElement.getBoundingClientRect();
+        const insertIndex = clientY > rowRect.top + rowRect.height / 2 ? rowIndex + 1 : rowIndex;
+
+        if (Number.isNaN(rowIndex) || isAITableRow !== activeDragState.isAITable) {
+            return;
+        }
+
+        if (rowIndex !== activeDragState.overIndex || insertIndex !== activeDragState.insertIndex) {
+            updateDragState((prevDragState) => ({
+                ...prevDragState,
+                overIndex: rowIndex,
+                insertIndex,
+            }));
+        }
+    };
+
+    const runAutoScroll = () => {
+        const { container, clientY } = autoScrollStateRef.current;
+
+        if (!container || clientY === null) {
+            autoScrollFrameRef.current = null;
+            return;
+        }
+
+        const isPageScrollContainer =
+            container === document.body ||
+            container === document.documentElement ||
+            container === document.scrollingElement;
+        const containerRect = isPageScrollContainer
+            ? { top: 0, bottom: window.innerHeight }
+            : container.getBoundingClientRect();
+        const threshold = 72;
+        let scrollDelta = 0;
+
+        if (clientY < containerRect.top + threshold) {
+            scrollDelta = -Math.ceil((containerRect.top + threshold - clientY) / 10);
+        } else if (clientY > containerRect.bottom - threshold) {
+            scrollDelta = Math.ceil((clientY - (containerRect.bottom - threshold)) / 10);
+        }
+
+        if (scrollDelta !== 0) {
+            if (isPageScrollContainer) {
+                window.scrollBy(0, scrollDelta);
+            } else {
+                container.scrollTop += scrollDelta;
+            }
+
+            updateDragTargetFromPoint(
+                pointerPositionRef.current.clientX,
+                pointerPositionRef.current.clientY
+            );
+        }
+
+        autoScrollFrameRef.current = requestAnimationFrame(runAutoScroll);
+    };
+
+    const ensureAutoScroll = () => {
+        if (autoScrollFrameRef.current === null) {
+            autoScrollFrameRef.current = requestAnimationFrame(runAutoScroll);
+        }
     };
 
     const normalizeRowOrder = (tableRows) => tableRows.map((row, index) => ({
         ...row,
         id: index + 1,
     }));
+
+    const getActiveInsertIndex = (isAITable = false) => (
+        dragState.sourceIndex !== null && dragState.isAITable === isAITable
+            ? dragState.insertIndex
+            : null
+    );
+
+    const shouldShowInsertIndicatorAt = (insertIndex, isAITable = false) => {
+        const activeInsertIndex = getActiveInsertIndex(isAITable);
+
+        if (activeInsertIndex === null || activeInsertIndex !== insertIndex) {
+            return false;
+        }
+
+        return !(
+            insertIndex === dragState.sourceIndex ||
+            insertIndex === dragState.sourceIndex + 1
+        );
+    };
+
+    const renderInsertIndicatorRow = (insertIndex, isAITable = false) => {
+        if (!shouldShowInsertIndicatorAt(insertIndex, isAITable)) {
+            return null;
+        }
+
+        return (
+            <TableRow key={`insert-indicator-${isAITable ? 'ai' : 'main'}-${insertIndex}`}>
+                <TableCell
+                    colSpan={tableColumnCount}
+                    sx={{
+                        p: 0,
+                        borderBottom: 'none',
+                        bgcolor: 'transparent',
+                    }}
+                >
+                    <Box
+                        sx={{
+                            px: 1.5,
+                            py: 0.35,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            color: 'primary.main',
+                            pointerEvents: 'none',
+                        }}
+                    >
+                        <Box
+                            sx={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: '50%',
+                                bgcolor: 'primary.main',
+                                boxShadow: '0 0 0 3px rgba(25, 118, 210, 0.16)',
+                                flexShrink: 0,
+                            }}
+                        />
+                        <Box
+                            sx={{
+                                flex: 1,
+                                height: 3,
+                                borderRadius: 999,
+                                bgcolor: 'primary.main',
+                                boxShadow: '0 0 0 3px rgba(25, 118, 210, 0.12)',
+                            }}
+                        />
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                fontWeight: 700,
+                                color: 'primary.main',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            Отпустите, чтобы вставить
+                        </Typography>
+                    </Box>
+                </TableCell>
+            </TableRow>
+        );
+    };
+
+    useEffect(() => () => {
+        stopAutoScroll();
+    }, []);
 
     const handleAddRow = (isAITable = false) => {
         const targetRows = isAITable ? aiJobDescriptions : rows;
@@ -133,8 +357,8 @@ const CustomTable = forwardRef(function CustomTable(
         }
     };
 
-    const handleReorderRows = (sourceIndex, targetIndex, isAITable = false) => {
-        if (sourceIndex === targetIndex || sourceIndex === null || targetIndex === null) {
+    const handleReorderRows = (sourceIndex, insertIndex, isAITable = false) => {
+        if (sourceIndex === null || insertIndex === null) {
             return;
         }
 
@@ -142,15 +366,21 @@ const CustomTable = forwardRef(function CustomTable(
 
         if (
             sourceIndex < 0 ||
-            targetIndex < 0 ||
+            insertIndex < 0 ||
             sourceIndex >= targetRows.length ||
-            targetIndex >= targetRows.length
+            insertIndex > targetRows.length
         ) {
             return;
         }
 
         const [movedRow] = targetRows.splice(sourceIndex, 1);
-        targetRows.splice(targetIndex, 0, movedRow);
+        const normalizedInsertIndex = sourceIndex < insertIndex ? insertIndex - 1 : insertIndex;
+
+        if (normalizedInsertIndex === sourceIndex) {
+            return;
+        }
+
+        targetRows.splice(normalizedInsertIndex, 0, movedRow);
         const reorderedRows = normalizeRowOrder(targetRows);
 
         if (isAITable) {
@@ -163,46 +393,106 @@ const CustomTable = forwardRef(function CustomTable(
         }
     };
 
-    const handleDragStart = (index, isAITable = false) => (event) => {
+    // The drag listeners intentionally subscribe only while a row is being dragged.
+    /* eslint-disable react-hooks/exhaustive-deps */
+    useEffect(() => {
+        if (dragState.sourceIndex === null) {
+            return undefined;
+        }
+
+        const handleMouseMoveWhileDragging = (event) => {
+            pointerPositionRef.current = {
+                clientX: event.clientX,
+                clientY: event.clientY,
+            };
+            autoScrollStateRef.current = {
+                ...autoScrollStateRef.current,
+                clientY: event.clientY,
+            };
+            updateDragTargetFromPoint(event.clientX, event.clientY);
+            ensureAutoScroll();
+        };
+
+        const handleMouseUpWhileDragging = (event) => {
+            pointerPositionRef.current = {
+                clientX: event.clientX,
+                clientY: event.clientY,
+            };
+            updateDragTargetFromPoint(event.clientX, event.clientY);
+
+            const { sourceIndex, insertIndex, isAITable } = dragStateRef.current;
+
+            stopAutoScroll();
+            resetPointerPosition();
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+            resetDragState();
+
+            if (sourceIndex !== null && insertIndex !== null) {
+                handleReorderRows(sourceIndex, insertIndex, isAITable);
+            }
+        };
+
+        const handleScrollWhileDragging = () => {
+            updateDragTargetFromPoint(
+                pointerPositionRef.current.clientX,
+                pointerPositionRef.current.clientY
+            );
+        };
+
+        const handleBlurWhileDragging = () => {
+            stopAutoScroll();
+            resetPointerPosition();
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+            resetDragState();
+        };
+
+        const scrollContainer = autoScrollStateRef.current.container;
+
+        window.addEventListener('mousemove', handleMouseMoveWhileDragging);
+        window.addEventListener('mouseup', handleMouseUpWhileDragging);
+        window.addEventListener('blur', handleBlurWhileDragging);
+        scrollContainer?.addEventListener('scroll', handleScrollWhileDragging, { passive: true });
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMoveWhileDragging);
+            window.removeEventListener('mouseup', handleMouseUpWhileDragging);
+            window.removeEventListener('blur', handleBlurWhileDragging);
+            scrollContainer?.removeEventListener('scroll', handleScrollWhileDragging);
+        };
+    }, [dragState.sourceIndex]);
+    /* eslint-enable react-hooks/exhaustive-deps */
+
+    const handleDragHandleMouseDown = (index, isAITable = false) => (event) => {
         if (!canEditRows) {
             return;
         }
 
-        event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('text/plain', `${isAITable ? 'ai' : 'main'}:${index}`);
-        setDragState({
+        if (event.button !== 0) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        pointerPositionRef.current = {
+            clientX: event.clientX,
+            clientY: event.clientY,
+        };
+        autoScrollStateRef.current = {
+            container: getScrollContainer(rootRef.current || event.currentTarget),
+            clientY: event.clientY,
+        };
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'grabbing';
+        ensureAutoScroll();
+        updateDragState({
             sourceIndex: index,
             overIndex: index,
+            insertIndex: index,
             isAITable,
         });
-    };
-
-    const handleDragOver = (index, isAITable = false) => (event) => {
-        if (!canEditRows || dragState.sourceIndex === null || dragState.isAITable !== isAITable) {
-            return;
-        }
-
-        event.preventDefault();
-        event.dataTransfer.dropEffect = 'move';
-
-        if (dragState.overIndex !== index) {
-            setDragState((prev) => ({
-                ...prev,
-                overIndex: index,
-            }));
-        }
-    };
-
-    const handleDrop = (index, isAITable = false) => (event) => {
-        event.preventDefault();
-
-        if (!canEditRows || dragState.sourceIndex === null || dragState.isAITable !== isAITable) {
-            resetDragState();
-            return;
-        }
-
-        handleReorderRows(dragState.sourceIndex, index, isAITable);
-        resetDragState();
     };
 
     const renderDragHandle = (index, isAITable = false) => {
@@ -215,26 +505,22 @@ const CustomTable = forwardRef(function CustomTable(
         return (
             <Tooltip title="Перетащите, чтобы изменить порядок">
                 <Box
-                    draggable
-                    onDragStart={handleDragStart(index, isAITable)}
-                    onDragEnd={resetDragState}
+                    onMouseDown={handleDragHandleMouseDown(index, isAITable)}
                     sx={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: isDragging ? 'primary.main' : 'text.secondary',
-                        cursor: 'grab',
+                        cursor: isDragging ? 'grabbing' : 'grab',
                         borderRadius: 1,
                         width: '20px',
                         height: '20px',
                         p: 0,
                         lineHeight: 0,
+                        userSelect: 'none',
                         transition: 'color 0.15s ease, background-color 0.15s ease',
                         '&:hover': {
                             bgcolor: 'action.hover',
-                        },
-                        '&:active': {
-                            cursor: 'grabbing',
                         },
                     }}
                 >
@@ -397,7 +683,10 @@ const CustomTable = forwardRef(function CustomTable(
     }));
 
     return (
-        <Box sx={{ width: '100%' }}>
+        <Box
+            ref={rootRef}
+            sx={{ width: '100%' }}
+        >
             <Paper sx={{ width: '100%', mb: 1 }}>
                 <Toolbar
                     sx={{
@@ -475,7 +764,16 @@ const CustomTable = forwardRef(function CustomTable(
                     </Box>
                 </Toolbar>
                 <Collapse in={isOriginalExpanded}>
-                    <TableContainer sx={{ border: 1, borderColor: 'grey.500'}}>
+                    <TableContainer
+                        sx={{
+                            border: 1,
+                            borderColor: dragState.sourceIndex !== null && dragState.isAITable === false ? 'primary.light' : 'grey.500',
+                            boxShadow: dragState.sourceIndex !== null && dragState.isAITable === false
+                                ? '0 0 0 1px rgba(25, 118, 210, 0.18)'
+                                : 'none',
+                            transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                        }}
+                    >
                         <Table
                             sx={{ minWidth: 750 }}
                             aria-labelledby="tableTitle"
@@ -493,29 +791,26 @@ const CustomTable = forwardRef(function CustomTable(
                             </TableHead>
                             <TableBody>
                                 {rows.map((row, index) => {
+                                    const isSourceRow =
+                                        dragState.sourceIndex === index &&
+                                        dragState.isAITable === false;
+
                                     return (
-                                        <TableRow
-                                            hover
-                                            role="checkbox"
-                                            tabIndex={-1}
-                                            key={index}
-                                            onDragOver={handleDragOver(index, false)}
-                                            onDrop={handleDrop(index, false)}
-                                            sx={{
-                                                backgroundColor:
-                                                    dragState.overIndex === index &&
-                                                    dragState.isAITable === false &&
-                                                    dragState.sourceIndex !== index
-                                                        ? 'action.hover'
-                                                        : 'inherit',
-                                                opacity:
-                                                    dragState.sourceIndex === index &&
-                                                    dragState.isAITable === false
-                                                        ? 0.65
-                                                        : 1,
-                                                transition: 'background-color 0.15s ease, opacity 0.15s ease',
-                                            }}
-                                        >
+                                        <React.Fragment key={`main-row-${row.id ?? index}`}>
+                                            {renderInsertIndicatorRow(index, false)}
+                                            <TableRow
+                                                hover={dragState.sourceIndex === null}
+                                                role="checkbox"
+                                                tabIndex={-1}
+                                                data-custom-table-row="true"
+                                                data-row-index={index}
+                                                data-ai-table="false"
+                                                sx={{
+                                                    opacity: isSourceRow ? 0.55 : 1,
+                                                    transform: isSourceRow ? 'scale(0.995)' : 'none',
+                                                    transition: 'background-color 0.15s ease, opacity 0.15s ease, transform 0.15s ease',
+                                                }}
+                                            >
                                             <TableCell sx={{ width: '20px', minWidth: '20px', maxWidth: '20px', p: 0, textAlign: 'center' }}>
                                                 {renderDragHandle(index, false)}
                                             </TableCell>
@@ -565,9 +860,11 @@ const CustomTable = forwardRef(function CustomTable(
                                                     </Tooltip>
                                                 </TableCell>
                                             )}
-                                        </TableRow>
+                                            </TableRow>
+                                        </React.Fragment>
                                     );
                                 })}
+                                {renderInsertIndicatorRow(rows.length, false)}
                             </TableBody>
                         </Table>
                     </TableContainer>
@@ -622,7 +919,16 @@ const CustomTable = forwardRef(function CustomTable(
                             </Tooltip>
                         </Box>
                     </Toolbar>
-                    <TableContainer sx={{ border: 1, borderColor: 'grey.500'}}>
+                    <TableContainer
+                        sx={{
+                            border: 1,
+                            borderColor: dragState.sourceIndex !== null && dragState.isAITable === true ? 'primary.light' : 'grey.500',
+                            boxShadow: dragState.sourceIndex !== null && dragState.isAITable === true
+                                ? '0 0 0 1px rgba(25, 118, 210, 0.18)'
+                                : 'none',
+                            transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                        }}
+                    >
                         <Table sx={{ minWidth: 750 }} size='small'>
                             <TableHead>
                                 <TableRow>
@@ -636,29 +942,26 @@ const CustomTable = forwardRef(function CustomTable(
                             </TableHead>
                             <TableBody>
                                 {aiJobDescriptions.map((row, index) => {
+                                    const isSourceRow =
+                                        dragState.sourceIndex === index &&
+                                        dragState.isAITable === true;
+
                                     return (
-                                        <TableRow
-                                            hover
-                                            role="checkbox"
-                                            tabIndex={-1}
-                                            key={index}
-                                            onDragOver={handleDragOver(index, true)}
-                                            onDrop={handleDrop(index, true)}
-                                            sx={{
-                                                backgroundColor:
-                                                    dragState.overIndex === index &&
-                                                    dragState.isAITable === true &&
-                                                    dragState.sourceIndex !== index
-                                                        ? 'action.hover'
-                                                        : 'inherit',
-                                                opacity:
-                                                    dragState.sourceIndex === index &&
-                                                    dragState.isAITable === true
-                                                        ? 0.65
-                                                        : 1,
-                                                transition: 'background-color 0.15s ease, opacity 0.15s ease',
-                                            }}
-                                        >
+                                        <React.Fragment key={`ai-row-${row.id ?? index}`}>
+                                            {renderInsertIndicatorRow(index, true)}
+                                            <TableRow
+                                                hover={dragState.sourceIndex === null}
+                                                role="checkbox"
+                                                tabIndex={-1}
+                                                data-custom-table-row="true"
+                                                data-row-index={index}
+                                                data-ai-table="true"
+                                                sx={{
+                                                    opacity: isSourceRow ? 0.55 : 1,
+                                                    transform: isSourceRow ? 'scale(0.995)' : 'none',
+                                                    transition: 'background-color 0.15s ease, opacity 0.15s ease, transform 0.15s ease',
+                                                }}
+                                            >
                                             <TableCell sx={{ width: '20px', minWidth: '20px', maxWidth: '20px', p: 0, textAlign: 'center' }}>
                                                 {renderDragHandle(index, true)}
                                             </TableCell>
@@ -708,9 +1011,11 @@ const CustomTable = forwardRef(function CustomTable(
                                                     </Tooltip>
                                                 </TableCell>
                                             )}
-                                        </TableRow>
+                                            </TableRow>
+                                        </React.Fragment>
                                     );
                                 })}
+                                {renderInsertIndicatorRow(aiJobDescriptions.length, true)}
                             </TableBody>
                         </Table>
                     </TableContainer>

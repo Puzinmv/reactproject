@@ -4,7 +4,6 @@ import {
     fetchPhonebookDepartments,
     fetchPhonebookUserCard,
     fetchPhonebookUsersForSearch,
-    fetchTrueConfAddressBookContact,
     fetchPhonebookUsersByDepartment,
     getDirectusAssetUrl,
     getCurrentUser,
@@ -14,6 +13,7 @@ import {
     updatePhonebookUserCard,
     uploadPhonebookUserAvatar,
 } from '../services/directus';
+import { fetchTrueConfAddressBookContact } from '../services/trueconf';
 import './PhonebookPage.css';
 
 const SLOT_ROWS = [

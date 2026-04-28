@@ -1078,7 +1078,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                         }
                                         label={
                                             <Typography variant="body1" color="textPrimary">
-                                                Требуются ПО или железо
+                                                Требуются дополнительное ПО или железо
                                             </Typography>
                                         }
                                         labelPlacement="start" 

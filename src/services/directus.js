@@ -1649,11 +1649,17 @@ export const fetchDatanew = async ({
                             first_name: { _icontains: search }
                         }
                     },
+                    { 
+                        initiator: {
+                            last_name: { _icontains: search }
+                        }
+                    },
                     {
                         Customer: { _icontains: search }
                     }
                 ]
             }
+       
         }
 
         // Фильтры колонок

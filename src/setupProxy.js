@@ -26,7 +26,7 @@ module.exports = function(app) {
   app.use(
     '/directus',
     createProxyMiddleware({
-      target: 'http://10.0.0.224:8055',
+      target: 'https://projectcard.asterit.ru:8086',
       changeOrigin: true,
       secure: false,
       timeout: 300000,

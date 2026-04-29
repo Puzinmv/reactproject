@@ -17,6 +17,10 @@ export const directus = createDirectus(directusBaseUrl)
     .with(rest({ credentials: 'include' }))
     ;
 
+const publicDirectus = createDirectus(directusBaseUrl)
+    .with(rest({ credentials: 'omit' }))
+    ;
+
 const PROJECT_CARD_FILE_FIELDS = [
     'id',
     'Project_Card_id',
@@ -125,6 +129,8 @@ const requestDirectus = async (operation, options = {}) => {
         throw error;
     }
 };
+
+const requestPublicDirectus = async (operation) => publicDirectus.request(operation);
 
 const createProjectCardFileRelations = async (projectCardId, directusFileIds = []) => {
     if (!directusFileIds.length) {
@@ -305,7 +311,7 @@ export const loginAD = async (login, password) => {
     try {
         clearTrueConfTokens();
         const isLocalhost = window.location.hostname === 'localhost';
-        const authMode = isLocalhost ? 'json' : 'session';
+        const authMode = 'session';
 
         //const user = await directus.login(email, password);
         const response = await fetch(process.env.REACT_APP_API_URL +'/auth/login/ldap', {
@@ -1282,22 +1288,21 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
         return [];
     }
     
-    // Расширяем список кодов: добавляем варианты с пробелами и без пробелов
-    const expandedCodes = new Set();
+    const normalizedCodes = new Set();
     codes.forEach(code => {
         const normalized = String(code).trim();
         if (normalized) {
-            // Добавляем код без пробела
-            expandedCodes.add(normalized);
-            // Добавляем код с пробелом в конце
-            expandedCodes.add(normalized + ' ');
+            normalizedCodes.add(normalized);
         }
     });
     
-    const codesArray = Array.from(expandedCodes);
+    const codesArray = Array.from(normalizedCodes);
+    if (!codesArray.length) {
+        return [];
+    }
     
     try {
-        const lists = await requestDirectus(
+        const lists = await requestPublicDirectus(
             readItems('ListsKII', {
                 fields: [
                     '*',
@@ -1306,15 +1311,15 @@ export const fetchListsKIIMatchingCodes = async (codes = []) => {
                 ],
                 limit: -1,
                 filter: {
-                    okved: {
-                        _some: {
+                    _or: codesArray.map((code) => ({
+                        okved: {
                             ListKIIokvedNew_id: {
                                 code: {
-                                    _in: codesArray
+                                    _contains: code
                                 }
                             }
                         }
-                    }
+                    }))
                 }
             })
         );
@@ -1364,7 +1369,7 @@ export const fetchListsKIIByCode = async (code) => {
     }
 
     try {
-        const lists = await requestDirectus(
+        const lists = await requestPublicDirectus(
             readItems('ListsKII', {
                 fields: [
                     '*',
@@ -1427,7 +1432,7 @@ export const fetchListsKIIByCode = async (code) => {
 
 export const fetchOfDataByInn = async (inn) => {
     try {
-        const records = await requestDirectus(
+        const records = await requestPublicDirectus(
             readItems('ofdata', {
                 fields: ['*'],
                 filter: {

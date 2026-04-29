@@ -62,25 +62,6 @@ const splitOkvedGroups = (code) => {
         .filter(Boolean);
 };
 
-const expandCodesForMatching = (codes = []) => {
-    const expanded = new Set();
-    codes.forEach((code) => {
-        const normalized = normalizeCode(code);
-        if (!normalized) {
-            return;
-        }
-        expanded.add(normalized);
-        const parts = splitOkvedGroups(normalized);
-        if (parts.length > 0) {
-            expanded.add(parts[0]);
-        }
-        if (parts.length > 1) {
-            expanded.add(`${parts[0]}.${parts[1]}`);
-        }
-    });
-    return Array.from(expanded);
-};
-
 const AnketaKII = () => {
     const [inn, setInn] = useState('');
     const [error, setError] = useState('');
@@ -105,14 +86,78 @@ const AnketaKII = () => {
             return false;
         }
 
-        if (companyParts.length < listParts.length) {
+        if (companyParts.length > listParts.length) {
             return false;
         }
 
-        const listPrefix = listParts.slice(0, listParts.length).join('.');
-        const companyPrefix = companyParts.slice(0, listParts.length).join('.');
+        const listPrefix = listParts.slice(0, companyParts.length).join('.');
+        const companyPrefix = companyParts.join('.');
 
         return listPrefix === companyPrefix;
+    }, []);
+
+    const getOkvedMatchInfo = useCallback((listCode) => {
+        const listParts = splitOkvedGroups(listCode);
+        if (!listParts.length || !companyCodes.length) {
+            return { exact: false, matchedParts: 0 };
+        }
+
+        return companyCodes.reduce((bestMatch, companyCode) => {
+            const companyParts = splitOkvedGroups(companyCode);
+            let matchedParts = 0;
+
+            while (
+                matchedParts < listParts.length
+                && matchedParts < companyParts.length
+                && listParts[matchedParts] === companyParts[matchedParts]
+            ) {
+                matchedParts += 1;
+            }
+
+            const directedMatch = companyParts.length <= listParts.length
+                && matchedParts === companyParts.length;
+            const exact = directedMatch && matchedParts === listParts.length;
+            const effectiveMatchedParts = directedMatch ? matchedParts : 0;
+
+            if (
+                effectiveMatchedParts > bestMatch.matchedParts
+                || (effectiveMatchedParts === bestMatch.matchedParts && exact && !bestMatch.exact)
+            ) {
+                return { exact, matchedParts: effectiveMatchedParts };
+            }
+
+            return bestMatch;
+        }, { exact: false, matchedParts: 0 });
+    }, [companyCodes]);
+
+    const renderOkvedCodeLabel = useCallback((code, matchInfo) => {
+        const parts = splitOkvedGroups(code);
+        const matchedParts = Math.min(matchInfo?.matchedParts || 0, parts.length);
+
+        if (!matchedParts || matchInfo?.exact) {
+            return code;
+        }
+
+        const matchedPrefix = parts.slice(0, matchedParts).join('.');
+        const rest = parts.slice(matchedParts).join('.');
+
+        return (
+            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                <Box
+                    component="span"
+                    sx={{
+                        bgcolor: 'success.main',
+                        borderRadius: 0.5,
+                        color: 'success.contrastText',
+                        fontWeight: 700,
+                        px: 0.35
+                    }}
+                >
+                    {matchedPrefix}
+                </Box>
+                {rest ? `.${rest}` : ''}
+            </Box>
+        );
     }, []);
 
     const handleChange = (event) => {
@@ -208,6 +253,29 @@ const AnketaKII = () => {
         );
     }, []);
 
+    const filterMatchedGroupsByCompanyCodes = useCallback((groups = [], codes = []) => {
+        if (!Array.isArray(groups) || !codes.length) {
+            return [];
+        }
+
+        return groups
+            .map((group) => {
+                const items = Array.isArray(group?.items)
+                    ? group.items.filter((item) => (
+                        getListCodes(item?.okved).some((listCode) => (
+                            codes.some((companyCode) => isOkvedMatch(listCode, companyCode))
+                        ))
+                    ))
+                    : [];
+
+                return {
+                    ...group,
+                    items
+                };
+            })
+            .filter((group) => group.items.length > 0);
+    }, [getListCodes, isOkvedMatch]);
+
     const findMatchingLists = async (company) => {
         if (!company) {
             setMatchedGroups([]);
@@ -222,7 +290,7 @@ const AnketaKII = () => {
             return;
         }
 
-        const codesForSearch = expandCodesForMatching(uniqueCodes);
+        const codesForSearch = uniqueCodes;
         if (!codesForSearch.length) {
             setMatchedGroups([]);
             setListsLoading(false);
@@ -233,7 +301,7 @@ const AnketaKII = () => {
         setListsError('');
         try {
             const matched = await fetchListsKIIMatchingCodes(codesForSearch);
-            setMatchedGroups(matched ?? []);
+            setMatchedGroups(filterMatchedGroupsByCompanyCodes(matched ?? [], uniqueCodes));
             console.log(matched);
         } catch (listErr) {
             console.error(listErr);
@@ -372,22 +440,53 @@ const AnketaKII = () => {
         });
     }, [matchedGroups, isDefenseEnterprise, defenseData]);
 
-    const matchedCompanyCodes = useMemo(() => {
+    const companyOkvedMatchMap = useMemo(() => {
+        const matchMap = new Map();
         if (!companyCodes.length || !flattenedMatchedLists.length) {
-            return new Set();
+            return matchMap;
         }
-        const overlaps = new Set();
+
+        const listCodes = [];
         flattenedMatchedLists.forEach((item) => {
             getListCodes(item?.okved).forEach((listCode) => {
-                companyCodes.forEach((companyCode) => {
-                    if (isOkvedMatch(listCode, companyCode)) {
-                        overlaps.add(companyCode);
-                    }
-                });
+                listCodes.push(listCode);
             });
         });
-        return overlaps;
-    }, [companyCodes, flattenedMatchedLists, getListCodes, isOkvedMatch]);
+
+        companyCodes.forEach((companyCode) => {
+            const companyParts = splitOkvedGroups(companyCode);
+            const bestMatch = listCodes.reduce((currentBest, listCode) => {
+                const listParts = splitOkvedGroups(listCode);
+                let matchedParts = 0;
+
+                while (
+                    matchedParts < companyParts.length
+                    && matchedParts < listParts.length
+                    && companyParts[matchedParts] === listParts[matchedParts]
+                ) {
+                    matchedParts += 1;
+                }
+
+                const directedMatch = companyParts.length <= listParts.length
+                    && matchedParts === companyParts.length;
+                const exact = directedMatch && matchedParts === listParts.length;
+                const effectiveMatchedParts = directedMatch ? matchedParts : 0;
+
+                if (
+                    effectiveMatchedParts > currentBest.matchedParts
+                    || (effectiveMatchedParts === currentBest.matchedParts && exact && !currentBest.exact)
+                ) {
+                    return { exact, matchedParts: effectiveMatchedParts };
+                }
+
+                return currentBest;
+            }, { exact: false, matchedParts: 0 });
+
+            matchMap.set(companyCode, bestMatch);
+        });
+
+        return matchMap;
+    }, [companyCodes, flattenedMatchedLists, getListCodes]);
 
     const hasMatchedRows = flattenedMatchedLists.length > 0 || (isDefenseEnterprise && defenseData.length > 0);
 
@@ -539,14 +638,15 @@ const AnketaKII = () => {
                         <Typography variant="h6">ОКВЭД заказчика</Typography>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                             {companyCodes.map((code) => {
-                                const isMatched = matchedCompanyCodes.has(code);
+                                const matchInfo = companyOkvedMatchMap.get(code) || { exact: false, matchedParts: 0 };
+                                const hasMatch = matchInfo.matchedParts > 0;
                                 const description = companyCodeDescriptions[code] || 'Наименование ОКВЭД не найдено';
                                 return (
                                     <Tooltip key={code} title={description} arrow>
                                         <Chip
-                                            label={code}
-                                            color={isMatched ? 'success' : 'default'}
-                                            variant={isMatched ? 'filled' : 'outlined'}
+                                            label={renderOkvedCodeLabel(code, matchInfo)}
+                                            color={matchInfo.exact ? 'success' : 'default'}
+                                            variant={hasMatch && matchInfo.exact ? 'filled' : 'outlined'}
                                         />
                                     </Tooltip>
                                 );
@@ -619,16 +719,15 @@ const AnketaKII = () => {
                                                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                                                         {rowCodes.map((code, codeIdx) => {
                                                                             const codeKey = `${rowKey}-code-${code}-${codeIdx}`;
-                                                                            const isMatch = companyCodes.some((companyCode) =>
-                                                                                isOkvedMatch(code, companyCode)
-                                                                            );
+                                                                            const matchInfo = getOkvedMatchInfo(code);
+                                                                            const hasMatch = matchInfo.matchedParts > 0;
                                                                             return (
                                                                                 <Chip
                                                                                     key={codeKey}
-                                                                                    label={code}
+                                                                                    label={renderOkvedCodeLabel(code, matchInfo)}
                                                                                     size="small"
-                                                                                    color={isMatch ? 'success' : 'default'}
-                                                                                    variant={isMatch ? 'filled' : 'outlined'}
+                                                                                    color={matchInfo.exact ? 'success' : 'default'}
+                                                                                    variant={hasMatch && matchInfo.exact ? 'filled' : 'outlined'}
                                                                                 />
                                                                             );
                                                                         })}

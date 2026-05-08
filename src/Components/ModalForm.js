@@ -79,8 +79,18 @@ const hasUnapprovedSystemRequirements = (requirements) => (
     ))
 );
 
+const ReadableSwitch = styled(Switch)(({ theme }) => ({
+    '& .MuiSwitch-switchBase.Mui-disabled': {
+        color: theme.palette.text.primary,
+        opacity: 1,
+    },
+    '& .MuiSwitch-switchBase.Mui-disabled + .MuiSwitch-track': {
+        opacity: 0.45,
+    },
+}));
+
 // стили для switch с ошибкой
-const RedSwitch = styled(Switch)(({ theme, error }) => ({
+const RedSwitch = styled(ReadableSwitch)(({ theme, error }) => ({
     '& .MuiSwitch-switchBase': {
         color: error === 'true' ? 'red' : theme.palette.primary.main,
     },
@@ -837,7 +847,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                 <Grid item xs={12} md={4}>
                                     <FormControlLabel
                                         control={
-                                            <Switch
+                                            <ReadableSwitch
                                                 checked={autofill || false}
                                                 name="autofill"
                                                 onChange={handleAutofillToggle}
@@ -1325,7 +1335,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                         formData?.initiator?.Head === currentUser?.id) ? (
                                             <FormControlLabel
                                                 control={
-                                                    <Switch
+                                                    <ReadableSwitch
                                                         checked={formData.priceAproved || false}
                                                         name="priceAproved"
                                                         onChange={handleChangeSwitch}
@@ -1553,7 +1563,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                     {(currentUser?.email === EMAILS.ADMIN) && (
                                         <FormControlLabel
                                             control={
-                                                <Switch
+                                                <ReadableSwitch
                                                     checked={formData.Project_created || false}
                                                     name="Project_created"
                                                     onChange={handleChangeSwitch}

@@ -21,7 +21,8 @@ jest.mock('@ckeditor/ckeditor5-build-classic', () => ({}));
 jest.mock('../services/directus', () => ({
   UpdateData: jest.fn(),
   fetchCard: jest.fn(),
-  fetchUser: jest.fn()
+  fetchUser: jest.fn(),
+  fetchProjectCardHistory: jest.fn()
 }));
 
 jest.mock('../services/1c', () => ({

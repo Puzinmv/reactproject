@@ -1,7 +1,8 @@
 import {
     createDirectus, authentication,  rest,
     customEndpoint, readItems, readUsers, updateItem, readMe, readItem,
-    uploadFiles, createItem, createItems, updateMe, deleteItem, updateUser
+    uploadFiles, createItem, createItems, updateMe, deleteItem, updateUser,
+    readRevisions
 } from "@directus/sdk";
 import {
     getProjectCardRelationId,
@@ -941,6 +942,55 @@ export const fetchCard = async (ID) => {
     } catch (error) {
         console.error(error);
         throw error; 
+    }
+};
+
+export const fetchProjectCardHistory = async (ID) => {
+    if (!ID) {
+        return [];
+    }
+
+    try {
+        const revisions = await requestDirectus(readRevisions({
+            fields: [
+                'id',
+                'collection',
+                'item',
+                'data',
+                'delta',
+                {
+                    activity: [
+                        'id',
+                        'action',
+                        'timestamp',
+                        {
+                            user: ['id', 'first_name', 'last_name']
+                        }
+                    ]
+                }
+            ],
+            filter: {
+                _and: [
+                    {
+                        collection: {
+                            _eq: 'Project_Card'
+                        }
+                    },
+                    {
+                        item: {
+                            _eq: String(ID)
+                        }
+                    }
+                ]
+            },
+            sort: ['-activity.timestamp'],
+            limit: 100
+        }));
+
+        return Array.isArray(revisions) ? revisions : [];
+    } catch (error) {
+        console.error('Error fetching project card history:', error);
+        throw error;
     }
 };
 

@@ -555,8 +555,31 @@ const areAllSystemRequirementsApproved = (requirements) => (
     requirements.every((requirement) => requirement?.approved === true)
 );
 
+const hasFilledSystemRequirements = (requirements) => (
+    Array.isArray(requirements) &&
+    requirements.some((requirement) => (requirement?.requirement || '').trim().length > 0)
+);
+
+const hasUnapprovedSystemRequirements = (requirements) => (
+    Array.isArray(requirements) &&
+    requirements.some((requirement) => (
+        (requirement?.requirement || '').trim().length > 0 &&
+        requirement?.approved !== true
+    ))
+);
+
+const ReadableSwitch = styled(Switch)(({ theme }) => ({
+    '& .MuiSwitch-switchBase.Mui-disabled': {
+        color: theme.palette.text.primary,
+        opacity: 1,
+    },
+    '& .MuiSwitch-switchBase.Mui-disabled + .MuiSwitch-track': {
+        opacity: 0.45,
+    },
+}));
+
 // стили для switch с ошибкой
-const RedSwitch = styled(Switch)(({ theme, error }) => ({
+const RedSwitch = styled(ReadableSwitch)(({ theme, error }) => ({
     '& .MuiSwitch-switchBase': {
         color: error === 'true' ? 'red' : theme.palette.primary.main,
     },
@@ -609,6 +632,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const [fieldErrors, setFieldErrors] = useState({});
     const selectRef = useRef(null);
     const switchRef = useRef(null);
+    const systemRequirementsSwitchRef = useRef(null);
     const customTableRef = useRef(null);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [aiJobDescriptions, setAiJobDescriptions] = useState([]);
@@ -616,6 +640,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     const canEditExecutorFields =
         currentUser?.ProjectCardRole === ROLES.ADMIN ||
         currentUser?.ProjectCardRole === ROLES.TECHNICAL;
+    const isProjectEnded = formData.status === STATUS.PROJECT_ENDED;
 
     // Первичная загрузка данных карточки
     useEffect(() => {
@@ -859,12 +884,12 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         setSnackbarState({ open: true, message, severity, ...options });
     };
 
-    const triggerShakeAnimation = () => {
-        if (switchRef.current) {
-            switchRef.current.classList.add('shake'); 
+    const triggerShakeAnimation = (targetRef = switchRef) => {
+        if (targetRef.current) {
+            targetRef.current.classList.add('shake'); 
             setTimeout(() => {
                 try {
-                    switchRef.current.classList.remove('shake'); // Убираем класс через 500мс
+                    targetRef.current.classList.remove('shake'); // Убираем класс через 500мс
                 } catch (error) {
                 }
             }, 5000);
@@ -958,7 +983,6 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
     };
 
     const canManageRequirementChecks = (
-        canEditExecutorFields ||
         currentUser?.id === formData?.initiator?.id ||
         currentUser?.id === formData?.user_created?.id
     );
@@ -968,6 +992,22 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
 
         if (['need_system_requirements', 'jobCalculated'].includes(name) && !canEditExecutorFields) {
             triggerSnackbar(WARNING_MESSAGES.ONLY_EXECUTORS, "warning");
+            return;
+        }
+
+        if (name === 'need_system_requirements' && checked && !hasFilledSystemRequirements(formData.system_requirements)) {
+            setFormData(prev => ({ ...prev, need_system_requirements: false }));
+            setErrors(prevErrors => ({ ...prevErrors, system_requirements: 'Заполните системные требования' }));
+            triggerSnackbar('Заполните системные требования', 'error');
+            triggerShakeAnimation(systemRequirementsSwitchRef);
+            return;
+        }
+
+        if (name === 'jobCalculated' && checked && hasUnapprovedSystemRequirements(formData.system_requirements)) {
+            setFormData(prev => ({ ...prev, jobCalculated: false }));
+            setErrors(prevErrors => ({ ...prevErrors, system_requirements_approval: 'Согласуйте системные требования' }));
+            triggerSnackbar('Согласуйте системные требования', 'error');
+            triggerShakeAnimation();
             return;
         }
 
@@ -1003,7 +1043,12 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
         }
 
         setFormData(prev => ({ ...prev, [name]: checked }));
-        setErrors(prevErrors => ({ ...prevErrors, OpenProject_Template_id: '' }));
+        setErrors(prevErrors => ({
+            ...prevErrors,
+            OpenProject_Template_id: '',
+            ...(name === 'need_system_requirements' ? { system_requirements: '' } : {}),
+            ...(name === 'jobCalculated' ? { system_requirements_approval: '' } : {}),
+        }));
     }
 
 
@@ -1165,6 +1210,12 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                 "warning"
             );
             return false;
+        }
+        if (hasFilledSystemRequirements(data)) {
+            setErrors(prevErrors => ({ ...prevErrors, system_requirements: '' }));
+        }
+        if (!hasUnapprovedSystemRequirements(data)) {
+            setErrors(prevErrors => ({ ...prevErrors, system_requirements_approval: '' }));
         }
         setFormData((prevData) => ({ ...prevData, system_requirements: data }));
         return true;
@@ -1543,7 +1594,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                 <Grid item xs={12} md={4}>
                                     <FormControlLabel
                                         control={
-                                            <Switch
+                                            <ReadableSwitch
                                                 checked={autofill || false}
                                                 name="autofill"
                                                 onChange={handleAutofillToggle}
@@ -1813,13 +1864,14 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                 </Grid>
                                 <Grid container item xs={12} md={6} justifyContent="flex-end" alignItems="center">
                                     <FormControlLabel 
-                                        ref={switchRef}
+                                        ref={systemRequirementsSwitchRef}
                                         control={
                                             <RedSwitch
                                                 checked={formData.need_system_requirements || false}
                                                 name="need_system_requirements"
                                                 onChange={handleChangeSwitch}
                                                 color="primary"
+                                                error={errors.system_requirements ? 'true' : 'false'}
                                                 disabled={!canEditExecutorFields || isReadOnly}
                                             />
                                         }
@@ -1870,7 +1922,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                                 name="jobCalculated"
                                                 onChange={handleChangeSwitch}
                                                 color="primary"
-                                                error={errors.OpenProject_Template_id ? 'true' : 'false'}
+                                                error={(errors.OpenProject_Template_id || errors.system_requirements_approval) ? 'true' : 'false'}
                                                 disabled={!canEditExecutorFields || isJobCalculationInProgress || isReadOnly}
                                             />
                                         }
@@ -2033,7 +2085,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                         formData?.initiator?.Head === currentUser?.id) ? (
                                             <FormControlLabel
                                                 control={
-                                                    <Switch
+                                                    <ReadableSwitch
                                                         checked={formData.priceAproved || false}
                                                         name="priceAproved"
                                                         onChange={handleChangeSwitch}
@@ -2084,6 +2136,19 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                     <FormHelperText id="Cost-helper-text">
                                         {CostPerHour}
                                     </FormHelperText>
+                                    {isProjectEnded && (
+                                        <TextField
+                                            label="Фактическая себестоимость"
+                                            name="CostFact"
+                                            value={formatCurrency(formData.CostFact) || 0}
+                                            fullWidth
+                                            margin="dense"
+                                            InputProps={{
+                                                endAdornment: <InputAdornment position="end">₽</InputAdornment>,
+                                                readOnly: true,
+                                            }}
+                                        />
+                                    )}
                                 </Grid>
                                 <Grid item xs={6} md={3}>
                                     <TextField
@@ -2102,6 +2167,18 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                     <FormHelperText id="TotalCost-helper-text">
                                         {totoalCostPerHour}
                                     </FormHelperText>
+                                    {isProjectEnded && (
+                                        <TextField
+                                            label="Фактические трудозатраты, чел/час"
+                                            name="resourceFact"
+                                            value={formatCurrency(formData.resourceFact) || 0}
+                                            fullWidth
+                                            margin="dense"
+                                            InputProps={{
+                                                readOnly: true,
+                                            }}
+                                        />
+                                    )}
                                 </Grid>
                                 <Grid item xs={12} md={8}>
                                     <Grid container spacing={2}>
@@ -2236,7 +2313,7 @@ const ModalForm = ({ rowid, departament, onClose, currentUser, onDataSaved}) => 
                                     {(currentUser?.email === EMAILS.ADMIN) && (
                                         <FormControlLabel
                                             control={
-                                                <Switch
+                                                <ReadableSwitch
                                                     checked={formData.Project_created || false}
                                                     name="Project_created"
                                                     onChange={handleChangeSwitch}

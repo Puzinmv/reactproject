@@ -46,6 +46,7 @@ const baseCard = {
   status: 'Новая карта',
   jobCalculated: false,
   priceAproved: false,
+  user_created: { id: 2, first_name: 'Петр', last_name: 'Петров' },
   system_requirements: []
 };
 
@@ -99,6 +100,124 @@ describe('ModalForm', () => {
     });
   });
 
+  test('resets system requirements switch when the table has no filled rows', async () => {
+    await renderModalForm({
+      card: {
+        ...baseCard,
+        need_system_requirements: false,
+        system_requirements: []
+      }
+    });
+
+    await userEvent.click(screen.getByRole('tab', { name: /объем работ/i }));
+
+    const systemRequirementsSwitch = screen.getByRole('checkbox', {
+      name: /Требуются дополнительное ПО или железо/i
+    });
+
+    await userEvent.click(systemRequirementsSwitch);
+
+    await waitFor(() => {
+      expect(systemRequirementsSwitch).not.toBeChecked();
+    });
+    expect(await screen.findByText('Заполните системные требования')).toBeInTheDocument();
+  });
+
+  test('allows the card creator to approve system requirements', async () => {
+    await renderModalForm({
+      card: {
+        ...baseCard,
+        need_system_requirements: true,
+        system_requirements: [
+          { requirement: 'Требование создателя', approved: false }
+        ]
+      },
+      currentUser: { id: 2, ProjectCardRole: 'Commercial' }
+    });
+
+    await userEvent.click(screen.getByRole('tab', { name: /объем работ/i }));
+
+    const requirementRow = await screen.findByRole('row', { name: /Требование создателя/i });
+    const approvalCheckbox = within(requirementRow).getByRole('checkbox');
+
+    expect(approvalCheckbox).toBeEnabled();
+
+    await userEvent.click(approvalCheckbox);
+
+    await waitFor(() => {
+      expect(approvalCheckbox).toBeChecked();
+    });
+  });
+
+  test('does not allow other users to approve system requirements', async () => {
+    await renderModalForm({
+      card: {
+        ...baseCard,
+        need_system_requirements: true,
+        system_requirements: [
+          { requirement: 'Чужое требование', approved: false }
+        ]
+      },
+      currentUser: { id: 99, ProjectCardRole: 'Admin' }
+    });
+
+    await userEvent.click(screen.getByRole('tab', { name: /объем работ/i }));
+
+    const requirementRow = await screen.findByRole('row', { name: /Чужое требование/i });
+    const approvalCheckbox = within(requirementRow).getByRole('checkbox');
+
+    expect(approvalCheckbox).toBeDisabled();
+  });
+
+  test('does not turn on job calculation when filled system requirements are not approved', async () => {
+    await renderModalForm({
+      card: {
+        ...baseCard,
+        OpenProject_Template_id: 'template-1',
+        system_requirements: [
+          { requirement: 'Требование для расчета', approved: false }
+        ]
+      },
+      currentUser: { id: 99, ProjectCardRole: 'Admin' }
+    });
+
+    await userEvent.click(screen.getByRole('tab', { name: /объем работ/i }));
+
+    const jobCalculationSwitch = screen.getByRole('checkbox', {
+      name: /Расчет трудозатрат произведен/i
+    });
+
+    await userEvent.click(jobCalculationSwitch);
+
+    await waitFor(() => {
+      expect(jobCalculationSwitch).not.toBeChecked();
+    });
+    expect(await screen.findByText('Согласуйте системные требования')).toBeInTheDocument();
+  });
+
+  test('allows job calculation when system requirements are empty', async () => {
+    await renderModalForm({
+      card: {
+        ...baseCard,
+        OpenProject_Template_id: 'template-1',
+        system_requirements: []
+      },
+      currentUser: { id: 99, ProjectCardRole: 'Admin' }
+    });
+
+    await userEvent.click(screen.getByRole('tab', { name: /объем работ/i }));
+
+    const jobCalculationSwitch = screen.getByRole('checkbox', {
+      name: /Расчет трудозатрат произведен/i
+    });
+
+    await userEvent.click(jobCalculationSwitch);
+
+    await waitFor(() => {
+      expect(jobCalculationSwitch).toBeChecked();
+    });
+  });
+
   test('switches status to "Новая карта" when all system requirements are approved', async () => {
     await renderModalForm({
       card: {
@@ -117,7 +236,7 @@ describe('ModalForm', () => {
 
     await userEvent.click(screen.getByRole('tab', { name: /объем работ/i }));
 
-    const requirementRow = (await screen.findByText('Требование 2')).closest('tr');
+    const requirementRow = await screen.findByRole('row', { name: /Требование 2/i });
     const approvalCheckbox = within(requirementRow).getByRole('checkbox');
 
     expect(approvalCheckbox).toBeEnabled();
